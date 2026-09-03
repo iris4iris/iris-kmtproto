@@ -32,7 +32,7 @@ class Auth(private val client: TelegramClient) {
     fun importBotAuthorization(token: String): Deferred<User> =
         client.apiAsync { importBotAuthorizationSuspend(token) }
 
-    internal suspend fun importBotAuthorizationSuspend(token: String): User {
+    suspend fun importBotAuthorizationSuspend(token: String): User {
         val saved = client.loadedSession
         if (saved != null && saved.userId != 0L) {
             try {
@@ -62,7 +62,7 @@ class Auth(private val client: TelegramClient) {
     fun sendCode(phone: String, settings: CodeSettings = CodeSettings()): Deferred<AuthSentCode> =
         client.apiAsync { sendCodeSuspend(phone, settings) }
 
-    private suspend fun sendCodeSuspend(phone: String, settings: CodeSettings): AuthSentCode {
+    suspend fun sendCodeSuspend(phone: String, settings: CodeSettings): AuthSentCode {
         val sent = client.invokeSuspend(
             AuthSendCode(
                 phoneNumber = phone,
@@ -93,7 +93,7 @@ class Auth(private val client: TelegramClient) {
     fun signIn(phone: String, phoneCodeHash: String, phoneCode: String): Deferred<User> =
         client.apiAsync { signInSuspend(phone, phoneCodeHash, phoneCode) }
 
-    private suspend fun signInSuspend(phone: String, phoneCodeHash: String, phoneCode: String): User {
+    suspend fun signInSuspend(phone: String, phoneCodeHash: String, phoneCode: String): User {
         val auth = try {
             client.invokeSuspend(
                 AuthSignIn(
@@ -115,7 +115,7 @@ class Auth(private val client: TelegramClient) {
     /** Cloud password (2FA) after [SessionPasswordNeeded]. */
     fun checkPassword(password: String): Deferred<User> = client.apiAsync { checkPasswordSuspend(password) }
 
-    private suspend fun checkPasswordSuspend(password: String): User {
+    suspend fun checkPasswordSuspend(password: String): User {
         val acc = client.invokeSuspend(AccountGetPassword)
         val srp = PasswordSrp.check(acc, password)
         return applyAuth(client.invokeSuspend(AuthCheckPassword(password = srp)))

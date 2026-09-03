@@ -97,6 +97,7 @@ class TelegramClient(
     private var connection: EncryptedConnection? = null
     private var layerInitialized = false
     private var supervisor = SupervisorJob()
+    private var scope = CoroutineScope(supervisor + Dispatchers.Default)
     private val channels = ChannelCursors()
     private var eventQueue = EventChannel<TlObject>(EventChannel.UNLIMITED)
     private var incoming = EventChannel<MessageCtor>(256, BufferOverflow.DROP_OLDEST)
@@ -141,6 +142,7 @@ class TelegramClient(
     suspend fun connect(target: Datacenter = currentDc, session: ClientSession? = null) {
         close()
         supervisor = SupervisorJob()
+        scope = CoroutineScope(supervisor + Dispatchers.Default)
         loadedSession = session
         currentDc = session?.let { Datacenter.production(it.dcId) } ?: target
         layerInitialized = false
@@ -178,7 +180,6 @@ class TelegramClient(
     }
 
     private fun startMux() {
-        val scope = CoroutineScope(supervisor + Dispatchers.Default)
         scope.launch { readerLoop() }
         scope.launch {
             for (e in eventQueue) {
@@ -247,7 +248,7 @@ class TelegramClient(
     fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Deferred<Pong> =
         apiAsync { pingSuspend(pingId) }
 
-    internal suspend fun pingSuspend(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong {
+    suspend fun pingSuspend(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong {
         val raw = sendRpc(Ping(pingId))
         return raw as? Pong
             ?: (raw as? RpcResult)?.result as? Pong
@@ -256,7 +257,7 @@ class TelegramClient(
 
     fun getState(): Deferred<UpdatesState> = apiAsync { getStateSuspend() }
 
-    internal suspend fun getStateSuspend(): UpdatesState {
+    suspend fun getStateSuspend(): UpdatesState {
         val state = invokeSuspend(UpdatesGetState)
         updatesState = state
         return state
@@ -268,7 +269,7 @@ class TelegramClient(
         qts: Int? = null,
     ): Deferred<UpdatesDifference> = apiAsync { getDifferenceSuspend(pts, date, qts) }
 
-    internal suspend fun getDifferenceSuspend(
+    suspend fun getDifferenceSuspend(
         pts: Int? = null,
         date: Int? = null,
         qts: Int? = null,
@@ -287,7 +288,7 @@ class TelegramClient(
 
     fun syncUpdates(): Deferred<UpdatesDifferenceCtor?> = apiAsync { syncUpdatesSuspend() }
 
-    internal suspend fun syncUpdatesSuspend(): UpdatesDifferenceCtor? {
+    suspend fun syncUpdatesSuspend(): UpdatesDifferenceCtor? {
         if (updatesState == null) getStateSuspend()
         val messages = ArrayList<iris.kmtproto.tl.gen.Message>()
         val encrypted = ArrayList<iris.kmtproto.tl.gen.EncryptedMessage>()
@@ -332,9 +333,9 @@ class TelegramClient(
     fun <T : TlObject> invoke(method: TlMethod<T>): Deferred<T> = apiAsync { invokeSuspend(method) }
 
     internal fun <T> apiAsync(block: suspend () -> T): Deferred<T> =
-        CoroutineScope(supervisor + Dispatchers.Default).async { block() }
+        scope.async { block() }
 
-    internal suspend fun <T : TlObject> invokeSuspend(method: TlMethod<T>): T {
+    suspend fun <T : TlObject> invokeSuspend(method: TlMethod<T>): T {
         val wrapped: TlMethod<T> = if (layerInitialized) {
             method
         } else {

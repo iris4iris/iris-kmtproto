@@ -15,7 +15,7 @@ class Messages(private val client: TelegramClient) {
     fun send(peerId: Long, text: String): Deferred<SentMessage> =
         client.apiAsync { sendSuspend(client.inputPeerFromId(peerId), text) }
 
-    internal suspend fun sendSuspend(peer: InputPeer, text: String): SentMessage {
+    suspend fun sendSuspend(peer: InputPeer, text: String): SentMessage {
         require(text.isNotEmpty()) { "empty message" }
         var randomId = PlatformCrypto.randomBytes(8).readLongLe()
         if (randomId == 0L) randomId = 1L
