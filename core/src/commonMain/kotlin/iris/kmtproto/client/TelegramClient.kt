@@ -248,12 +248,8 @@ class TelegramClient(
     fun pingAsync(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Deferred<Pong> =
         apiAsync { ping(pingId) }
 
-    suspend fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong {
-        val raw = sendRpc(Ping(pingId))
-        return raw as? Pong
-            ?: (raw as? RpcResult)?.result as? Pong
-            ?: error("ping without pong: $raw")
-    }
+    suspend fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong =
+        invokeRaw(Ping(pingId))
 
     fun getStateAsync(): Deferred<UpdatesState> = apiAsync { getState() }
 
