@@ -40,6 +40,9 @@ bot.client.connect()
 bot.login(token).await()
 bot.sendMessage(chatId, "hi").await()
 bot.incomingMessages().collect { bot.sendMessage(it.chatId, it.text) } // fire-and-forget Deferred
+
+user.messages.send(peerId, "hi")           // Long, hash from Storage
+user.messages.send(inputPeer, "hi")        // готовый InputPeer
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.

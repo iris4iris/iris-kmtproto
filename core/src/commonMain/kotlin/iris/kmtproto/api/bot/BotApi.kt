@@ -7,7 +7,6 @@ import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.Storage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.botApiChatId
-import iris.kmtproto.client.inputPeerFromBotApiId
 import iris.kmtproto.tl.API_LAYER
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.PeerChannel
@@ -63,20 +62,13 @@ class BotApi(val client: TelegramClient) {
     }
 
     fun sendMessage(chatId: Long, text: String): Deferred<SentMessage> = client.apiAsync {
-        val peer = inputPeerFromBotApiId(chatId, hashFor(chatId))
-        user.messages.sendSuspend(peer, text)
+        user.messages.sendSuspend(client.inputPeerFromId(chatId), text)
     }
 
     fun incomingMessages(): Flow<BotMessage> =
         client.incomingMessages()
             .filter { !it.out }
             .map { it.toBotMessage() }
-
-    private fun hashFor(chatId: Long): Long = when {
-        chatId > 0L -> client.accessHash(chatId)
-        chatId <= -1_000_000_000_000L -> client.accessHash(-chatId - 1_000_000_000_000L)
-        else -> 0L
-    }
 }
 
 fun MessageCtor.toBotMessage(): BotMessage = BotMessage(

@@ -22,6 +22,7 @@ import iris.kmtproto.tl.TlObject
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelMessagesFilterEmpty
 import iris.kmtproto.tl.gen.InputChannelCtor
+import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerUser
@@ -127,6 +128,15 @@ class TelegramClient(
     fun incomingMessages(): Flow<MessageCtor> = incoming.receiveAsFlow()
 
     fun accessHash(id: Long): Long = storage.getAccessHash(id)
+
+    /** Bot-API chat id → [InputPeer], access_hash from [storage]. */
+    fun inputPeerFromId(peerId: Long): InputPeer = inputPeerFromBotApiId(peerId, hashFor(peerId))
+
+    private fun hashFor(peerId: Long): Long = when {
+        peerId > 0L -> accessHash(peerId)
+        peerId <= -1_000_000_000_000L -> accessHash(-peerId - 1_000_000_000_000L)
+        else -> 0L
+    }
 
     suspend fun connect(target: Datacenter = currentDc, session: ClientSession? = null) {
         close()
