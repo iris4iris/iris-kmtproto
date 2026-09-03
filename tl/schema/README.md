@@ -9,4 +9,10 @@
 
 Дефолт `TelegramClient(layer = API_LAYER)` обязан совпадать с `// LAYER` в `api.tl`. Другой слой — другой `api.tl` + перегенерация типов, плюс `TelegramClient(layer = N)`.
 
-Генератор: `./gradlew generateTl` (или `:tl:generateTl`) пишет в `tl/build/generated/tl/kotlin/` (не в git). `compileKotlin*` в `:tl` зависит от этой задачи. `TlRegistry` вызывает `registerGenerated()` на старте. Ручными остаются handshake/mtproto и `invokeWithLayer` / `initConnection`.
+Генератор: из корня репо
+
+```
+./gradlew generateTl
+```
+
+(`:tl:generateTl` — то же). Пишет в `tl/build/generated/tl/kotlin/` (не в git). Перед компиляцией `:tl` задача вызывается сама. Смена слоя — заменить `api.tl`, выровнять `API_LAYER` или `TelegramClient(layer = N)`, снова `generateTl`. Подробнее в корневом README, секция **Generate TL types**.
