@@ -3,6 +3,7 @@ package iris.kmtproto.crypto
 internal expect object PlatformCrypto {
     fun sha1(data: ByteArray): ByteArray
     fun sha256(data: ByteArray): ByteArray
+    fun hmacSha512(key: ByteArray, data: ByteArray): ByteArray
     fun aesEcbEncrypt(key: ByteArray, data: ByteArray): ByteArray
     fun aesEcbDecrypt(key: ByteArray, data: ByteArray): ByteArray
     fun randomBytes(n: Int): ByteArray

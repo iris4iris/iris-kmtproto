@@ -19,9 +19,21 @@ import iris.kmtproto.tl.RpcError
 import iris.kmtproto.tl.RpcResult
 import iris.kmtproto.tl.TlMethod
 import iris.kmtproto.tl.TlObject
+import iris.kmtproto.crypto.PasswordSrp
+import iris.kmtproto.tl.gen.AccountGetPassword
+import iris.kmtproto.tl.gen.AuthAuthorization
 import iris.kmtproto.tl.gen.AuthAuthorizationCtor
 import iris.kmtproto.tl.gen.AuthAuthorizationSignUpRequired
+import iris.kmtproto.tl.gen.AuthCheckPassword
 import iris.kmtproto.tl.gen.AuthImportBotAuthorization
+import iris.kmtproto.tl.gen.AuthResendCode
+import iris.kmtproto.tl.gen.AuthSendCode
+import iris.kmtproto.tl.gen.AuthSentCode
+import iris.kmtproto.tl.gen.AuthSentCodeCtor
+import iris.kmtproto.tl.gen.AuthSentCodePaymentRequired
+import iris.kmtproto.tl.gen.AuthSentCodeSuccess
+import iris.kmtproto.tl.gen.AuthSignIn
+import iris.kmtproto.tl.gen.CodeSettings
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelMessagesFilterEmpty
 import iris.kmtproto.tl.gen.HelpGetNearestDc
@@ -272,6 +284,66 @@ class TelegramClient(
                 botAuthToken = token,
             ),
         )
+        return applyAuth(auth)
+    }
+
+    /**
+     * SMS / app-code. PHONE_MIGRATE_* is handled by [invoke] (new handshake on that DC).
+     * [AuthSentCodeSuccess] means this auth_key is already a user session.
+     */
+    suspend fun sendCode(phone: String, settings: CodeSettings = CodeSettings()): AuthSentCode {
+        val sent = invoke(
+            AuthSendCode(
+                phoneNumber = phone,
+                apiId = apiId,
+                apiHash = apiHash,
+                settings = settings,
+            ),
+        )
+        when (sent) {
+            is AuthSentCodeSuccess -> applyAuth(sent.authorization)
+            is AuthSentCodePaymentRequired ->
+                error("auth.sentCodePaymentRequired — paid / premium auth, not implemented")
+            is AuthSentCodeCtor -> Unit
+            else -> error("unexpected auth.sentCode $sent")
+        }
+        return sent
+    }
+
+    suspend fun resendCode(phone: String, phoneCodeHash: String, reason: String? = null): AuthSentCode =
+        invoke(AuthResendCode(phoneNumber = phone, phoneCodeHash = phoneCodeHash, reason = reason))
+
+    /**
+     * Completes [sendCode]. Throws [SessionPasswordNeeded] if 2FA is on — then [checkPassword].
+     * Throws [SignUpRequired] if the number is not registered.
+     */
+    suspend fun signIn(phone: String, phoneCodeHash: String, phoneCode: String): User {
+        val auth = try {
+            invoke(
+                AuthSignIn(
+                    phoneNumber = phone,
+                    phoneCodeHash = phoneCodeHash,
+                    phoneCode = phoneCode,
+                ),
+            )
+        } catch (e: RpcException) {
+            if (e.message.contains("SESSION_PASSWORD_NEEDED")) {
+                val hint = runCatching { invoke(AccountGetPassword).hint }.getOrNull()
+                throw SessionPasswordNeeded(hint)
+            }
+            throw e
+        }
+        return applyAuth(auth, phone)
+    }
+
+    /** Cloud password (2FA) after [SessionPasswordNeeded]. */
+    suspend fun checkPassword(password: String): User {
+        val acc = invoke(AccountGetPassword)
+        val srp = PasswordSrp.check(acc, password)
+        return applyAuth(invoke(AuthCheckPassword(password = srp)))
+    }
+
+    private fun applyAuth(auth: AuthAuthorization, phone: String = ""): User {
         when (auth) {
             is AuthAuthorizationCtor -> {
                 user = auth.user
@@ -279,8 +351,8 @@ class TelegramClient(
                 loadedSession = session()
                 return auth.user
             }
-            is AuthAuthorizationSignUpRequired ->
-                error("auth.authorizationSignUpRequired — bot tokens must already exist")
+            is AuthAuthorizationSignUpRequired -> throw SignUpRequired(phone)
+            else -> error("unexpected auth.authorization $auth")
         }
     }
 

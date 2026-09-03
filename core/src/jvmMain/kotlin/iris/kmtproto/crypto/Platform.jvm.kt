@@ -6,6 +6,7 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.zip.GZIPInputStream
 import javax.crypto.Cipher
+import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 private val rng = SecureRandom()
@@ -16,6 +17,13 @@ internal actual object PlatformCrypto {
 
     actual fun sha256(data: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA-256").digest(data)
+
+    actual fun hmacSha512(key: ByteArray, data: ByteArray): ByteArray {
+        val mac = Mac.getInstance("HmacSHA512")
+        val specKey = if (key.isEmpty()) ByteArray(128) else key
+        mac.init(SecretKeySpec(specKey, "HmacSHA512"))
+        return mac.doFinal(data)
+    }
 
     actual fun aesEcbEncrypt(key: ByteArray, data: ByteArray): ByteArray {
         val c = Cipher.getInstance("AES/ECB/NoPadding")

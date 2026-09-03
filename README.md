@@ -1,6 +1,6 @@
 # Iris kMTProto
 
-Kotlin Multiplatform MTProto client (`iris.kmtproto`). First target: **JVM**. Session is in-memory only — no disk, no local message database. Request/response API, bot login next.
+Kotlin Multiplatform MTProto client (`iris.kmtproto`). First target: **JVM**. Session is in-memory only — no disk, no local message database.
 
 ```kotlin
 import iris.kmtproto.client.TelegramClient
@@ -10,6 +10,18 @@ client.connect()          // TCP obfuscated-intermediate + auth_key handshake
 val pong = client.ping()  // first encrypted RPC
 ```
 
+User login (SMS + optional 2FA):
+
+```kotlin
+val sent = client.sendCode("+79990000000") as AuthSentCodeCtor
+try {
+    client.signIn("+79990000000", sent.phoneCodeHash, codeFromSms)
+} catch (e: SessionPasswordNeeded) {
+    client.checkPassword(cloudPassword)
+}
+```
+
+Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.
 ## Layout
 
 One Gradle build, two modules:
@@ -69,6 +81,8 @@ TELEGRAM_API_HASH
 TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID   # for sendMessage
 ```
+
+User login is not a live test (it would send SMS). Call `sendCode` / `signIn` / `checkPassword` from your app.
 
 PowerShell:
 
