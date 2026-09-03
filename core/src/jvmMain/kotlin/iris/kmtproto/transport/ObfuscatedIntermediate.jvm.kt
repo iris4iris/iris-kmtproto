@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.DataOutputStream
-import java.net.InetSocketAddress
 import java.net.Socket
 
 private class ObfuscatedIntermediate(
@@ -87,12 +86,12 @@ private class PlainIntermediate(
     }
 }
 
-actual suspend fun connectObfuscated(dc: Datacenter): MtprotoTransport = withContext(Dispatchers.IO) {
-    connectObfuscatedAt(dc.host, dc.port)
+actual suspend fun connectObfuscated(dc: Datacenter, proxy: Proxy?): MtprotoTransport = withContext(Dispatchers.IO) {
+    connectObfuscatedAt(dc.host, dc.port, proxy)
 }
 
-private fun connectObfuscatedAt(host: String, port: Int): MtprotoTransport {
-    val socket = openSocket(host, port)
+private fun connectObfuscatedAt(host: String, port: Int, proxy: Proxy?): MtprotoTransport {
+    val socket = openTcp(host, port, proxy)
     val input = DataInputStream(socket.getInputStream())
     val output = DataOutputStream(socket.getOutputStream())
 
@@ -128,12 +127,4 @@ private fun connectObfuscatedAt(host: String, port: Int): MtprotoTransport {
     output.flush()
 
     return ObfuscatedIntermediate(socket, input, output, encryptor, decryptor)
-}
-
-private fun openSocket(host: String, port: Int): Socket {
-    val socket = Socket()
-    socket.tcpNoDelay = true
-    socket.connect(InetSocketAddress(host, port), 8_000)
-    socket.soTimeout = 12_000
-    return socket
 }

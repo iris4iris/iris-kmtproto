@@ -72,6 +72,7 @@ import iris.kmtproto.tl.gen.User
 import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.MtprotoTransport
+import iris.kmtproto.transport.Proxy
 import iris.kmtproto.transport.connectObfuscated
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -106,6 +107,7 @@ class TelegramClient(
     val info: ClientInfo = ClientInfo(),
     val layer: Int = API_LAYER,
     val storage: Storage = MemoryStorage(),
+    val proxy: Proxy? = null,
 ) {
     private var currentDc: Datacenter = dc
     private var transport: MtprotoTransport? = null
@@ -155,7 +157,7 @@ class TelegramClient(
         channels.clear()
         eventQueue = EventChannel(EventChannel.UNLIMITED)
         incoming = EventChannel(256, BufferOverflow.DROP_OLDEST)
-        val t = connectObfuscated(currentDc)
+        val t = connectObfuscated(currentDc, proxy)
         transport = t
         val key: AuthKey
         val salt: Long
@@ -235,7 +237,7 @@ class TelegramClient(
         transport = null
         oldConn?.failPending(CancellationException("reconnect"))
         runCatching { oldTransport?.close() }.onFailure { logCaught("rebind-close", it) }
-        val t = connectObfuscated(currentDc)
+        val t = connectObfuscated(currentDc, proxy)
         t.setReadTimeoutMs(0)
         transport = t
         val conn = EncryptedConnection(

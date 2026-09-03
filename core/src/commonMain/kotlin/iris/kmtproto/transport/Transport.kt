@@ -29,4 +29,13 @@ data class Datacenter(
     }
 }
 
-expect suspend fun connectObfuscated(dc: Datacenter): MtprotoTransport
+expect suspend fun connectObfuscated(dc: Datacenter, proxy: Proxy? = null): MtprotoTransport
+
+sealed class Proxy {
+    data class Socks5(
+        val host: String,
+        val port: Int,
+        val username: String? = null,
+        val password: String? = null,
+    ) : Proxy()
+}

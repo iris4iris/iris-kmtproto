@@ -10,6 +10,14 @@ client.connect()          // TCP obfuscated-intermediate + auth_key handshake
 val pong = client.ping()  // first encrypted RPC
 ```
 
+SOCKS5 (optional):
+
+```kotlin
+import iris.kmtproto.transport.Proxy
+
+TelegramClient(apiId, apiHash, proxy = Proxy.Socks5("127.0.0.1", 1080))
+```
+
 User login (SMS + optional 2FA):
 
 ```kotlin
