@@ -26,6 +26,9 @@ import iris.kmtproto.transport.MtprotoTransport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -46,6 +49,8 @@ internal class EncryptedConnection(
     private val sendMutex = Mutex()
     private val pendingMutex = Mutex()
     private val pending = HashMap<Long, CompletableDeferred<TlObject>>()
+    /** Writer-only: reader never waits for TCP flush. */
+    private val outgoing = Channel<ByteArray>(Channel.UNLIMITED)
 
     private fun nextSeq(contentRelated: Boolean): Int {
         val value = seq * 2 + if (contentRelated) 1 else 0
@@ -55,12 +60,7 @@ internal class EncryptedConnection(
 
     suspend fun sendRpc(obj: TlObject, timeoutMs: Long = 20_000): TlObject {
         val deferred = CompletableDeferred<TlObject>()
-        val msgId = sendMutex.withLock {
-            val (id, packet) = prepare(obj, contentRelated = true)
-            pendingMutex.withLock { pending[id] = deferred }
-            transport.send(packet)
-            id
-        }
+        val msgId = enqueue(obj, contentRelated = true, deferred)
         return try {
             withTimeout(timeoutMs) { deferred.await() }
         } catch (e: TimeoutCancellationException) {
@@ -69,7 +69,53 @@ internal class EncryptedConnection(
         }
     }
 
+    /**
+     * Read loop + write loop. Socket read and write run concurrently;
+     * [sendMutex] only serializes msg_id / seq / AES-IGE, not TCP.
+     */
     suspend fun runReader(onEvent: (TlObject) -> Unit) {
+        coroutineScope {
+            val writer = launch { drainWrites() }
+            try {
+                readLoop(onEvent)
+            } finally {
+                outgoing.close()
+                writer.join()
+            }
+        }
+    }
+
+    private suspend fun drainWrites() {
+        for (packet in outgoing) {
+            try {
+                transport.send(packet)
+            } catch (e: CancellationException) {
+                failPending(e)
+                throw e
+            } catch (e: Exception) {
+                logCaught("writer", e)
+                failPending(e)
+                throw e
+            }
+        }
+    }
+
+    private suspend fun enqueue(
+        obj: TlObject,
+        contentRelated: Boolean,
+        deferred: CompletableDeferred<TlObject>? = null,
+    ): Long = sendMutex.withLock {
+        val (id, packet) = prepare(obj, contentRelated)
+        if (deferred != null) pendingMutex.withLock { pending[id] = deferred }
+        val sent = outgoing.trySend(packet)
+        if (sent.isFailure) {
+            if (deferred != null) pendingMutex.withLock { pending.remove(id) }
+            throw sent.exceptionOrNull() ?: IllegalStateException("outgoing closed")
+        }
+        id
+    }
+
+    private suspend fun readLoop(onEvent: (TlObject) -> Unit) {
         while (true) {
             val (acks, events) = try {
                 receiveUnwrapped()
@@ -82,10 +128,7 @@ internal class EncryptedConnection(
             }
             try {
                 if (acks.isNotEmpty()) {
-                    sendMutex.withLock {
-                        val (_, packet) = prepare(MsgsAck(acks.toLongArray()), contentRelated = false)
-                        transport.send(packet)
-                    }
+                    enqueue(MsgsAck(acks.toLongArray()), contentRelated = false)
                 }
                 for (e in events) {
                     try {
