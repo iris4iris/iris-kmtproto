@@ -7,7 +7,7 @@ import iris.kmtproto.client.TelegramClient
 
 val client = TelegramClient(apiId, apiHash)
 client.connect()          // TCP obfuscated-intermediate + auth_key handshake
-val pong = client.ping()  // first encrypted RPC
+val pong = client.ping().await()  // Deferred — coroutine Future
 ```
 
 SOCKS5 (optional):
@@ -22,11 +22,11 @@ User login (SMS + optional 2FA):
 
 ```kotlin
 val api = UserApi(client)
-val sent = api.auth.sendCode("+79990000000") as AuthSentCodeCtor
+val sent = api.auth.sendCode("+79990000000").await() as AuthSentCodeCtor
 try {
-    api.auth.signIn("+79990000000", sent.phoneCodeHash, codeFromSms)
+    api.auth.signIn("+79990000000", sent.phoneCodeHash, codeFromSms).await()
 } catch (e: SessionPasswordNeeded) {
-    api.auth.checkPassword(cloudPassword)
+    api.auth.checkPassword(cloudPassword).await()
 }
 ```
 
@@ -35,9 +35,9 @@ Bot API-shaped adapter (still MTProto underneath):
 ```kotlin
 val bot = BotApi(apiId, apiHash)
 bot.client.connect()
-bot.login(token)
-bot.sendMessage(chatId, "hi")
-bot.incomingMessages().collect { bot.sendMessage(it.chatId, it.text) }
+bot.login(token).await()
+bot.sendMessage(chatId, "hi").await()
+bot.incomingMessages().collect { bot.sendMessage(it.chatId, it.text) } // fire-and-forget Deferred
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.

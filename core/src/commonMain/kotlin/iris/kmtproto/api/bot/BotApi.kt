@@ -16,6 +16,7 @@ import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -55,15 +56,15 @@ class BotApi(val client: TelegramClient) {
         ),
     )
 
-    suspend fun login(token: String): User {
-        val me = user.auth.importBotAuthorization(token)
-        client.getState()
-        return me
+    fun login(token: String): Deferred<User> = client.apiAsync {
+        val me = user.auth.importBotAuthorizationSuspend(token)
+        client.getStateSuspend()
+        me
     }
 
-    suspend fun sendMessage(chatId: Long, text: String): SentMessage {
+    fun sendMessage(chatId: Long, text: String): Deferred<SentMessage> = client.apiAsync {
         val peer = inputPeerFromBotApiId(chatId, hashFor(chatId))
-        return user.messages.send(peer, text)
+        user.messages.sendSuspend(peer, text)
     }
 
     fun incomingMessages(): Flow<BotMessage> =

@@ -42,7 +42,7 @@ private suspend fun handle(
     if (text.isEmpty()) return
     val reply = if (text.startsWith("/start")) "Echo is on." else text.take(4096)
     try {
-        val sent = bot.sendMessage(msg.chatId, reply)
+        val sent = bot.sendMessage(msg.chatId, reply).await()
         log("echo #${sent.id} -> chat ${msg.chatId}")
     } catch (e: RpcException) {
         log("send failed ${e.code} ${e.message} chat=${msg.chatId}")

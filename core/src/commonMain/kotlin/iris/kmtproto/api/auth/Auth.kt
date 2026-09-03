@@ -22,17 +22,21 @@ import iris.kmtproto.tl.gen.AuthSignIn
 import iris.kmtproto.tl.gen.CodeSettings
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.tl.gen.UserCtor
+import kotlinx.coroutines.Deferred
 
 class Auth(private val client: TelegramClient) {
     /**
      * Binds this auth_key to the bot. Skip if [TelegramClient.session] was already bound —
      * otherwise Telegram answers FLOOD_WAIT on importBotAuthorization.
      */
-    suspend fun importBotAuthorization(token: String): User {
+    fun importBotAuthorization(token: String): Deferred<User> =
+        client.apiAsync { importBotAuthorizationSuspend(token) }
+
+    internal suspend fun importBotAuthorizationSuspend(token: String): User {
         val saved = client.loadedSession
         if (saved != null && saved.userId != 0L) {
             try {
-                client.getState()
+                client.getStateSuspend()
                 client.user = restoreUser(saved)
                 client.rememberUser(client.user!!)
                 return client.user!!
@@ -40,7 +44,7 @@ class Auth(private val client: TelegramClient) {
                 if (!isDeadAuth(e.message)) throw e
             }
         }
-        val auth = client.invoke(
+        val auth = client.invokeSuspend(
             AuthImportBotAuthorization(
                 flags = 0,
                 apiId = client.apiId,
@@ -55,8 +59,11 @@ class Auth(private val client: TelegramClient) {
      * SMS / app-code. PHONE_MIGRATE_* is handled by [TelegramClient.invoke].
      * [AuthSentCodeSuccess] means this auth_key is already a user session.
      */
-    suspend fun sendCode(phone: String, settings: CodeSettings = CodeSettings()): AuthSentCode {
-        val sent = client.invoke(
+    fun sendCode(phone: String, settings: CodeSettings = CodeSettings()): Deferred<AuthSentCode> =
+        client.apiAsync { sendCodeSuspend(phone, settings) }
+
+    private suspend fun sendCodeSuspend(phone: String, settings: CodeSettings): AuthSentCode {
+        val sent = client.invokeSuspend(
             AuthSendCode(
                 phoneNumber = phone,
                 apiId = client.apiId,
@@ -74,16 +81,21 @@ class Auth(private val client: TelegramClient) {
         return sent
     }
 
-    suspend fun resendCode(phone: String, phoneCodeHash: String, reason: String? = null): AuthSentCode =
-        client.invoke(AuthResendCode(phoneNumber = phone, phoneCodeHash = phoneCodeHash, reason = reason))
+    fun resendCode(phone: String, phoneCodeHash: String, reason: String? = null): Deferred<AuthSentCode> =
+        client.apiAsync {
+            client.invokeSuspend(AuthResendCode(phoneNumber = phone, phoneCodeHash = phoneCodeHash, reason = reason))
+        }
 
     /**
      * Completes [sendCode]. Throws [SessionPasswordNeeded] if 2FA is on — then [checkPassword].
      * Throws [SignUpRequired] if the number is not registered.
      */
-    suspend fun signIn(phone: String, phoneCodeHash: String, phoneCode: String): User {
+    fun signIn(phone: String, phoneCodeHash: String, phoneCode: String): Deferred<User> =
+        client.apiAsync { signInSuspend(phone, phoneCodeHash, phoneCode) }
+
+    private suspend fun signInSuspend(phone: String, phoneCodeHash: String, phoneCode: String): User {
         val auth = try {
-            client.invoke(
+            client.invokeSuspend(
                 AuthSignIn(
                     phoneNumber = phone,
                     phoneCodeHash = phoneCodeHash,
@@ -92,7 +104,7 @@ class Auth(private val client: TelegramClient) {
             )
         } catch (e: RpcException) {
             if (e.message.contains("SESSION_PASSWORD_NEEDED")) {
-                val hint = runCatching { client.invoke(AccountGetPassword).hint }.getOrNull()
+                val hint = runCatching { client.invokeSuspend(AccountGetPassword).hint }.getOrNull()
                 throw SessionPasswordNeeded(hint)
             }
             throw e
@@ -101,10 +113,12 @@ class Auth(private val client: TelegramClient) {
     }
 
     /** Cloud password (2FA) after [SessionPasswordNeeded]. */
-    suspend fun checkPassword(password: String): User {
-        val acc = client.invoke(AccountGetPassword)
+    fun checkPassword(password: String): Deferred<User> = client.apiAsync { checkPasswordSuspend(password) }
+
+    private suspend fun checkPasswordSuspend(password: String): User {
+        val acc = client.invokeSuspend(AccountGetPassword)
         val srp = PasswordSrp.check(acc, password)
-        return applyAuth(client.invoke(AuthCheckPassword(password = srp)))
+        return applyAuth(client.invokeSuspend(AuthCheckPassword(password = srp)))
     }
 
     private fun applyAuth(auth: AuthAuthorization, phone: String = ""): User {

@@ -27,7 +27,7 @@ private suspend fun run() {
     val bot = BotApi(client)
     try {
         client.connect(session = loadSession(sessionFile))
-        val me = bot.login(creds.token)
+        val me = bot.login(creds.token).await()
         client.session()?.let { saveSession(sessionFile, it) }
         val name = (me as? UserCtor)?.username ?: me.id.toString()
         println("logged in as @$name (auth_key reused=${sessionFile.isFile})")
