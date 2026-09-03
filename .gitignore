@@ -1,0 +1,10 @@
+build/
+.gradle/
+local.properties
+*.iml
+.idea/
+session.properties
+/src1/
+/src2/
+/src3/
+/src4/
