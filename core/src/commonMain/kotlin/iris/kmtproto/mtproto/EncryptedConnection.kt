@@ -17,8 +17,10 @@ import iris.kmtproto.tl.MtMessage
 import iris.kmtproto.tl.NewSessionCreated
 import iris.kmtproto.tl.Pong
 import iris.kmtproto.tl.RpcResult
+import iris.kmtproto.tl.TlIds
 import iris.kmtproto.tl.TlObject
 import iris.kmtproto.tl.TlReader
+import iris.kmtproto.tl.TlWriter
 import iris.kmtproto.tl.gen.Updates
 import iris.kmtproto.tl.toBytes
 import iris.kmtproto.toLeBytes
@@ -41,6 +43,17 @@ class RpcException(val code: Int, override val message: String) : RuntimeExcepti
 
 internal const val ACK_BATCH = 1000
 internal const val ACK_FLUSH_MS = 1_000L
+/** Protocol: container body ≤ 2^15−4, ≤ 1020 inner messages. */
+internal const val MAX_CONTAINER_MESSAGES = 1020
+internal const val MAX_CONTAINER_BYTES = 32_764
+
+private class PreparedMsg(
+    val msgId: Long,
+    val seqNo: Int,
+    val body: ByteArray,
+) {
+    val innerSize: Int get() = 16 + body.size
+}
 
 internal class EncryptedConnection(
     private val transport: MtprotoTransport,
@@ -53,9 +66,11 @@ internal class EncryptedConnection(
     private val sendMutex = Mutex()
     private val pendingMutex = Mutex()
     private val pending = HashMap<Long, CompletableDeferred<TlObject>>()
-    /** Writer-only: reader never waits for TCP flush. */
-    private val outgoing = Channel<ByteArray>(Channel.UNLIMITED)
+    /** Writer packs these into msg_container; not yet encrypted. */
+    private val outgoing = Channel<PreparedMsg>(Channel.UNLIMITED)
     private val ackBuf = ArrayList<Long>(ACK_BATCH)
+    /** container msg_id → inner RPC msg_ids (for bad_server_salt). */
+    private val bundles = HashMap<Long, LongArray>()
 
     private fun nextSeq(contentRelated: Boolean): Int {
         val value = seq * 2 + if (contentRelated) 1 else 0
@@ -99,17 +114,45 @@ internal class EncryptedConnection(
     }
 
     private suspend fun drainWrites() {
-        for (packet in outgoing) {
-            try {
-                transport.send(packet)
-            } catch (e: CancellationException) {
-                failPending(e)
-                throw e
-            } catch (e: Exception) {
-                logCaught("writer", e)
-                failPending(e)
-                throw e
+        var leftover: PreparedMsg? = null
+        try {
+            while (true) {
+                val first = leftover ?: (outgoing.receiveCatching().getOrNull() ?: break)
+                leftover = null
+                val batch = ArrayList<PreparedMsg>(8)
+                batch += first
+                var size = first.innerSize
+                while (batch.size < MAX_CONTAINER_MESSAGES) {
+                    val next = outgoing.tryReceive().getOrNull() ?: break
+                    if (8 + size + next.innerSize > MAX_CONTAINER_BYTES) {
+                        leftover = next
+                        break
+                    }
+                    batch += next
+                    size += next.innerSize
+                }
+                transport.send(seal(batch))
             }
+        } catch (e: CancellationException) {
+            failPending(e)
+            throw e
+        } catch (e: Exception) {
+            logCaught("writer", e)
+            failPending(e)
+            throw e
+        }
+    }
+
+    private suspend fun seal(batch: List<PreparedMsg>): ByteArray {
+        if (batch.size == 1) {
+            val m = batch[0]
+            return encryptPacket(m.msgId, m.seqNo, m.body)
+        }
+        return sendMutex.withLock {
+            val cid = msgIds.next()
+            val cseq = nextSeq(contentRelated = false)
+            bundles[cid] = LongArray(batch.size) { batch[it].msgId }
+            encryptPacket(cid, cseq, serializeContainer(batch))
         }
     }
 
@@ -119,14 +162,14 @@ internal class EncryptedConnection(
         deferred: CompletableDeferred<TlObject>? = null,
     ): Long = sendMutex.withLock {
         drainAcksLocked()
-        val (id, packet) = prepare(obj, contentRelated)
-        if (deferred != null) pendingMutex.withLock { pending[id] = deferred }
-        val sent = outgoing.trySend(packet)
+        val msg = assign(obj, contentRelated)
+        if (deferred != null) pendingMutex.withLock { pending[msg.msgId] = deferred }
+        val sent = outgoing.trySend(msg)
         if (sent.isFailure) {
-            if (deferred != null) pendingMutex.withLock { pending.remove(id) }
+            if (deferred != null) pendingMutex.withLock { pending.remove(msg.msgId) }
             throw sent.exceptionOrNull() ?: IllegalStateException("outgoing closed")
         }
-        id
+        msg.msgId
     }
 
     /** Caller holds [sendMutex]. */
@@ -134,8 +177,7 @@ internal class EncryptedConnection(
         if (ackBuf.isEmpty()) return
         val batch = ackBuf.distinct().toLongArray()
         ackBuf.clear()
-        val (_, packet) = prepare(MsgsAck(batch), contentRelated = false)
-        val sent = outgoing.trySend(packet)
+        val sent = outgoing.trySend(assign(MsgsAck(batch), contentRelated = false))
         if (sent.isFailure) {
             logCaught(
                 "ack-enqueue",
@@ -183,6 +225,7 @@ internal class EncryptedConnection(
     fun failPending(cause: Throwable) {
         val waiters = pending.values.toList()
         pending.clear()
+        bundles.clear()
         waiters.forEach { it.completeExceptionally(cause) }
     }
 
@@ -197,8 +240,12 @@ internal class EncryptedConnection(
             is BadServerSalt -> {
                 salt = e.newServerSalt
                 complete(e.badMsgId, e)
+                bundles.remove(e.badMsgId)?.forEach { complete(it, e) }
             }
-            is BadMsgNotification -> complete(e.badMsgId, e)
+            is BadMsgNotification -> {
+                complete(e.badMsgId, e)
+                bundles.remove(e.badMsgId)?.forEach { complete(it, e) }
+            }
             else -> onEvent(e)
         }
     }
@@ -208,15 +255,30 @@ internal class EncryptedConnection(
         d?.complete(obj)
     }
 
-    private fun prepare(obj: TlObject, contentRelated: Boolean): Pair<Long, ByteArray> {
+    private fun assign(obj: TlObject, contentRelated: Boolean): PreparedMsg {
         val body = obj.toBytes()
-        val msgId = msgIds.next()
-        val seqNo = nextSeq(contentRelated)
+        return PreparedMsg(msgIds.next(), nextSeq(contentRelated), body)
+    }
+
+    private fun encryptPacket(msgId: Long, seqNo: Int, body: ByteArray): ByteArray {
         val inner = buildInner(msgId, seqNo, body)
         val msgKey = MsgKeys.msgKey(authKey.key, inner, x = 0)
         val (aesKey, aesIv) = MsgKeys.deriveAes(authKey.key, msgKey, x = 0)
         val encrypted = AesIge.encrypt(aesKey, aesIv, inner)
-        return msgId to concat(authKey.keyId.toLeBytes(), msgKey, encrypted)
+        return concat(authKey.keyId.toLeBytes(), msgKey, encrypted)
+    }
+
+    private fun serializeContainer(msgs: List<PreparedMsg>): ByteArray {
+        val w = TlWriter()
+        w.writeInt(TlIds.MSG_CONTAINER)
+        w.writeInt(msgs.size)
+        for (m in msgs) {
+            w.writeLong(m.msgId)
+            w.writeInt(m.seqNo)
+            w.writeInt(m.body.size)
+            w.writeRaw(m.body)
+        }
+        return w.toByteArray()
     }
 
     private fun buildInner(msgId: Long, seqNo: Int, body: ByteArray): ByteArray {

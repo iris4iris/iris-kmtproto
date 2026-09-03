@@ -5,7 +5,9 @@ import iris.kmtproto.crypto.Factorize
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.crypto.ServerKeys
 import iris.kmtproto.crypto.mpIntFromLong
+import iris.kmtproto.tl.MsgContainer
 import iris.kmtproto.tl.MsgsAck
+import iris.kmtproto.tl.MtMessage
 import iris.kmtproto.tl.Ping
 import iris.kmtproto.tl.Pong
 import iris.kmtproto.tl.ReqPqMulti
@@ -23,6 +25,21 @@ class TlAndCryptoTest {
         val ids = LongArray(40) { i -> (i + 1) * 4L }
         val back = TlReader(MsgsAck(ids).toBytes()).readObject() as MsgsAck
         assertContentEquals(ids, back.msgIds)
+    }
+
+    @Test
+    fun msgContainerRoundtrip() {
+        val packed = MsgContainer(
+            listOf(
+                MtMessage(4L, 1, Ping(11)),
+                MtMessage(8L, 3, Ping(22)),
+            ),
+        )
+        val back = TlReader(packed.toBytes()).readObject() as MsgContainer
+        assertEquals(2, back.messages.size)
+        assertEquals(4L, back.messages[0].msgId)
+        assertEquals(11L, (back.messages[0].body as Ping).pingId)
+        assertEquals(22L, (back.messages[1].body as Ping).pingId)
     }
 
     @Test
