@@ -133,7 +133,7 @@ object TlKotlinGen {
         if (kotlinFields.isEmpty()) {
             out.appendLine("object $className$impl {")
             out.appendLine("    override val constructorId: Int = $idLit")
-            out.appendLine("    override fun serialize(writer: TlWriter) = Unit")
+            out.appendLine("    override fun serialize(w: TlWriter) = Unit")
             out.appendLine("}")
             return
         }
@@ -144,7 +144,7 @@ object TlKotlinGen {
         }
         out.appendLine(")$impl {")
         out.appendLine("    override val constructorId: Int = $idLit")
-        out.appendLine("    override fun serialize(writer: TlWriter) {")
+        out.appendLine("    override fun serialize(w: TlWriter) {")
         emitSerialize(out, c, "        ")
         out.appendLine("    }")
         out.appendLine()
@@ -170,7 +170,7 @@ object TlKotlinGen {
         if (kotlinFields.isEmpty()) {
             out.appendLine("object $cls : TlMethod<$result> {")
             out.appendLine("    override val constructorId: Int = $idLit")
-            out.appendLine("    override fun serialize(writer: TlWriter) = Unit")
+            out.appendLine("    override fun serialize(w: TlWriter) = Unit")
             out.appendLine("}")
             return
         }
@@ -181,7 +181,7 @@ object TlKotlinGen {
         }
         out.appendLine(") : TlMethod<$result> {")
         out.appendLine("    override val constructorId: Int = $idLit")
-        out.appendLine("    override fun serialize(writer: TlWriter) {")
+        out.appendLine("    override fun serialize(w: TlWriter) {")
         emitSerialize(out, c, "        ")
         out.appendLine("    }")
         out.appendLine("}")
@@ -203,6 +203,8 @@ object TlKotlinGen {
         }
     }
 
+    private fun serializeExpr(name: String): String = if (name == "w") "this.w" else name
+
     private fun emitSerialize(out: StringBuilder, c: TlCombinator, indent: String) {
         val flagNames = c.params.filter { it.type is TlType.Flags }.map { it.name }
         for (fp in flagNames) {
@@ -210,15 +212,15 @@ object TlKotlinGen {
             for (p in c.params) {
                 val cond = p.condition ?: continue
                 if (cond.flagsParam != fp) continue
-                val field = ident(camel(p.name))
+                val field = serializeExpr(ident(camel(p.name)))
                 val check = if (p.type is TlType.True) field else "$field != null"
                 out.appendLine("${indent}if ($check) $fp = $fp or (1 shl ${cond.bit})")
             }
-            out.appendLine("${indent}writer.writeInt($fp)")
+            out.appendLine("${indent}w.writeInt($fp)")
         }
         for (p in c.params) {
             if (p.type is TlType.Flags || p.type is TlType.True) continue
-            val field = ident(camel(p.name))
+            val field = serializeExpr(ident(camel(p.name)))
             if (p.condition != null) {
                 out.appendLine("${indent}if ($field != null) {")
                 emitWrite(out, field, p.type, indent + "    ")
@@ -259,26 +261,26 @@ object TlKotlinGen {
         when (type) {
             is TlType.Named -> out.appendLine("$indent${writeStmt(expr, type)}")
             is TlType.Vector -> {
-                out.appendLine("${indent}writer.writeInt(TlWriter.VECTOR)")
-                out.appendLine("${indent}writer.writeInt($expr.size)")
+                out.appendLine("${indent}w.writeInt(TlWriter.VECTOR)")
+                out.appendLine("${indent}w.writeInt($expr.size)")
                 out.appendLine("${indent}$expr.forEach {")
                 emitWrite(out, "it", type.inner, indent + "    ")
                 out.appendLine("$indent}")
             }
-            is TlType.Bang -> out.appendLine("${indent}writer.writeObject($expr)")
+            is TlType.Bang -> out.appendLine("${indent}w.writeObject($expr)")
             TlType.Flags, TlType.True -> Unit
         }
     }
 
     private fun writeStmt(expr: String, type: TlType.Named): String = when (type.ident) {
-        "int" -> "writer.writeInt($expr)"
-        "long" -> "writer.writeLong($expr)"
-        "double" -> "writer.writeDouble($expr)"
-        "string" -> "writer.writeString($expr)"
-        "bytes" -> "writer.writeTlBytes($expr)"
-        "int128" -> "writer.writeInt128($expr)"
-        "int256" -> "writer.writeInt256($expr)"
-        else -> "writer.writeObject($expr)"
+        "int" -> "w.writeInt($expr)"
+        "long" -> "w.writeLong($expr)"
+        "double" -> "w.writeDouble($expr)"
+        "string" -> "w.writeString($expr)"
+        "bytes" -> "w.writeTlBytes($expr)"
+        "int128" -> "w.writeInt128($expr)"
+        "int256" -> "w.writeInt256($expr)"
+        else -> "w.writeObject($expr)"
     }
 
     private fun readExpr(type: TlType): String = when (type) {
