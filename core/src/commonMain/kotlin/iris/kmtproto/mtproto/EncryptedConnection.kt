@@ -39,8 +39,8 @@ class RpcException(val code: Int, override val message: String) : RuntimeExcepti
         get() = if (message.startsWith("FLOOD_WAIT_")) message.removePrefix("FLOOD_WAIT_").toIntOrNull() else null
 }
 
-internal const val ACK_BATCH = 32
-internal const val ACK_FLUSH_MS = 20L
+internal const val ACK_BATCH = 1000
+internal const val ACK_FLUSH_MS = 1_000L
 
 internal class EncryptedConnection(
     private val transport: MtprotoTransport,
