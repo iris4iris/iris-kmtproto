@@ -51,7 +51,7 @@ internal fun socks5Handshake(
         0 -> Unit
         2 -> {
             check(auth) { "SOCKS5 server demands username/password" }
-            val user = username.encodeToByteArray()
+            val user = username!!.encodeToByteArray()
             val pass = (password ?: "").encodeToByteArray()
             require(user.size in 1..255 && pass.size <= 255) { "SOCKS5 credentials too long" }
             output.writeByte(1)
