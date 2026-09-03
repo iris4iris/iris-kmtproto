@@ -45,3 +45,22 @@ tasks.register<JavaExec>("jvmRun") {
     workingDir = rootProject.projectDir
     standardInput = System.`in`
 }
+
+fun JavaExec.exampleMain(cls: String, desc: String) {
+    group = "application"
+    description = desc
+    val compilation = kotlin.targets.getByName("jvm").compilations.getByName("main")
+    dependsOn(compilation.compileTaskProvider)
+    classpath = compilation.output.allOutputs + (compilation.runtimeDependencyFiles ?: files())
+    mainClass.set(cls)
+    workingDir = rootProject.projectDir
+    standardInput = System.`in`
+}
+
+tasks.register<JavaExec>("runBotApi") {
+    exampleMain("iris.kmtproto.example.BotApiExampleMainKt", "BotApi example: login, send, listen")
+}
+
+tasks.register<JavaExec>("runUserApi") {
+    exampleMain("iris.kmtproto.example.UserApiExampleMainKt", "UserApi example: SMS login, send, listen")
+}

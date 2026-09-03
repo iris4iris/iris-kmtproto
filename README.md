@@ -92,9 +92,28 @@ Windows: `.\gradlew.bat generateTl`
 ./gradlew generateTl          # :tl → build/generated
 ./gradlew :tl:jvmTest
 ./gradlew :core:jvmTest
-./gradlew :core:jvmRun        # echo bot
+./gradlew :core:jvmRun        # echo bot (BotApi)
+./gradlew :core:runBotApi     # BotApi: login + send + listen
+./gradlew :core:runUserApi    # UserApi: SMS login + send + listen
 ```
-IntelliJ: open the repo root. Gradle runner. Echo bot main: `iris.kmtproto.example.EchoBotMainKt` (`:core:jvmRun`).
+
+Mains:
+
+- `iris.kmtproto.example.EchoBotMainKt`
+- `iris.kmtproto.example.BotApiExampleMainKt`
+- `iris.kmtproto.example.UserApiExampleMainKt`
+
+`local.properties` or env:
+
+```
+TELEGRAM_API_ID
+TELEGRAM_API_HASH
+TELEGRAM_BOT_TOKEN     # bot examples
+TELEGRAM_PHONE         # user example
+TELEGRAM_CHAT_ID       # optional send
+TELEGRAM_CODE          # optional, иначе stdin
+TELEGRAM_2FA           # optional cloud password
+```
 
 `HandshakeLiveTest.handshakeAndPingDc2` does not need a real `apiId`.
 
