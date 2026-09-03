@@ -21,12 +21,23 @@ TelegramClient(apiId, apiHash, proxy = Proxy.Socks5("127.0.0.1", 1080))
 User login (SMS + optional 2FA):
 
 ```kotlin
-val sent = client.sendCode("+79990000000") as AuthSentCodeCtor
+val api = UserApi(client)
+val sent = api.auth.sendCode("+79990000000") as AuthSentCodeCtor
 try {
-    client.signIn("+79990000000", sent.phoneCodeHash, codeFromSms)
+    api.auth.signIn("+79990000000", sent.phoneCodeHash, codeFromSms)
 } catch (e: SessionPasswordNeeded) {
-    client.checkPassword(cloudPassword)
+    api.auth.checkPassword(cloudPassword)
 }
+```
+
+Bot API-shaped adapter (still MTProto underneath):
+
+```kotlin
+val bot = BotApi(apiId, apiHash)
+bot.client.connect()
+bot.login(token)
+bot.sendMessage(chatId, "hi")
+bot.incomingMessages().collect { bot.sendMessage(it.chatId, it.text) }
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.

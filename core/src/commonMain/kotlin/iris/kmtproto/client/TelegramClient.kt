@@ -19,29 +19,10 @@ import iris.kmtproto.tl.RpcError
 import iris.kmtproto.tl.RpcResult
 import iris.kmtproto.tl.TlMethod
 import iris.kmtproto.tl.TlObject
-import iris.kmtproto.crypto.PasswordSrp
-import iris.kmtproto.tl.gen.AccountGetPassword
-import iris.kmtproto.tl.gen.AuthAuthorization
-import iris.kmtproto.tl.gen.AuthAuthorizationCtor
-import iris.kmtproto.tl.gen.AuthAuthorizationSignUpRequired
-import iris.kmtproto.tl.gen.AuthCheckPassword
-import iris.kmtproto.tl.gen.AuthImportBotAuthorization
-import iris.kmtproto.tl.gen.AuthResendCode
-import iris.kmtproto.tl.gen.AuthSendCode
-import iris.kmtproto.tl.gen.AuthSentCode
-import iris.kmtproto.tl.gen.AuthSentCodeCtor
-import iris.kmtproto.tl.gen.AuthSentCodePaymentRequired
-import iris.kmtproto.tl.gen.AuthSentCodeSuccess
-import iris.kmtproto.tl.gen.AuthSignIn
-import iris.kmtproto.tl.gen.CodeSettings
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelMessagesFilterEmpty
-import iris.kmtproto.tl.gen.HelpGetNearestDc
 import iris.kmtproto.tl.gen.InputChannelCtor
-import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.MessageCtor
-import iris.kmtproto.tl.gen.MessagesSendMessage
-import iris.kmtproto.tl.gen.NearestDc
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.Update
@@ -69,7 +50,6 @@ import iris.kmtproto.tl.gen.UpdatesGetState
 import iris.kmtproto.tl.gen.UpdatesState
 import iris.kmtproto.tl.gen.UpdatesTooLong
 import iris.kmtproto.tl.gen.User
-import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.MtprotoTransport
 import iris.kmtproto.transport.Proxy
@@ -122,10 +102,10 @@ class TelegramClient(
     private val bindMutex = Mutex()
 
     var user: User? = null
-        private set
+        internal set
     var updatesState: UpdatesState? = null
-        private set
-    private var loadedSession: ClientSession? = null
+        internal set
+    internal var loadedSession: ClientSession? = null
 
     val isConnected: Boolean get() = connection != null
     val authKey: AuthKey? get() = connection?.authKey
@@ -257,112 +237,6 @@ class TelegramClient(
         return raw as? Pong
             ?: (raw as? RpcResult)?.result as? Pong
             ?: error("ping without pong: $raw")
-    }
-
-    suspend fun getNearestDc(): NearestDc = invoke(HelpGetNearestDc)
-
-    /**
-     * Binds this auth_key to the bot. Skip if [session] was already bound —
-     * otherwise Telegram answers FLOOD_WAIT on importBotAuthorization.
-     */
-    suspend fun loginBot(token: String): User {
-        val saved = loadedSession
-        if (saved != null && saved.userId != 0L) {
-            try {
-                getState()
-                user = restoreUser(saved)
-                rememberUser(user!!)
-                return user!!
-            } catch (e: RpcException) {
-                if (!isDeadAuth(e.message)) throw e
-            }
-        }
-        val auth = invoke(
-            AuthImportBotAuthorization(
-                flags = 0,
-                apiId = apiId,
-                apiHash = apiHash,
-                botAuthToken = token,
-            ),
-        )
-        return applyAuth(auth)
-    }
-
-    /**
-     * SMS / app-code. PHONE_MIGRATE_* is handled by [invoke] (new handshake on that DC).
-     * [AuthSentCodeSuccess] means this auth_key is already a user session.
-     */
-    suspend fun sendCode(phone: String, settings: CodeSettings = CodeSettings()): AuthSentCode {
-        val sent = invoke(
-            AuthSendCode(
-                phoneNumber = phone,
-                apiId = apiId,
-                apiHash = apiHash,
-                settings = settings,
-            ),
-        )
-        when (sent) {
-            is AuthSentCodeSuccess -> applyAuth(sent.authorization)
-            is AuthSentCodePaymentRequired ->
-                error("auth.sentCodePaymentRequired — paid / premium auth, not implemented")
-            is AuthSentCodeCtor -> Unit
-            else -> error("unexpected auth.sentCode $sent")
-        }
-        return sent
-    }
-
-    suspend fun resendCode(phone: String, phoneCodeHash: String, reason: String? = null): AuthSentCode =
-        invoke(AuthResendCode(phoneNumber = phone, phoneCodeHash = phoneCodeHash, reason = reason))
-
-    /**
-     * Completes [sendCode]. Throws [SessionPasswordNeeded] if 2FA is on — then [checkPassword].
-     * Throws [SignUpRequired] if the number is not registered.
-     */
-    suspend fun signIn(phone: String, phoneCodeHash: String, phoneCode: String): User {
-        val auth = try {
-            invoke(
-                AuthSignIn(
-                    phoneNumber = phone,
-                    phoneCodeHash = phoneCodeHash,
-                    phoneCode = phoneCode,
-                ),
-            )
-        } catch (e: RpcException) {
-            if (e.message.contains("SESSION_PASSWORD_NEEDED")) {
-                val hint = runCatching { invoke(AccountGetPassword).hint }.getOrNull()
-                throw SessionPasswordNeeded(hint)
-            }
-            throw e
-        }
-        return applyAuth(auth, phone)
-    }
-
-    /** Cloud password (2FA) after [SessionPasswordNeeded]. */
-    suspend fun checkPassword(password: String): User {
-        val acc = invoke(AccountGetPassword)
-        val srp = PasswordSrp.check(acc, password)
-        return applyAuth(invoke(AuthCheckPassword(password = srp)))
-    }
-
-    private fun applyAuth(auth: AuthAuthorization, phone: String = ""): User {
-        when (auth) {
-            is AuthAuthorizationCtor -> {
-                user = auth.user
-                rememberUser(auth.user)
-                loadedSession = session()
-                return auth.user
-            }
-            is AuthAuthorizationSignUpRequired -> throw SignUpRequired(phone)
-            else -> error("unexpected auth.authorization $auth")
-        }
-    }
-
-    suspend fun sendMessage(peer: InputPeer, text: String): SentMessage {
-        require(text.isNotEmpty()) { "empty message" }
-        var randomId = PlatformCrypto.randomBytes(8).readLongLe()
-        if (randomId == 0L) randomId = 1L
-        val raw = invoke(MessagesSendMessage(peer = peer, message = text, randomId = randomId))
-        return SentMessage.from(raw, text)
     }
 
     suspend fun getState(): UpdatesState {
@@ -661,7 +535,7 @@ class TelegramClient(
         for (obj in list) rememberUser(obj)
     }
 
-    private fun rememberUser(user: User) {
+    internal fun rememberUser(user: User) {
         val hash = user.accessHashOrZero
         if (hash != 0L) storage.putAccessHash(user.id, hash)
     }
@@ -688,19 +562,6 @@ internal fun migrateDc(message: String): Int? {
     val match = Regex("(USER|PHONE|NETWORK|STATS)_MIGRATE_(\\d+)").find(message) ?: return null
     return match.groupValues[2].toInt()
 }
-
-private fun isDeadAuth(message: String): Boolean =
-    message.contains("AUTH_KEY_UNREGISTERED") ||
-        message.contains("SESSION_REVOKED") ||
-        message.contains("AUTH_KEY_PERM_EMPTY") ||
-        message.contains("USER_DEACTIVATED")
-
-private fun restoreUser(session: ClientSession): UserCtor = UserCtor(
-    id = session.userId,
-    accessHash = session.accessHash.takeIf { it != 0L },
-    bot = true,
-    self = true,
-)
 
 internal fun incomingTexts(diff: UpdatesDifferenceCtor): List<MessageCtor> {
     val out = ArrayList<MessageCtor>()

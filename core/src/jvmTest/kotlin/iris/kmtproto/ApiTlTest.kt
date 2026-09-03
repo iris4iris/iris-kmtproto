@@ -1,8 +1,8 @@
 package iris.kmtproto
 
+import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.inputPeerFrom
 import iris.kmtproto.client.inputPeerFromBotApiId
-import iris.kmtproto.example.replyPeer
 import iris.kmtproto.tl.API_LAYER
 import iris.kmtproto.tl.InitConnection
 import iris.kmtproto.tl.InvokeWithLayer
@@ -12,8 +12,9 @@ import iris.kmtproto.tl.gen.HelpGetNearestDc
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
-import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.NearestDc
+import iris.kmtproto.tl.gen.PeerChannel
+import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.toBytes
 import java.io.File
@@ -81,19 +82,9 @@ class ApiTlTest {
         val mapped = inputPeerFrom(PeerUser(7L), 11L) as InputPeerUser
         assertEquals(7L, mapped.userId)
         assertEquals(11L, mapped.accessHash)
-    }
-
-    @Test
-    fun echoRepliesToUserNotSelf() {
-        val incoming = MessageCtor(
-            id = 1,
-            fromId = PeerUser(99L),
-            peerId = PeerUser(99L),
-            date = 1,
-            message = "hi",
-        )
-        val peer = replyPeer(incoming, me = 1L)
-        assertEquals(99L, (peer as PeerUser).userId)
+        assertEquals(1001L, PeerUser(1001L).botApiChatId())
+        assertEquals(-42L, PeerChat(42L).botApiChatId())
+        assertEquals(-1001234567890L, PeerChannel(1234567890L).botApiChatId())
     }
 }
 

@@ -1,10 +1,12 @@
 package iris.kmtproto
 
+import iris.kmtproto.api.UserApi
+import iris.kmtproto.api.bot.BotApi
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.id
 import iris.kmtproto.client.incomingTexts
-import iris.kmtproto.client.inputPeerFromBotApiId
 import iris.kmtproto.mtproto.RpcException
+import iris.kmtproto.tl.gen.HelpGetNearestDc
 import iris.kmtproto.tl.gen.UpdatesDifferenceCtor
 import iris.kmtproto.tl.gen.UpdatesDifferenceEmpty
 import iris.kmtproto.tl.gen.UpdatesDifferenceTooLong
@@ -38,7 +40,7 @@ class HandshakeLiveTest {
         val client = TelegramClient(apiId = apiId, apiHash = apiHash, dc = Datacenter.DC2)
         try {
             client.connect()
-            val nearest = client.getNearestDc()
+            val nearest = client.invoke(HelpGetNearestDc)
             assertTrue(nearest.thisDc in 1..5, "thisDc=${nearest.thisDc}")
             assertTrue(nearest.nearestDc in 1..5, "nearestDc=${nearest.nearestDc}")
             assertTrue(nearest.country.isNotEmpty())
@@ -60,9 +62,10 @@ class HandshakeLiveTest {
         val token = System.getenv("TELEGRAM_BOT_TOKEN")
         if (apiId == null || apiHash.isNullOrBlank() || token.isNullOrBlank()) return@runBlocking
         val client = TelegramClient(apiId = apiId, apiHash = apiHash, dc = Datacenter.DC2)
+        val api = UserApi(client)
         try {
             client.connect()
-            val me = client.loginBot(token)
+            val me = api.auth.importBotAuthorization(token)
             assertTrue(me.id != 0L)
             val full = me as? UserCtor
             if (full != null) assertTrue(full.bot)
@@ -82,11 +85,15 @@ class HandshakeLiveTest {
         }
         val accessHash = System.getenv("TELEGRAM_ACCESS_HASH")?.toLongOrNull() ?: 0L
         val client = TelegramClient(apiId = apiId, apiHash = apiHash, dc = Datacenter.DC2)
+        val bot = BotApi(client)
         try {
             client.connect()
-            client.loginBot(token)
-            val peer = inputPeerFromBotApiId(chatId, accessHash)
-            val sent = client.sendMessage(peer, "Iris kMTProto live ${System.currentTimeMillis()}")
+            bot.login(token)
+            if (accessHash != 0L) client.storage.putAccessHash(
+                if (chatId <= -1_000_000_000_000L) -chatId - 1_000_000_000_000L else chatId,
+                accessHash,
+            )
+            val sent = bot.sendMessage(chatId, "Iris kMTProto live ${System.currentTimeMillis()}")
             assertTrue(sent.id > 0, "id=${sent.id}")
             assertTrue(sent.date > 0, "date=${sent.date}")
         } finally {
@@ -105,13 +112,18 @@ class HandshakeLiveTest {
         }
         val accessHash = System.getenv("TELEGRAM_ACCESS_HASH")?.toLongOrNull() ?: 0L
         val client = TelegramClient(apiId = apiId, apiHash = apiHash, dc = Datacenter.DC2)
+        val bot = BotApi(client)
         try {
             client.connect()
-            client.loginBot(token)
+            bot.login(token)
+            if (accessHash != 0L) client.storage.putAccessHash(
+                if (chatId <= -1_000_000_000_000L) -chatId - 1_000_000_000_000L else chatId,
+                accessHash,
+            )
             val before = client.getState()
             assertTrue(before.pts >= 0, "pts=${before.pts}")
             val marker = "Iris kMTProto upd ${System.currentTimeMillis()}"
-            client.sendMessage(inputPeerFromBotApiId(chatId, accessHash), marker)
+            bot.sendMessage(chatId, marker)
             val diff = client.getDifference(before.pts, before.date, before.qts)
             when (diff) {
                 is UpdatesDifferenceTooLong -> {

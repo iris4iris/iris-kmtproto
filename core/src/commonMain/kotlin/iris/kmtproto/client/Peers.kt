@@ -39,6 +39,12 @@ fun inputPeerFromBotApiId(chatId: Long, accessHash: Long = 0L): InputPeer = when
     else -> error("chat id 0")
 }
 
+fun Peer.botApiChatId(): Long = when (this) {
+    is PeerUser -> userId
+    is PeerChat -> -chatId
+    is PeerChannel -> -1_000_000_000_000L - channelId
+}
+
 fun inputPeerFrom(peer: Peer, accessHash: Long = 0L): InputPeer = when (peer) {
     is PeerUser -> InputPeerUser(peer.userId, accessHash)
     is PeerChat -> InputPeerChat(peer.chatId)

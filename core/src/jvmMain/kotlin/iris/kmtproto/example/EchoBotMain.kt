@@ -1,5 +1,6 @@
 package iris.kmtproto.example
 
+import iris.kmtproto.api.bot.BotApi
 import iris.kmtproto.client.ClientSession
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.id
@@ -23,13 +24,14 @@ private suspend fun run() {
     val creds = loadCreds()
     val sessionFile = sessionFile()
     val client = TelegramClient(creds.apiId, creds.apiHash)
+    val bot = BotApi(client)
     try {
         client.connect(session = loadSession(sessionFile))
-        val me = client.loginBot(creds.token)
+        val me = bot.login(creds.token)
         client.session()?.let { saveSession(sessionFile, it) }
         val name = (me as? UserCtor)?.username ?: me.id.toString()
         println("logged in as @$name (auth_key reused=${sessionFile.isFile})")
-        runEchoBot(client)
+        runEchoBot(bot)
     } finally {
         client.close()
     }
