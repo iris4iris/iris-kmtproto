@@ -80,7 +80,7 @@ data class ClientInfo(
 )
 
 /**
- * MTProto client. One socket reader. Public RPC returns [Deferred] (coroutine Future).
+ * MTProto client. One socket reader. Short RPC names are suspend; `*Async` returns [Deferred].
  * Common pts = DM + basic groups. Each channel/supergroup has its own pts (LRU).
  */
 class TelegramClient(
@@ -189,7 +189,7 @@ class TelegramClient(
         scope.launch {
             while (supervisor.isActive) {
                 delay(30_000)
-                runCatching { pingAwait() }.onFailure { logCaught("ping", it) }
+                runCatching { ping() }.onFailure { logCaught("ping", it) }
             }
         }
     }
@@ -245,37 +245,37 @@ class TelegramClient(
         loadedSession = snap.copy(salt = conn.salt)
     }
 
-    fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Deferred<Pong> =
-        apiAsync { pingAwait(pingId) }
+    fun pingAsync(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Deferred<Pong> =
+        apiAsync { ping(pingId) }
 
-    suspend fun pingAwait(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong {
+    suspend fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong {
         val raw = sendRpc(Ping(pingId))
         return raw as? Pong
             ?: (raw as? RpcResult)?.result as? Pong
             ?: error("ping without pong: $raw")
     }
 
-    fun getState(): Deferred<UpdatesState> = apiAsync { getStateAwait() }
+    fun getStateAsync(): Deferred<UpdatesState> = apiAsync { getState() }
 
-    suspend fun getStateAwait(): UpdatesState {
-        val state = invokeAwait(UpdatesGetState)
+    suspend fun getState(): UpdatesState {
+        val state = invoke(UpdatesGetState)
         updatesState = state
         return state
     }
 
-    fun getDifference(
+    fun getDifferenceAsync(
         pts: Int? = null,
         date: Int? = null,
         qts: Int? = null,
-    ): Deferred<UpdatesDifference> = apiAsync { getDifferenceAwait(pts, date, qts) }
+    ): Deferred<UpdatesDifference> = apiAsync { getDifference(pts, date, qts) }
 
-    suspend fun getDifferenceAwait(
+    suspend fun getDifference(
         pts: Int? = null,
         date: Int? = null,
         qts: Int? = null,
     ): UpdatesDifference {
         val st = updatesState
-        val diff = invokeAwait(
+        val diff = invoke(
             UpdatesGetDifference(
                 pts = pts ?: st?.pts ?: error("call getState() first"),
                 date = date ?: st?.date ?: 0,
@@ -286,10 +286,10 @@ class TelegramClient(
         return diff
     }
 
-    fun syncUpdates(): Deferred<UpdatesDifferenceCtor?> = apiAsync { syncUpdatesAwait() }
+    fun syncUpdatesAsync(): Deferred<UpdatesDifferenceCtor?> = apiAsync { syncUpdates() }
 
-    suspend fun syncUpdatesAwait(): UpdatesDifferenceCtor? {
-        if (updatesState == null) getStateAwait()
+    suspend fun syncUpdates(): UpdatesDifferenceCtor? {
+        if (updatesState == null) getState()
         val messages = ArrayList<iris.kmtproto.tl.gen.Message>()
         val encrypted = ArrayList<iris.kmtproto.tl.gen.EncryptedMessage>()
         val updates = ArrayList<Update>()
@@ -298,10 +298,10 @@ class TelegramClient(
         var lastState: UpdatesState? = updatesState
         var any = false
         while (true) {
-            when (val d = getDifferenceAwait()) {
+            when (val d = getDifference()) {
                 is UpdatesDifferenceEmpty -> break
                 is UpdatesDifferenceTooLong -> {
-                    getStateAwait()
+                    getState()
                     break
                 }
                 is UpdatesDifferenceCtor -> {
@@ -330,12 +330,12 @@ class TelegramClient(
         return UpdatesDifferenceCtor(messages, encrypted, updates, chats, users, state)
     }
 
-    fun <T : TlObject> invoke(method: TlMethod<T>): Deferred<T> = apiAsync { invokeAwait(method) }
+    fun <T : TlObject> invokeAsync(method: TlMethod<T>): Deferred<T> = apiAsync { invoke(method) }
 
     internal fun <T> apiAsync(block: suspend () -> T): Deferred<T> =
         scope.async { block() }
 
-    suspend fun <T : TlObject> invokeAwait(method: TlMethod<T>): T {
+    suspend fun <T : TlObject> invoke(method: TlMethod<T>): T {
         val wrapped: TlMethod<T> = if (layerInitialized) {
             method
         } else {
@@ -361,7 +361,7 @@ class TelegramClient(
             val migrateTo = migrateDc(e.message)
             if (migrateTo == null || migrateTo == currentDc.id) throw e
             connect(Datacenter.production(migrateTo))
-            invokeAwait(method)
+            invoke(method)
         }
     }
 
@@ -443,7 +443,7 @@ class TelegramClient(
     private suspend fun onCommon(pts: Int, count: Int, msg: MessageCtor?) {
         val st = updatesState
         if (st == null) {
-            getStateAwait()
+            getState()
             return
         }
         when {
@@ -478,8 +478,8 @@ class TelegramClient(
         if (catchingCommon) return
         catchingCommon = true
         try {
-            if (updatesState == null) getStateAwait()
-            when (val diff = syncUpdatesAwait()) {
+            if (updatesState == null) getState()
+            when (val diff = syncUpdates()) {
                 null -> Unit
                 else -> {
                     rememberUsers(diff.users)
@@ -501,7 +501,7 @@ class TelegramClient(
         catchingChannel = channelId
         try {
             when (
-                val diff = invokeAwait(
+                val diff = invoke(
                     UpdatesGetChannelDifference(
                         channel = InputChannelCtor(channelId, hash),
                         filter = ChannelMessagesFilterEmpty,

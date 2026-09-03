@@ -55,15 +55,19 @@ class BotApi(val client: TelegramClient) {
         ),
     )
 
-    fun login(token: String): Deferred<User> = client.apiAsync {
-        val me = user.auth.importBotAuthorizationAwait(token)
-        client.getStateAwait()
-        me
+    fun loginAsync(token: String): Deferred<User> = client.apiAsync { login(token) }
+
+    suspend fun login(token: String): User {
+        val me = user.auth.importBotAuthorization(token)
+        client.getState()
+        return me
     }
 
-    fun sendMessage(chatId: Long, text: String): Deferred<SentMessage> = client.apiAsync {
-        user.messages.sendAwait(client.inputPeerFromId(chatId), text)
-    }
+    fun sendMessageAsync(chatId: Long, text: String): Deferred<SentMessage> =
+        client.apiAsync { sendMessage(chatId, text) }
+
+    suspend fun sendMessage(chatId: Long, text: String): SentMessage =
+        user.messages.send(client.inputPeerFromId(chatId), text)
 
     fun incomingMessages(): Flow<BotMessage> =
         client.incomingMessages()

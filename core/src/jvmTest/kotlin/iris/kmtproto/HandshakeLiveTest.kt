@@ -25,7 +25,7 @@ class HandshakeLiveTest {
             client.connect()
             val key = client.authKey ?: error("no auth key")
             assertEquals(256, key.key.size)
-            val pong = client.ping(42).await()
+            val pong = client.ping(42)
             assertEquals(42L, pong.pingId)
             assertTrue(pong.msgId != 0L)
         } finally {
@@ -40,7 +40,7 @@ class HandshakeLiveTest {
         val client = TelegramClient(apiId = apiId, apiHash = apiHash, dc = Datacenter.DC2)
         try {
             client.connect()
-            val nearest = client.invoke(HelpGetNearestDc).await()
+            val nearest = client.invoke(HelpGetNearestDc)
             assertTrue(nearest.thisDc in 1..5, "thisDc=${nearest.thisDc}")
             assertTrue(nearest.nearestDc in 1..5, "nearestDc=${nearest.nearestDc}")
             assertTrue(nearest.country.isNotEmpty())
@@ -65,7 +65,7 @@ class HandshakeLiveTest {
         val api = UserApi(client)
         try {
             client.connect()
-            val me = api.auth.importBotAuthorization(token).await()
+            val me = api.auth.importBotAuthorization(token)
             assertTrue(me.id != 0L)
             val full = me as? UserCtor
             if (full != null) assertTrue(full.bot)
@@ -88,12 +88,12 @@ class HandshakeLiveTest {
         val bot = BotApi(client)
         try {
             client.connect()
-            bot.login(token).await()
+            bot.login(token)
             if (accessHash != 0L) client.storage.putAccessHash(
                 if (chatId <= -1_000_000_000_000L) -chatId - 1_000_000_000_000L else chatId,
                 accessHash,
             )
-            val sent = bot.sendMessage(chatId, "Iris kMTProto live ${System.currentTimeMillis()}").await()
+            val sent = bot.sendMessage(chatId, "Iris kMTProto live ${System.currentTimeMillis()}")
             assertTrue(sent.id > 0, "id=${sent.id}")
             assertTrue(sent.date > 0, "date=${sent.date}")
         } finally {
@@ -115,23 +115,23 @@ class HandshakeLiveTest {
         val bot = BotApi(client)
         try {
             client.connect()
-            bot.login(token).await()
+            bot.login(token)
             if (accessHash != 0L) client.storage.putAccessHash(
                 if (chatId <= -1_000_000_000_000L) -chatId - 1_000_000_000_000L else chatId,
                 accessHash,
             )
-            val before = client.getState().await()
+            val before = client.getState()
             assertTrue(before.pts >= 0, "pts=${before.pts}")
             val marker = "Iris kMTProto upd ${System.currentTimeMillis()}"
-            bot.sendMessage(chatId, marker).await()
-            val diff = client.getDifference(before.pts, before.date, before.qts).await()
+            bot.sendMessage(chatId, marker)
+            val diff = client.getDifference(before.pts, before.date, before.qts)
             when (diff) {
                 is UpdatesDifferenceTooLong -> {
-                    val after = client.getState().await()
+                    val after = client.getState()
                     assertTrue(after.pts >= before.pts)
                 }
                 is UpdatesDifferenceEmpty -> {
-                    val after = client.getState().await()
+                    val after = client.getState()
                     assertTrue(after.pts >= before.pts, "pts did not move ${before.pts} -> ${after.pts}")
                 }
                 is UpdatesDifferenceCtor -> {

@@ -7,7 +7,8 @@ import iris.kmtproto.client.TelegramClient
 
 val client = TelegramClient(apiId, apiHash)
 client.connect()          // TCP obfuscated-intermediate + auth_key handshake
-val pong = client.ping().await()  // Deferred — coroutine Future
+val pong = client.ping()                 // suspend, ждёт pong
+val pongLater = client.pingAsync()       // Deferred, результат потом
 ```
 
 SOCKS5 (optional):
@@ -24,11 +25,11 @@ User login (SMS + optional 2FA):
 import iris.kmtproto.api.user.UserApi
 
 val api = UserApi(client)
-val sent = api.auth.sendCode("+79990000000").await() as AuthSentCodeCtor
+val sent = api.auth.sendCode("+79990000000") as AuthSentCodeCtor
 try {
-    api.auth.signIn("+79990000000", sent.phoneCodeHash, codeFromSms).await()
+    api.auth.signIn("+79990000000", sent.phoneCodeHash, codeFromSms)
 } catch (e: SessionPasswordNeeded) {
-    api.auth.checkPassword(cloudPassword).await()
+    api.auth.checkPassword(cloudPassword)
 }
 ```
 
@@ -37,12 +38,12 @@ Bot API-shaped adapter (still MTProto underneath):
 ```kotlin
 val bot = BotApi(apiId, apiHash)
 bot.client.connect()
-bot.login(token).await()
-bot.sendMessage(chatId, "hi").await()
-bot.incomingMessages().collect { bot.sendMessage(it.chatId, it.text) } // fire-and-forget Deferred
+bot.login(token)
+bot.sendMessage(chatId, "hi")
+bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } }
 
-user.messages.send(peerId, "hi")           // Long, hash from Storage
-user.messages.send(inputPeer, "hi")        // готовый InputPeer
+user.messages.send(peerId, "hi")
+user.messages.sendAsync(peerId, "hi")  // Deferred
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.
