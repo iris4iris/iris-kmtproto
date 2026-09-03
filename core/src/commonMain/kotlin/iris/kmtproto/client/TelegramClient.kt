@@ -105,6 +105,7 @@ class TelegramClient(
     val dc: Datacenter = Datacenter.DC2,
     val info: ClientInfo = ClientInfo(),
     val layer: Int = API_LAYER,
+    val storage: Storage = MemoryStorage(),
 ) {
     private var currentDc: Datacenter = dc
     private var transport: MtprotoTransport? = null
@@ -112,7 +113,6 @@ class TelegramClient(
     private var layerInitialized = false
     private var supervisor = SupervisorJob()
     private val channels = ChannelCursors()
-    private val hashes = HashMap<Long, Long>()
     private var eventQueue = EventChannel<TlObject>(EventChannel.UNLIMITED)
     private var incoming = EventChannel<MessageCtor>(256, BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
@@ -142,7 +142,7 @@ class TelegramClient(
 
     fun incomingMessages(): Flow<MessageCtor> = incoming.receiveAsFlow()
 
-    fun accessHash(id: Long): Long = hashes[id] ?: channels.get(id)?.accessHash ?: 0L
+    fun accessHash(id: Long): Long = storage.getAccessHash(id)
 
     suspend fun connect(target: Datacenter = currentDc, session: ClientSession? = null) {
         close()
@@ -153,7 +153,6 @@ class TelegramClient(
         updatesState = null
         user = null
         channels.clear()
-        hashes.clear()
         eventQueue = EventChannel(EventChannel.UNLIMITED)
         incoming = EventChannel(256, BufferOverflow.DROP_OLDEST)
         val t = connectObfuscated(currentDc)
@@ -589,7 +588,7 @@ class TelegramClient(
     private suspend fun catchUpChannel(channelId: Long, ptsHint: Int?) {
         if (catchingChannel == channelId) return
         val cur = channels.get(channelId)
-        val hash = cur?.accessHash ?: hashes[channelId] ?: return
+        val hash = storage.getAccessHash(channelId)
         if (hash == 0L) return
         val pts = ptsHint ?: cur?.pts ?: return
         catchingChannel = channelId
@@ -604,11 +603,11 @@ class TelegramClient(
                     ),
                 )
             ) {
-                is UpdatesChannelDifferenceEmpty -> channels.put(channelId, diff.pts, hash)
+                is UpdatesChannelDifferenceEmpty -> channels.put(channelId, diff.pts)
                 is UpdatesChannelDifferenceCtor -> {
                     rememberUsers(diff.users)
                     rememberChats(diff.chats)
-                    channels.put(channelId, diff.pts, hash)
+                    channels.put(channelId, diff.pts)
                     diff.newMessages.mapNotNull { it.asText() }.forEach { emit(it) }
                     diff.otherUpdates.forEach { dispatch(it) }
                 }
@@ -650,8 +649,7 @@ class TelegramClient(
             if (obj is Channel) {
                 val hash = obj.accessHash
                 if (hash != null) {
-                    hashes[obj.id] = hash
-                    channels.rememberHash(obj.id, hash)
+                    storage.putAccessHash(obj.id, hash)
                 }
             }
         }
@@ -663,7 +661,7 @@ class TelegramClient(
 
     private fun rememberUser(user: User) {
         val hash = user.accessHashOrZero
-        if (hash != 0L) hashes[user.id] = hash
+        if (hash != 0L) storage.putAccessHash(user.id, hash)
     }
 
     private fun emit(msg: MessageCtor) {
@@ -679,7 +677,6 @@ class TelegramClient(
         layerInitialized = false
         updatesState = null
         channels.clear()
-        hashes.clear()
         eventQueue.close()
         incoming.close()
     }
