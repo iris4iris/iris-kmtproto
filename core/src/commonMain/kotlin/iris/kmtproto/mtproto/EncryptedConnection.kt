@@ -28,6 +28,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,6 +38,9 @@ class RpcException(val code: Int, override val message: String) : RuntimeExcepti
     val floodWaitSeconds: Int?
         get() = if (message.startsWith("FLOOD_WAIT_")) message.removePrefix("FLOOD_WAIT_").toIntOrNull() else null
 }
+
+internal const val ACK_BATCH = 32
+internal const val ACK_FLUSH_MS = 20L
 
 internal class EncryptedConnection(
     private val transport: MtprotoTransport,
@@ -51,6 +55,7 @@ internal class EncryptedConnection(
     private val pending = HashMap<Long, CompletableDeferred<TlObject>>()
     /** Writer-only: reader never waits for TCP flush. */
     private val outgoing = Channel<ByteArray>(Channel.UNLIMITED)
+    private val ackBuf = ArrayList<Long>(ACK_BATCH)
 
     private fun nextSeq(contentRelated: Boolean): Int {
         val value = seq * 2 + if (contentRelated) 1 else 0
@@ -76,9 +81,17 @@ internal class EncryptedConnection(
     suspend fun runReader(onEvent: (TlObject) -> Unit) {
         coroutineScope {
             val writer = launch { drainWrites() }
+            val acks = launch {
+                while (true) {
+                    delay(ACK_FLUSH_MS)
+                    sendMutex.withLock { drainAcksLocked() }
+                }
+            }
             try {
                 readLoop(onEvent)
             } finally {
+                acks.cancel()
+                sendMutex.withLock { drainAcksLocked() }
                 outgoing.close()
                 writer.join()
             }
@@ -105,6 +118,7 @@ internal class EncryptedConnection(
         contentRelated: Boolean,
         deferred: CompletableDeferred<TlObject>? = null,
     ): Long = sendMutex.withLock {
+        drainAcksLocked()
         val (id, packet) = prepare(obj, contentRelated)
         if (deferred != null) pendingMutex.withLock { pending[id] = deferred }
         val sent = outgoing.trySend(packet)
@@ -113,6 +127,21 @@ internal class EncryptedConnection(
             throw sent.exceptionOrNull() ?: IllegalStateException("outgoing closed")
         }
         id
+    }
+
+    /** Caller holds [sendMutex]. */
+    private fun drainAcksLocked() {
+        if (ackBuf.isEmpty()) return
+        val batch = ackBuf.distinct().toLongArray()
+        ackBuf.clear()
+        val (_, packet) = prepare(MsgsAck(batch), contentRelated = false)
+        val sent = outgoing.trySend(packet)
+        if (sent.isFailure) {
+            logCaught(
+                "ack-enqueue",
+                sent.exceptionOrNull() ?: IllegalStateException("outgoing closed"),
+            )
+        }
     }
 
     private suspend fun readLoop(onEvent: (TlObject) -> Unit) {
@@ -128,7 +157,10 @@ internal class EncryptedConnection(
             }
             try {
                 if (acks.isNotEmpty()) {
-                    enqueue(MsgsAck(acks.toLongArray()), contentRelated = false)
+                    sendMutex.withLock {
+                        ackBuf.addAll(acks)
+                        if (ackBuf.size >= ACK_BATCH) drainAcksLocked()
+                    }
                 }
                 for (e in events) {
                     try {
