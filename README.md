@@ -21,6 +21,8 @@ TelegramClient(apiId, apiHash, proxy = Proxy.Socks5("127.0.0.1", 1080))
 User login (SMS + optional 2FA):
 
 ```kotlin
+import iris.kmtproto.api.user.UserApi
+
 val api = UserApi(client)
 val sent = api.auth.sendCode("+79990000000").await() as AuthSentCodeCtor
 try {

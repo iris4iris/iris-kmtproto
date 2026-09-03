@@ -1,6 +1,6 @@
 package iris.kmtproto
 
-import iris.kmtproto.api.UserApi
+import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.api.bot.BotApi
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.id

@@ -1,4 +1,4 @@
-package iris.kmtproto.api.messages
+package iris.kmtproto.api.user
 
 import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.TelegramClient

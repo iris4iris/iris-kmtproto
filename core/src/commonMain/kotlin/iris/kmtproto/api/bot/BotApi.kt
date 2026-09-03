@@ -1,6 +1,6 @@
 package iris.kmtproto.api.bot
 
-import iris.kmtproto.api.UserApi
+import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.client.ClientInfo
 import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.SentMessage

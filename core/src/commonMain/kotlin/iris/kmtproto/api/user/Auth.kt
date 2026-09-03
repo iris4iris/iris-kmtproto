@@ -1,4 +1,4 @@
-package iris.kmtproto.api.auth
+package iris.kmtproto.api.user
 
 import iris.kmtproto.client.ClientSession
 import iris.kmtproto.client.SessionPasswordNeeded

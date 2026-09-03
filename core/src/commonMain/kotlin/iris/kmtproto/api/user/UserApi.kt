@@ -1,7 +1,4 @@
-package iris.kmtproto.api
-
-import iris.kmtproto.api.auth.Auth
-import iris.kmtproto.api.messages.Messages
+package iris.kmtproto.api.user
 import iris.kmtproto.client.ClientInfo
 import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.Storage
