@@ -301,9 +301,8 @@ internal class EncryptedConnection(
         val keyId = frame.readLongLe(0)
         check(keyId == authKey.keyId) { "auth_key_id mismatch" }
         val msgKey = frame.copyOfRange(8, 24)
-        val cipher = frame.copyOfRange(24, frame.size)
         val (aesKey, aesIv) = MsgKeys.deriveAes(authKey.key, msgKey, x = 8)
-        val inner = AesIge.decrypt(aesKey, aesIv, cipher)
+        val inner = AesIge.decrypt(aesKey, aesIv, frame, 24, frame.size)
         val computed = MsgKeys.msgKey(authKey.key, inner, x = 8)
         check(computed.contentEquals(msgKey)) { "msg_key mismatch (server)" }
 
