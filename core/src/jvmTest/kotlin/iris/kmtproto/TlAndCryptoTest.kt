@@ -81,6 +81,18 @@ class TlAndCryptoTest {
     }
 
     @Test
+    fun aesIgeDecryptsSlice() {
+        val key = PlatformCrypto.randomBytes(32)
+        val iv = PlatformCrypto.randomBytes(32)
+        val plain = PlatformCrypto.randomBytes(48)
+        val cipher = AesIge.encrypt(key, iv, plain)
+        val framed = ByteArray(8 + cipher.size)
+        cipher.copyInto(framed, 8)
+        val back = AesIge.decrypt(key, iv, framed, 8, framed.size)
+        assertContentEquals(plain, back)
+    }
+
+    @Test
     fun factorizeKnownProduct() {
         val p = 1_000_003L
         val q = 1_000_033L
