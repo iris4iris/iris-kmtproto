@@ -1,5 +1,6 @@
 package iris.kmtproto
 
+import iris.kmtproto.api.user.stripUsername
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.inputPeerFrom
 import iris.kmtproto.client.inputPeerFromBotApiId
@@ -96,6 +97,14 @@ class ApiTlTest {
         assertEquals(1001L, PeerUser(1001L).botApiChatId())
         assertEquals(-42L, PeerChat(42L).botApiChatId())
         assertEquals(-1001234567890L, PeerChannel(1234567890L).botApiChatId())
+    }
+
+    @Test
+    fun stripUsernameAcceptsLinks() {
+        assertEquals("durov", stripUsername("@durov"))
+        assertEquals("durov", stripUsername("https://t.me/durov"))
+        assertEquals("durov", stripUsername("t.me/durov/123"))
+        assertEquals("durov", stripUsername("https://telegram.me/durov?start=1"))
     }
 }
 

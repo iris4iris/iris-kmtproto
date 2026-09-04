@@ -10,6 +10,8 @@ import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
 import iris.kmtproto.tl.API_LAYER
+import iris.kmtproto.tl.gen.ContactsResolvedPeer
+import iris.kmtproto.tl.gen.PaymentsStarGifts
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
 import iris.kmtproto.tl.gen.InputReplyTo
@@ -161,6 +163,18 @@ class BotApi(val client: TelegramClient) {
         client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
 
     fun incomingUpdates(): Flow<Update> = client.incomingUpdates()
+
+    fun getStarGiftsAsync(hash: Int = 0): Deferred<PaymentsStarGifts> = user.payments.getStarGiftsAsync(hash)
+
+    suspend fun getStarGifts(hash: Int = 0): PaymentsStarGifts = user.payments.getStarGifts(hash)
+
+    fun getChatAsync(username: String): Deferred<ContactsResolvedPeer> = user.contacts.resolveUsernameAsync(username)
+
+    suspend fun getChat(username: String): ContactsResolvedPeer = user.contacts.resolveUsername(username)
+
+    fun getChatAsync(chatId: Long): Deferred<ContactsResolvedPeer> = user.contacts.resolveAsync(chatId)
+
+    suspend fun getChat(chatId: Long): ContactsResolvedPeer = user.contacts.resolve(chatId)
 }
 
 fun MessageCtor.toBotMessage(): BotMessage = BotMessage(

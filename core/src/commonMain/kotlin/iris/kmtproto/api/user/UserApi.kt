@@ -13,6 +13,8 @@ import iris.kmtproto.transport.Proxy
 class UserApi(val client: TelegramClient) {
     val auth = Auth(client)
     val messages = Messages(client)
+    val contacts = Contacts(client)
+    val payments = Payments(client)
 
     constructor(
         apiId: Int,

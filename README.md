@@ -46,6 +46,13 @@ bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } 
 client.incomingUpdates().collect { upd -> /* UpdateNewMessage, UpdateUserStatus, … */ }
 client.incomingMessages() // sugar: UpdateNewMessage / UpdateNewChannelMessage → MessageCtor
 
+user.payments.getStarGifts()
+user.contacts.resolveUsername("durov")
+user.contacts.resolve(peerId) // Bot API id, access_hash from storage
+bot.getChat("durov")
+bot.getChat(-1002696504560L)
+bot.getStarGifts()
+
 user.messages.send(peerId, "hi")
 user.messages.send(
     peerId,

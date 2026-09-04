@@ -626,7 +626,7 @@ class TelegramClient(
         }
     }
 
-    private fun rememberChats(list: List<iris.kmtproto.tl.gen.Chat>) {
+    internal fun rememberChats(list: List<iris.kmtproto.tl.gen.Chat>) {
         for (obj in list) {
             when (obj) {
                 is Channel -> {
@@ -639,7 +639,7 @@ class TelegramClient(
         }
     }
 
-    private fun rememberUsers(list: List<User>) {
+    internal fun rememberUsers(list: List<User>) {
         for (obj in list) rememberUser(obj)
     }
 
