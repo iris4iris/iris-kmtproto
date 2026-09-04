@@ -18,9 +18,11 @@ fun main() {
 }
 
 private suspend fun run() {
-    val creds = requireEnv("TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_BOT_TOKEN")
+    val creds = requireEnv("TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_BOT_TOKEN", "FILE_STORAGE")
     val sessionFile = sessionFile("session.properties")
-    val client = TelegramClient(creds["TELEGRAM_API_ID"]!!.toInt(), creds["TELEGRAM_API_HASH"]!!)
+    val client = TelegramClient(creds["TELEGRAM_API_ID"]!!.toInt(), creds["TELEGRAM_API_HASH"]!!,
+        storage = SimpleFileStorage(creds["FILE_STORAGE"]!!)
+    )
     val bot = BotApi(client)
     try {
         client.connect(session = loadSession(sessionFile))

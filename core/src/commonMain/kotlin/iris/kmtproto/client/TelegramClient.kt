@@ -146,7 +146,7 @@ class TelegramClient(
 
     private fun hashFor(peerId: Long): Long = when {
         peerId > 0L -> accessHash(peerId)
-        peerId <= -1_000_000_000_000L -> accessHash(-peerId - 1_000_000_000_000L)
+        peerId <= -1_000_000_000_000L -> accessHash(-(peerId + 1_000_000_000_000L))
         else -> 0L
     }
 
