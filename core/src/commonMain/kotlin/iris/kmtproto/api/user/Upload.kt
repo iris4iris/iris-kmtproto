@@ -13,11 +13,14 @@ import iris.kmtproto.toHex
 import kotlinx.coroutines.Deferred
 
 /** `upload.saveFilePart` / `upload.saveBigFilePart`. */
-class Upload(private val client: TelegramClient) {
-    fun saveFileAsync(bytes: ByteArray, name: String): Deferred<InputFile> =
-        client.apiAsync { saveFile(bytes, name) }
+object Upload {
+    internal const val PART = 512 * 1024
+    internal const val BIG_FILE = 10 * 1024 * 1024
 
-    suspend fun saveFile(bytes: ByteArray, name: String): InputFile {
+    fun saveFileAsync(client: TelegramClient, bytes: ByteArray, name: String): Deferred<InputFile> =
+        client.apiAsync { saveFile(client, bytes, name) }
+
+    suspend fun saveFile(client: TelegramClient, bytes: ByteArray, name: String): InputFile {
         require(bytes.isNotEmpty()) { "empty file" }
         val fileId = nextFileId()
         val big = bytes.size >= BIG_FILE
@@ -65,10 +68,5 @@ class Upload(private val client: TelegramClient) {
         var id = PlatformCrypto.randomBytes(8).readLongLe()
         if (id == 0L) id = 1L
         return id
-    }
-
-    companion object {
-        internal const val PART = 512 * 1024
-        internal const val BIG_FILE = 10 * 1024 * 1024
     }
 }

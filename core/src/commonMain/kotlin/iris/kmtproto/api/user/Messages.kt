@@ -25,7 +25,6 @@ import kotlinx.coroutines.Deferred
 
 class Messages(
     private val client: TelegramClient,
-    private val upload: Upload,
 ) {
     fun sendAsync(
         peer: InputPeer,
@@ -349,7 +348,7 @@ class Messages(
         allowPaidStars: Long? = null,
         suggestedPost: SuggestedPost? = null,
     ): SentMessage {
-        val file = upload.saveFile(bytes, fileName)
+        val file = Upload.saveFile(client, bytes, fileName)
         return sendMedia(
             peer = peer,
             media = InputMediaUploadedPhoto(
@@ -573,8 +572,8 @@ class Messages(
         allowPaidStars: Long? = null,
         suggestedPost: SuggestedPost? = null,
     ): SentMessage {
-        val file = upload.saveFile(bytes, fileName)
-        val thumbFile = thumb?.let { upload.saveFile(it, "thumb.jpg") }
+        val file = Upload.saveFile(client, bytes, fileName)
+        val thumbFile = thumb?.let { Upload.saveFile(client, it, "thumb.jpg") }
         return sendMedia(
             peer = peer,
             media = InputMediaUploadedDocument(
@@ -967,8 +966,8 @@ class Messages(
         replyTo: InputReplyTo? = null,
         replyMarkup: ReplyMarkup? = null,
     ): SentMessage {
-        val file = upload.saveFile(bytes, fileName)
-        val thumbFile = thumb?.let { upload.saveFile(it, "thumb.jpg") }
+        val file = Upload.saveFile(client, bytes, fileName)
+        val thumbFile = thumb?.let { Upload.saveFile(client, it, "thumb.jpg") }
         return sendMedia(
             peer = peer,
             media = InputMediaUploadedDocument(

@@ -12,8 +12,7 @@ import iris.kmtproto.transport.Proxy
  */
 class UserApi(val client: TelegramClient) {
     val auth = Auth(client)
-    val upload = Upload(client)
-    val messages = Messages(client, upload)
+    val messages = Messages(client)
 
     constructor(
         apiId: Int,
