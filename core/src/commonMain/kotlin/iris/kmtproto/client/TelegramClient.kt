@@ -68,6 +68,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -98,7 +99,9 @@ class TelegramClient(
     private var connection: EncryptedConnection? = null
     private var layerInitialized = false
     private var supervisor = SupervisorJob()
+    private var mux: MuxThreads? = null
     private var scope = CoroutineScope(supervisor + Dispatchers.Default)
+    private var apiScope = CoroutineScope(supervisor + Dispatchers.Default)
     private val channels = ChannelCursors()
     private var incoming = EventChannel<MessageCtor>(256, BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
@@ -141,8 +144,11 @@ class TelegramClient(
 
     suspend fun connect(target: Datacenter = currentDc, session: ClientSession? = null) {
         close()
+        val threads = MuxThreads()
+        mux = threads
         supervisor = SupervisorJob()
-        scope = CoroutineScope(supervisor + Dispatchers.Default)
+        scope = CoroutineScope(supervisor + threads.read)
+        apiScope = CoroutineScope(supervisor + Dispatchers.Default)
         loadedSession = session
         currentDc = session?.let { Datacenter.production(it.dcId) } ?: target
         layerInitialized = false
@@ -150,37 +156,39 @@ class TelegramClient(
         user = null
         channels.clear()
         incoming = EventChannel(256, BufferOverflow.DROP_OLDEST)
-        val t = connectObfuscated(currentDc, proxy)
-        transport = t
-        val key: AuthKey
-        val salt: Long
-        val timeOffset: Int
-        if (session != null) {
-            key = AuthKey(session.authKey)
-            salt = session.salt
-            timeOffset = 0
-        } else {
-            val hs = Handshake.perform(t, currentDc.id)
-            key = hs.authKey
-            salt = hs.serverSalt
-            timeOffset = hs.timeOffset
+        withContext(threads.read) {
+            val t = connectObfuscated(currentDc, proxy)
+            transport = t
+            val key: AuthKey
+            val salt: Long
+            val timeOffset: Int
+            if (session != null) {
+                key = AuthKey(session.authKey)
+                salt = session.salt
+                timeOffset = 0
+            } else {
+                val hs = Handshake.perform(t, currentDc.id)
+                key = hs.authKey
+                salt = hs.serverSalt
+                timeOffset = hs.timeOffset
+            }
+            t.setReadTimeoutMs(0)
+            val sessionId = PlatformCrypto.randomBytes(8).readLongLe()
+            connection = EncryptedConnection(
+                transport = t,
+                authKey = key,
+                salt = salt,
+                sessionId = sessionId,
+                msgIds = MsgIdFactory(timeOffset),
+                writeContext = threads.write,
+            )
         }
-        t.setReadTimeoutMs(0)
-        val sessionId = PlatformCrypto.randomBytes(8).readLongLe()
-        val conn = EncryptedConnection(
-            transport = t,
-            authKey = key,
-            salt = salt,
-            sessionId = sessionId,
-            msgIds = MsgIdFactory(timeOffset),
-        )
-        connection = conn
         startMux()
     }
 
     private fun startMux() {
         scope.launch { readerLoop() }
-        scope.launch {
+        apiScope.launch {
             while (supervisor.isActive) {
                 delay(30_000)
                 runCatching { ping() }.onFailure {
@@ -232,12 +240,14 @@ class TelegramClient(
         val t = connectObfuscated(currentDc, proxy)
         t.setReadTimeoutMs(0)
         transport = t
+        val write = mux?.write ?: Dispatchers.Default
         val conn = EncryptedConnection(
             transport = t,
             authKey = AuthKey(snap.authKey),
             salt = snap.salt,
             sessionId = PlatformCrypto.randomBytes(8).readLongLe(),
             msgIds = MsgIdFactory(0),
+            writeContext = write,
         )
         layerInitialized = false
         connection = conn
@@ -328,7 +338,7 @@ class TelegramClient(
     fun <T : TlObject> invokeAsync(method: TlMethod<T>): Deferred<T> = apiAsync { invoke(method) }
 
     internal fun <T> apiAsync(block: suspend () -> T): Deferred<T> =
-        scope.async { block() }
+        apiScope.async { block() }
 
     suspend fun <T : TlObject> invoke(method: TlMethod<T>): T {
         val wrapped: TlMethod<T> = if (layerInitialized) {
@@ -472,7 +482,7 @@ class TelegramClient(
     private fun scheduleCatchUpCommon() {
         if (catchingCommon) return
         catchingCommon = true
-        scope.launch {
+        apiScope.launch {
             try {
                 catchUpCommon()
             } catch (e: CancellationException) {
@@ -489,7 +499,7 @@ class TelegramClient(
         if (catchingChannel == channelId) return
         if (storage.getAccessHash(channelId) == 0L) return
         catchingChannel = channelId
-        scope.launch {
+        apiScope.launch {
             try {
                 catchUpChannel(channelId, ptsHint)
             } catch (e: CancellationException) {
@@ -601,6 +611,8 @@ class TelegramClient(
         updatesState = null
         channels.clear()
         incoming.close()
+        mux?.close()
+        mux = null
     }
 }
 

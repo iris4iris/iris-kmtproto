@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import kotlin.coroutines.CoroutineContext
 
 class RpcException(val code: Int, override val message: String) : RuntimeException("RPC $code: $message") {
     val floodWaitSeconds: Int?
@@ -61,6 +62,7 @@ internal class EncryptedConnection(
     var salt: Long,
     val sessionId: Long,
     val msgIds: MsgIdFactory,
+    private val writeContext: CoroutineContext,
 ) {
     private var seq = 0
     private val sendMutex = Mutex()
@@ -95,8 +97,8 @@ internal class EncryptedConnection(
      */
     suspend fun runReader(onEvent: (TlObject) -> Unit) {
         coroutineScope {
-            val writer = launch { drainWrites() }
-            val acks = launch {
+            val writer = launch(writeContext) { drainWrites() }
+            val acks = launch(writeContext) {
                 while (true) {
                     delay(ACK_FLUSH_MS)
                     sendMutex.withLock { drainAcksLocked() }

@@ -5,8 +5,6 @@ import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.readIntLe
 import iris.kmtproto.toHex
 import iris.kmtproto.toLeBytes
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.Socket
@@ -18,14 +16,14 @@ private class ObfuscatedIntermediate(
     private val encryptor: AesCtr,
     private val decryptor: AesCtr,
 ) : MtprotoTransport {
-    override suspend fun send(payload: ByteArray) = withContext(Dispatchers.IO) {
+    override suspend fun send(payload: ByteArray) {
         val framed = payload.size.toLeBytes() + payload
         val encrypted = encryptor.process(framed)
         output.write(encrypted)
         output.flush()
     }
 
-    override suspend fun receive(): ByteArray = withContext(Dispatchers.IO) {
+    override suspend fun receive(): ByteArray {
         while (true) {
             val lenEnc = ByteArray(4)
             input.readFully(lenEnc)
@@ -37,12 +35,11 @@ private class ObfuscatedIntermediate(
             val payloadEnc = ByteArray(len)
             input.readFully(payloadEnc)
             val payload = decryptor.process(payloadEnc)
-            if (payload.size >= 20) return@withContext payload
+            if (payload.size >= 20) return payload
         }
-        error("unreachable")
     }
 
-    override suspend fun close() = withContext(Dispatchers.IO) {
+    override suspend fun close() {
         runCatching { socket.close() }
         Unit
     }
@@ -57,13 +54,13 @@ private class PlainIntermediate(
     private val input: DataInputStream,
     private val output: DataOutputStream,
 ) : MtprotoTransport {
-    override suspend fun send(payload: ByteArray) = withContext(Dispatchers.IO) {
+    override suspend fun send(payload: ByteArray) {
         output.write(payload.size.toLeBytes())
         output.write(payload)
         output.flush()
     }
 
-    override suspend fun receive(): ByteArray = withContext(Dispatchers.IO) {
+    override suspend fun receive(): ByteArray {
         while (true) {
             val lenBuf = ByteArray(4)
             input.readFully(lenBuf)
@@ -71,12 +68,11 @@ private class PlainIntermediate(
             require(len in 0..2_000_000) { "implausible frame length $len" }
             val payload = ByteArray(len)
             input.readFully(payload)
-            if (payload.size >= 20) return@withContext payload
+            if (payload.size >= 20) return payload
         }
-        error("unreachable")
     }
 
-    override suspend fun close() = withContext(Dispatchers.IO) {
+    override suspend fun close() {
         runCatching { socket.close() }
         Unit
     }
@@ -86,9 +82,8 @@ private class PlainIntermediate(
     }
 }
 
-actual suspend fun connectObfuscated(dc: Datacenter, proxy: Proxy?): MtprotoTransport = withContext(Dispatchers.IO) {
+actual suspend fun connectObfuscated(dc: Datacenter, proxy: Proxy?): MtprotoTransport =
     connectObfuscatedAt(dc.host, dc.port, proxy)
-}
 
 private fun connectObfuscatedAt(host: String, port: Int, proxy: Proxy?): MtprotoTransport {
     val socket = openTcp(host, port, proxy)
