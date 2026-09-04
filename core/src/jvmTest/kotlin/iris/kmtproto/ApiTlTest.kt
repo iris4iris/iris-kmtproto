@@ -1,5 +1,6 @@
 package iris.kmtproto
 
+import iris.kmtproto.api.user.stripNftSlug
 import iris.kmtproto.api.user.stripUsername
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.inputPeerFrom
@@ -29,7 +30,7 @@ class ApiTlTest {
     fun vendoredApiTlLayerMatchesDefault() {
         val file = findVendoredApiTl() ?: error("schema/api.tl not found")
         val text = file.readText()
-        val layer = Regex("""// LAYER (\d+)""").findAll(text).lastOrNull()?.groupValues?.get(1)?.toInt()
+        val layer = Regex("""// LAYER (\\d+)""").findAll(text).lastOrNull()?.groupValues?.get(1)?.toInt()
             ?: error("no // LAYER in ${file.absolutePath}")
         assertEquals(API_LAYER, layer, "${file.absolutePath} LAYER=$layer, API_LAYER=$API_LAYER")
     }
@@ -105,6 +106,13 @@ class ApiTlTest {
         assertEquals("durov", stripUsername("https://t.me/durov"))
         assertEquals("durov", stripUsername("t.me/durov/123"))
         assertEquals("durov", stripUsername("https://telegram.me/durov?start=1"))
+    }
+
+    @Test
+    fun stripNftSlugAcceptsLinks() {
+        assertEquals("PlushPepe-42", stripNftSlug("PlushPepe-42"))
+        assertEquals("PlushPepe-42", stripNftSlug("https://t.me/nft/PlushPepe-42"))
+        assertEquals("PlushPepe-42", stripNftSlug("t.me/nft/PlushPepe-42?start=1"))
     }
 }
 

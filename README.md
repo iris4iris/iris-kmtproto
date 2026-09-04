@@ -41,12 +41,15 @@ Bot API-shaped adapter (still MTProto underneath):
 val bot = BotApi(apiId, apiHash)
 bot.client.connect()
 bot.login(token)
-bot.sendMessage(chatId, "hi") // RpcResponse<SentMessage>: result / error
+bot.sendMessage(chatId, "hi") // RpcResponse: result / error
 bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } }
 client.incomingUpdates().collect { upd -> /* UpdateNewMessage, UpdateUserStatus, … */ }
 client.incomingMessages() // sugar: UpdateNewMessage / UpdateNewChannelMessage → MessageCtor
 
 user.payments.getStarGifts()
+user.payments.getUniqueStarGift("PlushPepe-42")
+user.payments.getUniqueStarGiftValueInfo("https://t.me/nft/PlushPepe-42")
+user.payments.getSavedStarGift(msgId)
 user.contacts.resolveUsername("durov")
 user.contacts.resolve(peerId) // Bot API id, access_hash from storage
 bot.getChat("durov")
