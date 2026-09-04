@@ -194,7 +194,9 @@ class TelegramClient(
         apiScope.launch {
             while (supervisor.isActive) {
                 delay(30_000)
+                if (connection == null) continue
                 runCatching { ping() }.onFailure {
+                    if (it.message == "call connect() first") return@onFailure
                     if (!isDisconnect(it) && it !is CancellationException) logCaught("ping", it)
                 }
             }
@@ -204,8 +206,14 @@ class TelegramClient(
     private suspend fun readerLoop() {
         var backoff = 500L
         while (supervisor.isActive) {
-            val conn = connection ?: break
+            val conn = connection
+            if (conn == null) {
+                reconnectOrWait(backoff)
+                backoff = (backoff * 2).coerceAtMost(15_000L)
+                continue
+            }
             try {
+                backoff = 500L
                 conn.runReader { obj ->
                     try {
                         dispatch(obj)
@@ -215,20 +223,31 @@ class TelegramClient(
                         if (!isDisconnect(e)) logCaught("dispatch", e)
                     }
                 }
-                break
+                if (!supervisor.isActive) break
+                println("kmtproto [reader] disconnected, reconnecting")
+                reconnectOrWait(backoff)
+                backoff = (backoff * 2).coerceAtMost(15_000L)
             } catch (e: CancellationException) {
                 if (!supervisor.isActive) break
                 logCaught("reader-cancel", e)
-                delay(backoff)
+                reconnectOrWait(backoff)
+                backoff = (backoff * 2).coerceAtMost(15_000L)
             } catch (e: Throwable) {
                 if (!supervisor.isActive) break
                 if (!isDisconnect(e)) logCaught("reader", e)
                 else println("kmtproto [reader] disconnected, reconnecting")
-                runCatching { rebindSocket() }.onFailure { logCaught("rebind", it) }
-                delay(backoff)
+                reconnectOrWait(backoff)
                 backoff = (backoff * 2).coerceAtMost(15_000L)
             }
         }
+    }
+
+    private suspend fun reconnectOrWait(backoff: Long) {
+        runCatching { rebindSocket() }.onFailure {
+            if (!isDisconnect(it)) logCaught("rebind", it)
+            else println("kmtproto [rebind] ${it::class.simpleName}: ${it.message}")
+        }
+        if (connection == null) delay(backoff)
     }
 
     /** Same auth_key, new TCP + session_id. Does not loginBot. */

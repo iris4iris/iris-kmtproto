@@ -6,13 +6,25 @@ internal fun isDisconnect(e: Throwable): Boolean {
     var c: Throwable? = e
     while (c != null) {
         when (c::class.simpleName) {
-            "EOFException", "SocketException", "ConnectException", "ClosedChannelException" -> return true
+            "EOFException",
+            "SocketException",
+            "ConnectException",
+            "ClosedChannelException",
+            "NoRouteToHostException",
+            "UnknownHostException",
+            "SocketTimeoutException",
+            "PortUnreachableException",
+            "UnresolvedAddressException",
+            -> return true
         }
         val m = c.message.orEmpty()
         if (m.contains("Broken pipe") ||
             m.contains("Connection reset") ||
             m.contains("Socket closed") ||
-            m.contains("Connection closed")
+            m.contains("Connection closed") ||
+            m.contains("No route to host") ||
+            m.contains("Network is unreachable") ||
+            m.contains("Host is down")
         ) {
             return true
         }
