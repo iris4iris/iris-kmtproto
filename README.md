@@ -11,6 +11,8 @@ val pong = client.ping()                 // suspend, ждёт pong
 val pongLater = client.pingAsync()       // Deferred, результат потом
 ```
 
+After `connect()` two TCP sessions share the auth_key: **updates** (subscribed) and **rpc** (`invokeWithoutUpdates`). File upload/download opens a third **media** socket and closes it after 30s idle.
+
 SOCKS5 (optional):
 
 ```kotlin

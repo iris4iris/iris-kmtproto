@@ -10,9 +10,9 @@ import kotlinx.coroutines.newSingleThreadContext
  * RPC sits until the next inbound frame.
  */
 @OptIn(DelicateCoroutinesApi::class)
-internal class MuxThreads {
-    val read: ExecutorCoroutineDispatcher = newSingleThreadContext("iris-kmtproto-read")
-    val write: ExecutorCoroutineDispatcher = newSingleThreadContext("iris-kmtproto-write")
+internal class MuxThreads(name: String = "mux") {
+    val read: ExecutorCoroutineDispatcher = newSingleThreadContext("iris-kmtproto-$name-read")
+    val write: ExecutorCoroutineDispatcher = newSingleThreadContext("iris-kmtproto-$name-write")
 
     fun close() {
         runCatching { read.close() }

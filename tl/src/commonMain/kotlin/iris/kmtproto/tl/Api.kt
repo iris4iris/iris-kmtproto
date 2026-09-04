@@ -14,6 +14,15 @@ data class InvokeWithLayer<T : TlObject>(
     }
 }
 
+data class InvokeWithoutUpdates<T : TlObject>(
+    val query: TlMethod<T>,
+) : TlMethod<T> {
+    override val constructorId: Int = TlIds.INVOKE_WITHOUT_UPDATES
+    override fun serialize(w: TlWriter) {
+        w.writeObject(query)
+    }
+}
+
 data class InitConnection<T : TlObject>(
     val flags: Int = 0,
     val apiId: Int,

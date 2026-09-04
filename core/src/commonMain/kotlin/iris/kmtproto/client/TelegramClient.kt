@@ -4,9 +4,7 @@ import iris.kmtproto.isDisconnect
 import iris.kmtproto.logCaught
 import iris.kmtproto.crypto.AuthKey
 import iris.kmtproto.crypto.PlatformCrypto
-import iris.kmtproto.mtproto.EncryptedConnection
 import iris.kmtproto.mtproto.Handshake
-import iris.kmtproto.mtproto.MsgIdFactory
 import iris.kmtproto.mtproto.RpcException
 import iris.kmtproto.readLongLe
 import iris.kmtproto.tl.API_LAYER
@@ -14,6 +12,7 @@ import iris.kmtproto.tl.BadMsgNotification
 import iris.kmtproto.tl.BadServerSalt
 import iris.kmtproto.tl.InitConnection
 import iris.kmtproto.tl.InvokeWithLayer
+import iris.kmtproto.tl.InvokeWithoutUpdates
 import iris.kmtproto.tl.Ping
 import iris.kmtproto.tl.Pong
 import iris.kmtproto.tl.RpcError
@@ -52,9 +51,13 @@ import iris.kmtproto.tl.gen.UpdatesGetDifference
 import iris.kmtproto.tl.gen.UpdatesGetState
 import iris.kmtproto.tl.gen.UpdatesState
 import iris.kmtproto.tl.gen.UpdatesTooLong
+import iris.kmtproto.tl.gen.UploadGetCdnFile
+import iris.kmtproto.tl.gen.UploadGetFile
+import iris.kmtproto.tl.gen.UploadGetWebFile
+import iris.kmtproto.tl.gen.UploadSaveBigFilePart
+import iris.kmtproto.tl.gen.UploadSaveFilePart
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
-import iris.kmtproto.transport.MtprotoTransport
 import iris.kmtproto.transport.Proxy
 import iris.kmtproto.transport.connectObfuscated
 import kotlinx.coroutines.CancellationException
@@ -84,7 +87,8 @@ data class ClientInfo(
 )
 
 /**
- * MTProto client. One socket reader. Short RPC names are suspend; `*Async` returns [Deferred].
+ * MTProto client. Three sockets: updates (subscribed), rpc (`invokeWithoutUpdates`),
+ * media (files, closes after [MEDIA_IDLE_MS] idle). Short RPC names are suspend; `*Async` returns [Deferred].
  * Common pts = DM + basic groups. Each channel/supergroup has its own pts (LRU).
  */
 class TelegramClient(
@@ -97,18 +101,18 @@ class TelegramClient(
     val proxy: Proxy? = null,
 ) {
     private var currentDc: Datacenter = dc
-    private var transport: MtprotoTransport? = null
-    private var connection: EncryptedConnection? = null
-    private var layerInitialized = false
     private var supervisor = SupervisorJob()
-    private var mux: MuxThreads? = null
     private var scope = CoroutineScope(supervisor + Dispatchers.Default)
     private var apiScope = CoroutineScope(supervisor + Dispatchers.Default)
     private val channels = ChannelCursors()
     private val incomingUpdates = MutableSharedFlow<Update>(extraBufferCapacity = 256, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
     private var catchingChannel: Long? = null
-    private val bindMutex = Mutex()
+    private var updatesLink: SocketLink? = null
+    private var rpcLink: SocketLink? = null
+    private var mediaLink: SocketLink? = null
+    private val mediaMutex = Mutex()
+    private var mediaLastUse = 0L
 
     var user: User? = null
         internal set
@@ -116,16 +120,16 @@ class TelegramClient(
         internal set
     internal var loadedSession: ClientSession? = null
 
-    val isConnected: Boolean get() = connection != null
-    val authKey: AuthKey? get() = connection?.authKey
+    val isConnected: Boolean get() = updatesLink?.isBound == true && rpcLink?.isBound == true
+    val authKey: AuthKey? get() = updatesLink?.connection?.authKey
     val datacenter: Datacenter get() = currentDc
 
     fun session(): ClientSession? {
-        val keyBytes = connection?.authKey?.key ?: loadedSession?.authKey ?: return null
+        val keyBytes = updatesLink?.connection?.authKey?.key ?: loadedSession?.authKey ?: return null
         return ClientSession(
             dcId = currentDc.id,
             authKey = keyBytes.copyOf(),
-            salt = connection?.salt ?: loadedSession?.salt ?: 0L,
+            salt = updatesLink?.connection?.salt ?: loadedSession?.salt ?: 0L,
             userId = user?.id ?: loadedSession?.userId ?: 0L,
             accessHash = user?.accessHashOrZero ?: loadedSession?.accessHash ?: 0L,
         )
@@ -148,73 +152,40 @@ class TelegramClient(
 
     suspend fun connect(target: Datacenter = currentDc, session: ClientSession? = null) {
         close()
-        val threads = MuxThreads()
-        mux = threads
         supervisor = SupervisorJob()
-        scope = CoroutineScope(supervisor + threads.read)
+        scope = CoroutineScope(supervisor + Dispatchers.Default)
         apiScope = CoroutineScope(supervisor + Dispatchers.Default)
         loadedSession = session
         currentDc = session?.let { Datacenter.production(it.dcId) } ?: target
-        layerInitialized = false
         updatesState = null
         user = null
         channels.clear()
-        withContext(threads.read) {
+        val updates = SocketLink("updates")
+        val rpc = SocketLink("rpc")
+        updatesLink = updates
+        rpcLink = rpc
+        val (key, salt, timeOffset) = withContext(updates.threads.read) {
             val t = connectObfuscated(currentDc, proxy)
-            transport = t
-            val key: AuthKey
-            val salt: Long
-            val timeOffset: Int
-            if (session != null) {
-                key = AuthKey(session.authKey)
-                salt = session.salt
-                timeOffset = 0
+            val opened = if (session != null) {
+                Triple(AuthKey(session.authKey), session.salt, 0)
             } else {
                 val hs = Handshake.perform(t, currentDc.id)
-                key = hs.authKey
-                salt = hs.serverSalt
-                timeOffset = hs.timeOffset
+                Triple(hs.authKey, hs.serverSalt, hs.timeOffset)
             }
-            t.setReadTimeoutMs(0)
-            val sessionId = PlatformCrypto.randomBytes(8).readLongLe()
-            connection = EncryptedConnection(
-                transport = t,
-                authKey = key,
-                salt = salt,
-                sessionId = sessionId,
-                msgIds = MsgIdFactory(timeOffset),
-                writeContext = threads.write,
-            )
+            updates.attach(t, opened.first, opened.second, opened.third)
+            opened
         }
+        rpc.open(currentDc, proxy, key, salt, 0)
         startMux()
     }
 
     private fun startMux() {
-        scope.launch { readerLoop() }
-        apiScope.launch {
-            while (supervisor.isActive) {
-                delay(30_000)
-                if (connection == null) continue
-                runCatching { ping() }.onFailure {
-                    if (it.message == "call connect() first") return@onFailure
-                    if (!isDisconnect(it) && it !is CancellationException) logCaught("ping", it)
-                }
-            }
-        }
-    }
-
-    private suspend fun readerLoop() {
-        var backoff = 500L
-        while (supervisor.isActive) {
-            val conn = connection
-            if (conn == null) {
-                reconnectOrWait(backoff)
-                backoff = (backoff * 2).coerceAtMost(15_000L)
-                continue
-            }
-            try {
-                backoff = 500L
-                conn.runReader { obj ->
+        val updates = updatesLink ?: return
+        val rpc = rpcLink ?: return
+        scope.launch {
+            updates.readerLoop(
+                alive = { supervisor.isActive },
+                onEvent = { obj ->
                     try {
                         dispatch(obj)
                     } catch (e: CancellationException) {
@@ -222,65 +193,90 @@ class TelegramClient(
                     } catch (e: Exception) {
                         if (!isDisconnect(e)) logCaught("dispatch", e)
                     }
-                }
-                if (!supervisor.isActive) break
-                println("kmtproto [reader] disconnected, reconnecting")
-                reconnectOrWait(backoff)
-                backoff = (backoff * 2).coerceAtMost(15_000L)
-            } catch (e: CancellationException) {
-                if (!supervisor.isActive) break
-                logCaught("reader-cancel", e)
-                reconnectOrWait(backoff)
-                backoff = (backoff * 2).coerceAtMost(15_000L)
-            } catch (e: Throwable) {
-                if (!supervisor.isActive) break
-                if (!isDisconnect(e)) logCaught("reader", e)
-                else println("kmtproto [reader] disconnected, reconnecting")
-                reconnectOrWait(backoff)
-                backoff = (backoff * 2).coerceAtMost(15_000L)
+                },
+                reconnect = { rebindLink(updates) },
+            )
+        }
+        scope.launch {
+            rpc.readerLoop(
+                alive = { supervisor.isActive },
+                onEvent = { },
+                reconnect = { rebindLink(rpc) },
+            )
+        }
+        apiScope.launch {
+            while (supervisor.isActive) {
+                delay(30_000)
+                pingOpen(updates)
+                pingOpen(rpc)
+                mediaLink?.let { pingOpen(it) }
+            }
+        }
+        apiScope.launch { mediaIdleLoop() }
+    }
+
+    private suspend fun pingOpen(link: SocketLink) {
+        if (!link.isBound) return
+        runCatching { invokeRaw(link, Ping(PlatformCrypto.randomBytes(8).readLongLe())) }.onFailure {
+            if (it.message == "call connect() first") return@onFailure
+            if (!isDisconnect(it) && it !is CancellationException) logCaught("${link.name}-ping", it)
+        }
+    }
+
+    private suspend fun rebindLink(link: SocketLink) {
+        if (link.stop) return
+        val snap = session() ?: return
+        link.rebind(currentDc, proxy, AuthKey(snap.authKey), snap.salt)
+        loadedSession = snap.copy(salt = link.connection?.salt ?: snap.salt)
+    }
+
+    private suspend fun mediaIdleLoop() {
+        while (supervisor.isActive) {
+            delay(1_000)
+            val link = mediaLink ?: continue
+            if (PlatformCrypto.currentTimeMillis() - mediaLastUse < MEDIA_IDLE_MS) continue
+            mediaMutex.withLock {
+                val cur = mediaLink ?: return@withLock
+                if (PlatformCrypto.currentTimeMillis() - mediaLastUse < MEDIA_IDLE_MS) return@withLock
+                println("kmtproto [media] idle ${MEDIA_IDLE_MS}ms, closing")
+                mediaLink = null
+                cur.shutdown()
             }
         }
     }
 
-    private suspend fun reconnectOrWait(backoff: Long) {
-        runCatching { rebindSocket() }.onFailure {
-            if (!isDisconnect(it)) logCaught("rebind", it)
-            else println("kmtproto [rebind] ${it::class.simpleName}: ${it.message}")
+    private suspend fun ensureMedia(): SocketLink = mediaMutex.withLock {
+        val open = mediaLink
+        if (open != null && open.isBound && !open.stop) {
+            mediaLastUse = PlatformCrypto.currentTimeMillis()
+            return@withLock open
         }
-        if (connection == null) delay(backoff)
-    }
-
-    /** Same auth_key, new TCP + session_id. Does not loginBot. */
-    private suspend fun rebindSocket() = bindMutex.withLock {
-        val snap = session() ?: return@withLock
-        val oldConn = connection
-        val oldTransport = transport
-        connection = null
-        transport = null
-        oldConn?.failPending(CancellationException("reconnect"))
-        runCatching { oldTransport?.close() }.onFailure { logCaught("rebind-close", it) }
-        val t = connectObfuscated(currentDc, proxy)
-        t.setReadTimeoutMs(0)
-        transport = t
-        val write = mux?.write ?: Dispatchers.Default
-        val conn = EncryptedConnection(
-            transport = t,
-            authKey = AuthKey(snap.authKey),
-            salt = snap.salt,
-            sessionId = PlatformCrypto.randomBytes(8).readLongLe(),
-            msgIds = MsgIdFactory(0),
-            writeContext = write,
-        )
-        layerInitialized = false
-        connection = conn
-        loadedSession = snap.copy(salt = conn.salt)
+        open?.shutdown()
+        val snap = session() ?: error("call connect() first")
+        val link = SocketLink("media")
+        link.open(currentDc, proxy, AuthKey(snap.authKey), snap.salt, 0)
+        mediaLink = link
+        mediaLastUse = PlatformCrypto.currentTimeMillis()
+        scope.launch {
+            link.readerLoop(
+                alive = { supervisor.isActive && !link.stop },
+                onEvent = { },
+                reconnect = {
+                    if (!link.stop) rebindLink(link)
+                    mediaLastUse = PlatformCrypto.currentTimeMillis()
+                },
+            )
+        }
+        link
     }
 
     fun pingAsync(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Deferred<Pong> =
         apiAsync { ping(pingId) }
 
-    suspend fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong =
-        invokeRaw(Ping(pingId))
+    suspend fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong {
+        val link = updatesLink ?: error("call connect() first")
+        return invokeRaw(link, Ping(pingId))
+    }
 
     fun getStateAsync(): Deferred<UpdatesState> = apiAsync { getState() }
 
@@ -363,26 +359,16 @@ class TelegramClient(
         apiScope.async { block() }
 
     suspend fun <T : TlObject> invoke(method: TlMethod<T>): T {
-        val wrapped: TlMethod<T> = if (layerInitialized) {
-            method
-        } else {
-            InvokeWithLayer(
-                layer = layer,
-                query = InitConnection(
-                    apiId = apiId,
-                    deviceModel = info.deviceModel,
-                    systemVersion = info.systemVersion,
-                    appVersion = info.appVersion,
-                    systemLangCode = info.systemLangCode,
-                    langPack = info.langPack,
-                    langCode = info.langCode,
-                    query = method,
-                ),
-            )
+        val link = when {
+            isUpdatesMethod(method) -> updatesLink ?: error("call connect() first")
+            isMediaMethod(method) -> ensureMedia()
+            else -> rpcLink ?: error("call connect() first")
         }
+        if (link === mediaLink) mediaLastUse = PlatformCrypto.currentTimeMillis()
+        val wrapped = wrapFor(link, method)
         return try {
-            val result = invokeRaw(wrapped)
-            layerInitialized = true
+            val result = invokeRaw(link, wrapped)
+            link.layerReady = true
             result
         } catch (e: RpcException) {
             val migrateTo = migrateDc(e.message)
@@ -392,8 +378,36 @@ class TelegramClient(
         }
     }
 
-    private suspend fun <T : TlObject> invokeRaw(method: TlMethod<T>): T {
-        when (val raw = sendRpc(method)) {
+    private fun <T : TlObject> wrapFor(link: SocketLink, method: TlMethod<T>): TlMethod<T> {
+        val body: TlMethod<T> = if (link === updatesLink) method else InvokeWithoutUpdates(method)
+        if (link.layerReady) return body
+        return InvokeWithLayer(
+            layer = layer,
+            query = InitConnection(
+                apiId = apiId,
+                deviceModel = info.deviceModel,
+                systemVersion = info.systemVersion,
+                appVersion = info.appVersion,
+                systemLangCode = info.systemLangCode,
+                langPack = info.langPack,
+                langCode = info.langCode,
+                query = body,
+            ),
+        )
+    }
+
+    private fun isUpdatesMethod(method: TlObject): Boolean =
+        method is UpdatesGetState || method is UpdatesGetDifference || method is UpdatesGetChannelDifference
+
+    private fun isMediaMethod(method: TlObject): Boolean =
+        method is UploadSaveFilePart ||
+            method is UploadSaveBigFilePart ||
+            method is UploadGetFile ||
+            method is UploadGetWebFile ||
+            method is UploadGetCdnFile
+
+    private suspend fun <T : TlObject> invokeRaw(link: SocketLink, method: TlMethod<T>): T {
+        when (val raw = link.sendRpc(method)) {
             is RpcError -> throw RpcException(raw.errorCode, raw.errorMessage)
             is RpcResult -> {
                 val r = raw.result
@@ -405,15 +419,10 @@ class TelegramClient(
                 @Suppress("UNCHECKED_CAST")
                 return raw as T
             }
-            is BadServerSalt -> return invokeRaw(method)
+            is BadServerSalt -> return invokeRaw(link, method)
             is BadMsgNotification -> error("bad_msg_notification code=${raw.errorCode} msg=${raw.badMsgId}")
             else -> error("no rpc_result for $method (got $raw)")
         }
-    }
-
-    private suspend fun sendRpc(obj: TlObject): TlObject {
-        val conn = connection ?: error("call connect() first")
-        return conn.sendRpc(obj)
     }
 
     private fun dispatch(obj: TlObject) {
@@ -643,15 +652,14 @@ class TelegramClient(
 
     suspend fun close() {
         supervisor.cancel()
-        connection?.failPending(CancellationException("closed"))
-        runCatching { transport?.close() }.onFailure { logCaught("close", it) }
-        transport = null
-        connection = null
-        layerInitialized = false
+        updatesLink?.shutdown()
+        rpcLink?.shutdown()
+        mediaLink?.shutdown()
+        updatesLink = null
+        rpcLink = null
+        mediaLink = null
         updatesState = null
         channels.clear()
-        mux?.close()
-        mux = null
     }
 }
 

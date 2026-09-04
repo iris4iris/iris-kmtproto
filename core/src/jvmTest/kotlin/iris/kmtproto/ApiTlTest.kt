@@ -6,6 +6,7 @@ import iris.kmtproto.client.inputPeerFromBotApiId
 import iris.kmtproto.tl.API_LAYER
 import iris.kmtproto.tl.InitConnection
 import iris.kmtproto.tl.InvokeWithLayer
+import iris.kmtproto.tl.InvokeWithoutUpdates
 import iris.kmtproto.tl.TlIds
 import iris.kmtproto.tl.TlReader
 import iris.kmtproto.tl.gen.HelpGetNearestDc
@@ -60,6 +61,16 @@ class ApiTlTest {
         assertEquals("en", r.readString())
         assertEquals("", r.readString())
         assertEquals("en", r.readString())
+        assertEquals(TlIds.HELP_GET_NEAREST_DC, r.readInt())
+        assertEquals(0, r.remaining)
+    }
+
+    @Test
+    fun invokeWithoutUpdatesWrapsQuery() {
+        val wrapped = InvokeWithoutUpdates(query = HelpGetNearestDc)
+        val bytes = wrapped.toBytes()
+        val r = TlReader(bytes)
+        assertEquals(TlIds.INVOKE_WITHOUT_UPDATES, r.readInt())
         assertEquals(TlIds.HELP_GET_NEAREST_DC, r.readInt())
         assertEquals(0, r.remaining)
     }

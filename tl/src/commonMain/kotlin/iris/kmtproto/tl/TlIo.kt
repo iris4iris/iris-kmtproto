@@ -218,6 +218,7 @@ object TlIds {
     val NEW_SESSION_CREATED = 0x9ec20908.toInt()
     val PING_DELAY_DISCONNECT = 0xf3427b8c.toInt()
     val INVOKE_WITH_LAYER = 0xda9b0d0d.toInt()
+    val INVOKE_WITHOUT_UPDATES = 0xbf9459b7.toInt()
     val INIT_CONNECTION = 0xc1cd5ea9.toInt()
     val HELP_GET_CONFIG = 0xc4f9186b.toInt()
     val HELP_GET_NEAREST_DC = 0x1fb33026
