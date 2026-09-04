@@ -12,7 +12,11 @@ import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
 import iris.kmtproto.tl.API_LAYER
 import iris.kmtproto.tl.gen.ContactsResolvedPeer
+import iris.kmtproto.tl.gen.InputSavedStarGift
+import iris.kmtproto.tl.gen.PaymentsSavedStarGifts
 import iris.kmtproto.tl.gen.PaymentsStarGifts
+import iris.kmtproto.tl.gen.PaymentsUniqueStarGift
+import iris.kmtproto.tl.gen.PaymentsUniqueStarGiftValueInfo
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
 import iris.kmtproto.tl.gen.InputReplyTo
@@ -42,9 +46,6 @@ data class BotMessage(
     val out: Boolean,
 )
 
-/**
- * Bot-API-shaped adapter over MTProto. Not HTTP getUpdates.
- */
 class BotApi(val client: TelegramClient) {
     val user = UserApi(client)
 
@@ -75,6 +76,47 @@ class BotApi(val client: TelegramClient) {
         client.getState()
         return me
     }
+
+    fun incomingMessages(): Flow<BotMessage> =
+        client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
+
+    fun incomingUpdates(): Flow<Update> = client.incomingUpdates()
+
+    fun getStarGiftsAsync(hash: Int = 0): Deferred<RpcResponse<PaymentsStarGifts>> = user.payments.getStarGiftsAsync(hash)
+
+    suspend fun getStarGifts(hash: Int = 0): RpcResponse<PaymentsStarGifts> = user.payments.getStarGifts(hash)
+
+    fun getUniqueStarGiftAsync(slug: String): Deferred<RpcResponse<PaymentsUniqueStarGift>> = user.payments.getUniqueStarGiftAsync(slug)
+
+    suspend fun getUniqueStarGift(slug: String): RpcResponse<PaymentsUniqueStarGift> = user.payments.getUniqueStarGift(slug)
+
+    fun getUniqueStarGiftValueInfoAsync(slug: String): Deferred<RpcResponse<PaymentsUniqueStarGiftValueInfo>> = user.payments.getUniqueStarGiftValueInfoAsync(slug)
+
+    suspend fun getUniqueStarGiftValueInfo(slug: String): RpcResponse<PaymentsUniqueStarGiftValueInfo> = user.payments.getUniqueStarGiftValueInfo(slug)
+
+    fun getSavedStarGiftAsync(stargift: List<InputSavedStarGift>): Deferred<RpcResponse<PaymentsSavedStarGifts>> = user.payments.getSavedStarGiftAsync(stargift)
+
+    fun getSavedStarGiftAsync(vararg stargift: InputSavedStarGift): Deferred<RpcResponse<PaymentsSavedStarGifts>> = user.payments.getSavedStarGiftAsync(*stargift)
+
+    suspend fun getSavedStarGift(stargift: List<InputSavedStarGift>): RpcResponse<PaymentsSavedStarGifts> = user.payments.getSavedStarGift(stargift)
+
+    suspend fun getSavedStarGift(vararg stargift: InputSavedStarGift): RpcResponse<PaymentsSavedStarGifts> = user.payments.getSavedStarGift(*stargift)
+
+    suspend fun getSavedStarGift(msgId: Int): RpcResponse<PaymentsSavedStarGifts> = user.payments.getSavedStarGift(msgId)
+
+    suspend fun getSavedStarGift(slug: String): RpcResponse<PaymentsSavedStarGifts> = user.payments.getSavedStarGift(slug)
+
+    suspend fun getSavedStarGift(peer: InputPeer, savedId: Long): RpcResponse<PaymentsSavedStarGifts> = user.payments.getSavedStarGift(peer, savedId)
+
+    suspend fun getSavedStarGift(peerId: Long, savedId: Long): RpcResponse<PaymentsSavedStarGifts> = user.payments.getSavedStarGift(peerId, savedId)
+
+    fun getChatAsync(username: String): Deferred<RpcResponse<ContactsResolvedPeer>> = user.contacts.resolveUsernameAsync(username)
+
+    suspend fun getChat(username: String): RpcResponse<ContactsResolvedPeer> = user.contacts.resolveUsername(username)
+
+    fun getChatAsync(chatId: Long): Deferred<RpcResponse<ContactsResolvedPeer>> = user.contacts.resolveAsync(chatId)
+
+    suspend fun getChat(chatId: Long): RpcResponse<ContactsResolvedPeer> = user.contacts.resolve(chatId)
 
     fun sendMessageAsync(peer: InputPeer, text: String = "", randomId: Long? = null, noWebpage: Boolean = false, silent: Boolean = false, background: Boolean = false, clearDraft: Boolean = false, noforwards: Boolean = false, updateStickersetsOrder: Boolean = false, invertMedia: Boolean = false, allowPaidFloodskip: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null, entities: List<MessageEntity>? = null, scheduleDate: Int? = null, scheduleRepeatPeriod: Int? = null, sendAs: InputPeer? = null, sendAsId: Long? = null, quickReplyShortcut: InputQuickReplyShortcut? = null, effect: Long? = null, allowPaidStars: Long? = null, suggestedPost: SuggestedPost? = null, richMessage: InputRichMessage? = null): Deferred<RpcResponse<SentMessage>> =
         client.apiAsync { sendMessage(peer, text, randomId, noWebpage, silent, background, clearDraft, noforwards, updateStickersetsOrder, invertMedia, allowPaidFloodskip, replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId, quickReplyShortcut, effect, allowPaidStars, suggestedPost, richMessage) }
@@ -159,23 +201,6 @@ class BotApi(val client: TelegramClient) {
 
     suspend fun sendGif(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): RpcResponse<SentMessage> =
         user.messages.sendGif(peer, source, caption, fileName, duration, width, height, spoiler = spoiler, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
-
-    fun incomingMessages(): Flow<BotMessage> =
-        client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
-
-    fun incomingUpdates(): Flow<Update> = client.incomingUpdates()
-
-    fun getStarGiftsAsync(hash: Int = 0): Deferred<RpcResponse<PaymentsStarGifts>> = user.payments.getStarGiftsAsync(hash)
-
-    suspend fun getStarGifts(hash: Int = 0): RpcResponse<PaymentsStarGifts> = user.payments.getStarGifts(hash)
-
-    fun getChatAsync(username: String): Deferred<RpcResponse<ContactsResolvedPeer>> = user.contacts.resolveUsernameAsync(username)
-
-    suspend fun getChat(username: String): RpcResponse<ContactsResolvedPeer> = user.contacts.resolveUsername(username)
-
-    fun getChatAsync(chatId: Long): Deferred<RpcResponse<ContactsResolvedPeer>> = user.contacts.resolveAsync(chatId)
-
-    suspend fun getChat(chatId: Long): RpcResponse<ContactsResolvedPeer> = user.contacts.resolve(chatId)
 }
 
 fun MessageCtor.toBotMessage(): BotMessage = BotMessage(
