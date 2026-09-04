@@ -55,6 +55,10 @@ user.messages.sendPhoto(peerId, jpegBytes, caption = "hi", fileName = "cat.jpg")
 bot.sendPhoto(chatId, jpegBytes, caption = "hi")
 user.messages.sendVideo(peerId, mp4Bytes, caption = "clip", fileName = "clip.mp4")
 bot.sendVideo(chatId, mp4Bytes)
+user.messages.sendVoice(peerId, oggOpusBytes, duration = 3)
+user.messages.sendVideoNote(peerId, mp4Bytes, duration = 5.0, length = 384)
+user.messages.sendDocument(peerId, pdfBytes, fileName = "a.pdf")
+user.messages.sendGif(peerId, mp4Bytes, fileName = "loop.mp4")
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.

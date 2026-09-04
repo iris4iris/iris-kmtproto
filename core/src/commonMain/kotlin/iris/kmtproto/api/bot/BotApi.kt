@@ -237,6 +237,141 @@ class BotApi(val client: TelegramClient) {
         replyMarkup = replyMarkup,
     )
 
+    fun sendVoiceAsync(
+        chatId: Long,
+        bytes: ByteArray,
+        duration: Int = 0,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVoice(chatId, bytes, duration, caption, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendVoice(
+        chatId: Long,
+        bytes: ByteArray,
+        duration: Int = 0,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendVoice(
+        peerId = chatId,
+        bytes = bytes,
+        duration = duration,
+        caption = caption,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendVideoNoteAsync(
+        chatId: Long,
+        bytes: ByteArray,
+        duration: Double = 0.0,
+        length: Int = 384,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideoNote(chatId, bytes, duration, length, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendVideoNote(
+        chatId: Long,
+        bytes: ByteArray,
+        duration: Double = 0.0,
+        length: Int = 384,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendVideoNote(
+        peerId = chatId,
+        bytes = bytes,
+        duration = duration,
+        length = length,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendDocumentAsync(
+        chatId: Long,
+        bytes: ByteArray,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendDocument(chatId, bytes, fileName, caption, mimeType, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendDocument(
+        chatId: Long,
+        bytes: ByteArray,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendDocument(
+        peerId = chatId,
+        bytes = bytes,
+        fileName = fileName,
+        caption = caption,
+        mimeType = mimeType,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendGifAsync(
+        chatId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendGif(chatId, bytes, caption, fileName, duration, width, height, spoiler, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendGif(
+        chatId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendGif(
+        peerId = chatId,
+        bytes = bytes,
+        caption = caption,
+        fileName = fileName,
+        duration = duration,
+        width = width,
+        height = height,
+        spoiler = spoiler,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     fun incomingMessages(): Flow<BotMessage> =
         client.incomingMessages()
             .filter { !it.out }

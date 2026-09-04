@@ -4,6 +4,9 @@ import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.readLongLe
+import iris.kmtproto.tl.gen.DocumentAttribute
+import iris.kmtproto.tl.gen.DocumentAttributeAnimated
+import iris.kmtproto.tl.gen.DocumentAttributeAudio
 import iris.kmtproto.tl.gen.DocumentAttributeFilename
 import iris.kmtproto.tl.gen.DocumentAttributeVideo
 import iris.kmtproto.tl.gen.InputMedia
@@ -613,6 +616,288 @@ class Messages(private val client: TelegramClient) {
         )
     }
 
+    fun sendVoiceAsync(
+        peer: InputPeer,
+        bytes: ByteArray,
+        duration: Int = 0,
+        fileName: String = "voice.ogg",
+        waveform: ByteArray? = null,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVoice(peer, bytes, duration, fileName, waveform, caption, silent, replyTo, replyMarkup)
+    }
+
+    fun sendVoiceAsync(
+        peerId: Long,
+        bytes: ByteArray,
+        duration: Int = 0,
+        fileName: String = "voice.ogg",
+        waveform: ByteArray? = null,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVoice(peerId, bytes, duration, fileName, waveform, caption, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendVoice(
+        peerId: Long,
+        bytes: ByteArray,
+        duration: Int = 0,
+        fileName: String = "voice.ogg",
+        waveform: ByteArray? = null,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendVoice(
+        client.inputPeerFromId(peerId), bytes, duration, fileName, waveform, caption, silent, replyTo, replyMarkup,
+    )
+
+    suspend fun sendVoice(
+        peer: InputPeer,
+        bytes: ByteArray,
+        duration: Int = 0,
+        fileName: String = "voice.ogg",
+        waveform: ByteArray? = null,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendUploadedDocument(
+        peer = peer,
+        bytes = bytes,
+        fileName = fileName,
+        mimeType = "audio/ogg",
+        attributes = listOf(
+            DocumentAttributeAudio(duration = duration, voice = true, waveform = waveform),
+        ),
+        caption = caption,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendVideoNoteAsync(
+        peer: InputPeer,
+        bytes: ByteArray,
+        duration: Double = 0.0,
+        length: Int = 384,
+        fileName: String = "video_note.mp4",
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideoNote(peer, bytes, duration, length, fileName, thumb, silent, replyTo, replyMarkup)
+    }
+
+    fun sendVideoNoteAsync(
+        peerId: Long,
+        bytes: ByteArray,
+        duration: Double = 0.0,
+        length: Int = 384,
+        fileName: String = "video_note.mp4",
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideoNote(peerId, bytes, duration, length, fileName, thumb, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendVideoNote(
+        peerId: Long,
+        bytes: ByteArray,
+        duration: Double = 0.0,
+        length: Int = 384,
+        fileName: String = "video_note.mp4",
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendVideoNote(
+        client.inputPeerFromId(peerId), bytes, duration, length, fileName, thumb, silent, replyTo, replyMarkup,
+    )
+
+    suspend fun sendVideoNote(
+        peer: InputPeer,
+        bytes: ByteArray,
+        duration: Double = 0.0,
+        length: Int = 384,
+        fileName: String = "video_note.mp4",
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendVideo(
+        peer = peer,
+        bytes = bytes,
+        fileName = fileName,
+        duration = duration,
+        width = length,
+        height = length,
+        thumb = thumb,
+        supportsStreaming = true,
+        roundMessage = true,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendDocumentAsync(
+        peer: InputPeer,
+        bytes: ByteArray,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendDocument(peer, bytes, fileName, caption, mimeType, thumb, silent, replyTo, replyMarkup)
+    }
+
+    fun sendDocumentAsync(
+        peerId: Long,
+        bytes: ByteArray,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendDocument(peerId, bytes, fileName, caption, mimeType, thumb, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendDocument(
+        peerId: Long,
+        bytes: ByteArray,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendDocument(
+        client.inputPeerFromId(peerId), bytes, fileName, caption, mimeType, thumb, silent, replyTo, replyMarkup,
+    )
+
+    suspend fun sendDocument(
+        peer: InputPeer,
+        bytes: ByteArray,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        thumb: ByteArray? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendUploadedDocument(
+        peer = peer,
+        bytes = bytes,
+        fileName = fileName,
+        mimeType = mimeType ?: mimeFromName(fileName),
+        attributes = listOf(DocumentAttributeFilename(fileName)),
+        caption = caption,
+        thumb = thumb,
+        forceFile = true,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendGifAsync(
+        peer: InputPeer,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendGif(peer, bytes, caption, fileName, duration, width, height, thumb, spoiler, silent, replyTo, replyMarkup)
+    }
+
+    fun sendGifAsync(
+        peerId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendGif(peerId, bytes, caption, fileName, duration, width, height, thumb, spoiler, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendGif(
+        peerId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendGif(
+        client.inputPeerFromId(peerId), bytes, caption, fileName, duration, width, height, thumb,
+        spoiler, silent, replyTo, replyMarkup,
+    )
+
+    suspend fun sendGif(
+        peer: InputPeer,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = sendUploadedDocument(
+        peer = peer,
+        bytes = bytes,
+        fileName = fileName,
+        mimeType = if (fileName.endsWith(".gif", ignoreCase = true)) "image/gif" else "video/mp4",
+        attributes = listOf(
+            DocumentAttributeAnimated,
+            DocumentAttributeVideo(duration = duration, w = width, h = height, supportsStreaming = true),
+            DocumentAttributeFilename(fileName),
+        ),
+        caption = caption,
+        thumb = thumb,
+        spoiler = spoiler,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     private suspend fun sendMedia(
         peer: InputPeer,
         media: InputMedia,
@@ -665,12 +950,77 @@ class Messages(private val client: TelegramClient) {
         return SentMessage.from(raw, caption)
     }
 
+    private suspend fun sendUploadedDocument(
+        peer: InputPeer,
+        bytes: ByteArray,
+        fileName: String,
+        mimeType: String,
+        attributes: List<DocumentAttribute>,
+        caption: String = "",
+        thumb: ByteArray? = null,
+        forceFile: Boolean = false,
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage {
+        val upload = Upload(client)
+        val file = upload.saveFile(bytes, fileName)
+        val thumbFile = thumb?.let { upload.saveFile(it, "thumb.jpg") }
+        return sendMedia(
+            peer = peer,
+            media = InputMediaUploadedDocument(
+                file = file,
+                mimeType = mimeType,
+                attributes = attributes,
+                forceFile = forceFile,
+                spoiler = spoiler,
+                thumb = thumbFile,
+                ttlSeconds = ttlSeconds,
+            ),
+            caption = caption,
+            randomId = null,
+            silent = silent,
+            background = false,
+            clearDraft = false,
+            noforwards = false,
+            updateStickersetsOrder = false,
+            invertMedia = false,
+            allowPaidFloodskip = false,
+            replyTo = replyTo,
+            replyMarkup = replyMarkup,
+            entities = null,
+            scheduleDate = null,
+            scheduleRepeatPeriod = null,
+            sendAs = null,
+            sendAsId = null,
+            quickReplyShortcut = null,
+            effect = null,
+            allowPaidStars = null,
+            suggestedPost = null,
+        )
+    }
+
     private fun mimeFromName(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "gif" -> "image/gif"
+        "webp" -> "image/webp"
         "webm" -> "video/webm"
         "mov" -> "video/quicktime"
         "mkv" -> "video/x-matroska"
         "3gp" -> "video/3gpp"
-        else -> "video/mp4"
+        "mp4", "m4v" -> "video/mp4"
+        "ogg", "opus" -> "audio/ogg"
+        "mp3" -> "audio/mpeg"
+        "m4a" -> "audio/mp4"
+        "wav" -> "audio/wav"
+        "pdf" -> "application/pdf"
+        "zip" -> "application/zip"
+        "json" -> "application/json"
+        "txt" -> "text/plain"
+        else -> "application/octet-stream"
     }
 
     private fun nextRandomId(randomId: Long?): Long {
