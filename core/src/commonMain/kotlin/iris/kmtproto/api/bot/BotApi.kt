@@ -7,6 +7,7 @@ import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.Storage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
 import iris.kmtproto.tl.API_LAYER
 import iris.kmtproto.tl.gen.InputPeer
@@ -71,528 +72,92 @@ class BotApi(val client: TelegramClient) {
         return me
     }
 
-    fun sendMessageAsync(
-        chatId: Long,
-        text: String = "",
-        randomId: Long? = null,
-        noWebpage: Boolean = false,
-        silent: Boolean = false,
-        background: Boolean = false,
-        clearDraft: Boolean = false,
-        noforwards: Boolean = false,
-        updateStickersetsOrder: Boolean = false,
-        invertMedia: Boolean = false,
-        allowPaidFloodskip: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-        entities: List<MessageEntity>? = null,
-        scheduleDate: Int? = null,
-        scheduleRepeatPeriod: Int? = null,
-        sendAs: InputPeer? = null,
-        sendAsId: Long? = null,
-        quickReplyShortcut: InputQuickReplyShortcut? = null,
-        effect: Long? = null,
-        allowPaidStars: Long? = null,
-        suggestedPost: SuggestedPost? = null,
-        richMessage: InputRichMessage? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendMessage(
-            chatId, text, randomId, noWebpage, silent, background, clearDraft, noforwards,
-            updateStickersetsOrder, invertMedia, allowPaidFloodskip, replyTo, replyMarkup,
-            entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId, quickReplyShortcut,
-            effect, allowPaidStars, suggestedPost, richMessage,
-        )
-    }
+    fun sendMessageAsync(peer: InputPeer, text: String = "", randomId: Long? = null, noWebpage: Boolean = false, silent: Boolean = false, background: Boolean = false, clearDraft: Boolean = false, noforwards: Boolean = false, updateStickersetsOrder: Boolean = false, invertMedia: Boolean = false, allowPaidFloodskip: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null, entities: List<MessageEntity>? = null, scheduleDate: Int? = null, scheduleRepeatPeriod: Int? = null, sendAs: InputPeer? = null, sendAsId: Long? = null, quickReplyShortcut: InputQuickReplyShortcut? = null, effect: Long? = null, allowPaidStars: Long? = null, suggestedPost: SuggestedPost? = null, richMessage: InputRichMessage? = null): Deferred<SentMessage> =
+        client.apiAsync { sendMessage(peer, text, randomId, noWebpage, silent, background, clearDraft, noforwards, updateStickersetsOrder, invertMedia, allowPaidFloodskip, replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId, quickReplyShortcut, effect, allowPaidStars, suggestedPost, richMessage) }
 
-    suspend fun sendMessage(
-        chatId: Long,
-        text: String = "",
-        randomId: Long? = null,
-        noWebpage: Boolean = false,
-        silent: Boolean = false,
-        background: Boolean = false,
-        clearDraft: Boolean = false,
-        noforwards: Boolean = false,
-        updateStickersetsOrder: Boolean = false,
-        invertMedia: Boolean = false,
-        allowPaidFloodskip: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-        entities: List<MessageEntity>? = null,
-        scheduleDate: Int? = null,
-        scheduleRepeatPeriod: Int? = null,
-        sendAs: InputPeer? = null,
-        sendAsId: Long? = null,
-        quickReplyShortcut: InputQuickReplyShortcut? = null,
-        effect: Long? = null,
-        allowPaidStars: Long? = null,
-        suggestedPost: SuggestedPost? = null,
-        richMessage: InputRichMessage? = null,
-    ): SentMessage = user.messages.send(
-        peerId = chatId,
-        text = text,
-        randomId = randomId,
-        noWebpage = noWebpage,
-        silent = silent,
-        background = background,
-        clearDraft = clearDraft,
-        noforwards = noforwards,
-        updateStickersetsOrder = updateStickersetsOrder,
-        invertMedia = invertMedia,
-        allowPaidFloodskip = allowPaidFloodskip,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-        entities = entities,
-        scheduleDate = scheduleDate,
-        scheduleRepeatPeriod = scheduleRepeatPeriod,
-        sendAs = sendAs,
-        sendAsId = sendAsId,
-        quickReplyShortcut = quickReplyShortcut,
-        effect = effect,
-        allowPaidStars = allowPaidStars,
-        suggestedPost = suggestedPost,
-        richMessage = richMessage,
-    )
+    fun sendMessageAsync(chatId: Long, text: String = "", randomId: Long? = null, noWebpage: Boolean = false, silent: Boolean = false, background: Boolean = false, clearDraft: Boolean = false, noforwards: Boolean = false, updateStickersetsOrder: Boolean = false, invertMedia: Boolean = false, allowPaidFloodskip: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null, entities: List<MessageEntity>? = null, scheduleDate: Int? = null, scheduleRepeatPeriod: Int? = null, sendAs: InputPeer? = null, sendAsId: Long? = null, quickReplyShortcut: InputQuickReplyShortcut? = null, effect: Long? = null, allowPaidStars: Long? = null, suggestedPost: SuggestedPost? = null, richMessage: InputRichMessage? = null): Deferred<SentMessage> =
+        client.apiAsync { sendMessage(client.inputPeerFromId(chatId), text, randomId, noWebpage, silent, background, clearDraft, noforwards, updateStickersetsOrder, invertMedia, allowPaidFloodskip, replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId, quickReplyShortcut, effect, allowPaidStars, suggestedPost, richMessage) }
 
-    fun sendPhotoAsync(
-        chatId: Long,
-        bytes: ByteArray,
-        caption: String = "",
-        fileName: String = "photo.jpg",
-        spoiler: Boolean = false,
-        ttlSeconds: Int? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendPhoto(chatId, bytes, caption, fileName, spoiler, ttlSeconds, silent, replyTo, replyMarkup)
-    }
+    suspend fun sendMessage(chatId: Long, text: String = "", randomId: Long? = null, noWebpage: Boolean = false, silent: Boolean = false, background: Boolean = false, clearDraft: Boolean = false, noforwards: Boolean = false, updateStickersetsOrder: Boolean = false, invertMedia: Boolean = false, allowPaidFloodskip: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null, entities: List<MessageEntity>? = null, scheduleDate: Int? = null, scheduleRepeatPeriod: Int? = null, sendAs: InputPeer? = null, sendAsId: Long? = null, quickReplyShortcut: InputQuickReplyShortcut? = null, effect: Long? = null, allowPaidStars: Long? = null, suggestedPost: SuggestedPost? = null, richMessage: InputRichMessage? = null): SentMessage =
+        sendMessage(client.inputPeerFromId(chatId), text, randomId, noWebpage, silent, background, clearDraft, noforwards, updateStickersetsOrder, invertMedia, allowPaidFloodskip, replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId, quickReplyShortcut, effect, allowPaidStars, suggestedPost, richMessage)
 
-    suspend fun sendPhoto(
-        chatId: Long,
-        bytes: ByteArray,
-        caption: String = "",
-        fileName: String = "photo.jpg",
-        spoiler: Boolean = false,
-        ttlSeconds: Int? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendPhoto(
-        peerId = chatId,
-        bytes = bytes,
-        caption = caption,
-        fileName = fileName,
-        spoiler = spoiler,
-        ttlSeconds = ttlSeconds,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    suspend fun sendMessage(peer: InputPeer, text: String = "", randomId: Long? = null, noWebpage: Boolean = false, silent: Boolean = false, background: Boolean = false, clearDraft: Boolean = false, noforwards: Boolean = false, updateStickersetsOrder: Boolean = false, invertMedia: Boolean = false, allowPaidFloodskip: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null, entities: List<MessageEntity>? = null, scheduleDate: Int? = null, scheduleRepeatPeriod: Int? = null, sendAs: InputPeer? = null, sendAsId: Long? = null, quickReplyShortcut: InputQuickReplyShortcut? = null, effect: Long? = null, allowPaidStars: Long? = null, suggestedPost: SuggestedPost? = null, richMessage: InputRichMessage? = null): SentMessage =
+        user.messages.send(peer, text, randomId, noWebpage, silent, background, clearDraft, noforwards, updateStickersetsOrder, invertMedia, allowPaidFloodskip, replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId, quickReplyShortcut, effect, allowPaidStars, suggestedPost, richMessage)
 
-    fun sendPhotoAsync(
-        chatId: Long,
-        source: ByteSource,
-        caption: String = "",
-        fileName: String = "photo.jpg",
-        spoiler: Boolean = false,
-        ttlSeconds: Int? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendPhoto(chatId, source, caption, fileName, spoiler, ttlSeconds, silent, replyTo, replyMarkup)
-    }
+    fun sendPhotoAsync(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "photo.jpg", spoiler: Boolean = false, ttlSeconds: Int? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendPhoto(peer, source, caption, fileName, spoiler, ttlSeconds, silent, replyTo, replyMarkup) }
 
-    suspend fun sendPhoto(
-        chatId: Long,
-        source: ByteSource,
-        caption: String = "",
-        fileName: String = "photo.jpg",
-        spoiler: Boolean = false,
-        ttlSeconds: Int? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendPhoto(
-        peerId = chatId,
-        source = source,
-        caption = caption,
-        fileName = fileName,
-        spoiler = spoiler,
-        ttlSeconds = ttlSeconds,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    fun sendPhotoAsync(chatId: Long, bytes: ByteArray, caption: String = "", fileName: String = "photo.jpg", spoiler: Boolean = false, ttlSeconds: Int? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendPhoto(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), caption, fileName, spoiler, ttlSeconds, silent, replyTo, replyMarkup) }
 
-    fun sendVideoAsync(
-        chatId: Long,
-        bytes: ByteArray,
-        caption: String = "",
-        fileName: String = "video.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        thumb: ByteArray? = null,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendVideo(
-            chatId, bytes, caption, fileName, duration, width, height, thumb,
-            spoiler, silent, replyTo, replyMarkup,
-        )
-    }
+    suspend fun sendPhoto(chatId: Long, bytes: ByteArray, caption: String = "", fileName: String = "photo.jpg", spoiler: Boolean = false, ttlSeconds: Int? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        sendPhoto(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), caption, fileName, spoiler, ttlSeconds, silent, replyTo, replyMarkup)
 
-    suspend fun sendVideo(
-        chatId: Long,
-        bytes: ByteArray,
-        caption: String = "",
-        fileName: String = "video.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        thumb: ByteArray? = null,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendVideo(
-        peerId = chatId,
-        bytes = bytes,
-        caption = caption,
-        fileName = fileName,
-        duration = duration,
-        width = width,
-        height = height,
-        thumb = thumb,
-        spoiler = spoiler,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    suspend fun sendPhoto(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "photo.jpg", spoiler: Boolean = false, ttlSeconds: Int? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        user.messages.sendPhoto(peer, source, caption, fileName, spoiler, ttlSeconds, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
 
-    fun sendVideoAsync(
-        chatId: Long,
-        source: ByteSource,
-        caption: String = "",
-        fileName: String = "video.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        thumb: ByteSource? = null,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendVideo(chatId, source, caption, fileName, duration, width, height, thumb, spoiler, silent, replyTo, replyMarkup)
-    }
+    fun sendVideoAsync(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "video.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, thumb: ByteSource? = null, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendVideo(peer, source, caption, fileName, duration, width, height, thumb, spoiler, silent, replyTo, replyMarkup) }
 
-    suspend fun sendVideo(
-        chatId: Long,
-        source: ByteSource,
-        caption: String = "",
-        fileName: String = "video.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        thumb: ByteSource? = null,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendVideo(
-        peerId = chatId,
-        source = source,
-        caption = caption,
-        fileName = fileName,
-        duration = duration,
-        width = width,
-        height = height,
-        thumb = thumb,
-        spoiler = spoiler,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    fun sendVideoAsync(chatId: Long, bytes: ByteArray, caption: String = "", fileName: String = "video.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, thumb: ByteArray? = null, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendVideo(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), caption, fileName, duration, width, height, thumb?.let { ByteArrayByteSource(it) }, spoiler, silent, replyTo, replyMarkup) }
 
-    fun sendVoiceAsync(
-        chatId: Long,
-        bytes: ByteArray,
-        duration: Int = 0,
-        caption: String = "",
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendVoice(chatId, bytes, duration, caption, silent, replyTo, replyMarkup)
-    }
+    suspend fun sendVideo(chatId: Long, bytes: ByteArray, caption: String = "", fileName: String = "video.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, thumb: ByteArray? = null, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        sendVideo(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), caption, fileName, duration, width, height, thumb?.let { ByteArrayByteSource(it) }, spoiler, silent, replyTo, replyMarkup)
 
-    suspend fun sendVoice(
-        chatId: Long,
-        bytes: ByteArray,
-        duration: Int = 0,
-        caption: String = "",
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendVoice(
-        peerId = chatId,
-        bytes = bytes,
-        duration = duration,
-        caption = caption,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    suspend fun sendVideo(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "video.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, thumb: ByteSource? = null, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        user.messages.sendVideo(peer, source, caption, fileName, duration = duration, width = width, height = height, thumb = thumb, spoiler = spoiler, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
 
-    fun sendVoiceAsync(
-        chatId: Long,
-        source: ByteSource,
-        duration: Int = 0,
-        caption: String = "",
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendVoice(chatId, source, duration, caption, silent, replyTo, replyMarkup)
-    }
+    fun sendVoiceAsync(peer: InputPeer, source: ByteSource, duration: Int = 0, caption: String = "", silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendVoice(peer, source, duration, caption, silent, replyTo, replyMarkup) }
 
-    suspend fun sendVoice(
-        chatId: Long,
-        source: ByteSource,
-        duration: Int = 0,
-        caption: String = "",
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendVoice(
-        peerId = chatId,
-        source = source,
-        duration = duration,
-        caption = caption,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    fun sendVoiceAsync(chatId: Long, bytes: ByteArray, duration: Int = 0, caption: String = "", silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendVoice(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), duration, caption, silent, replyTo, replyMarkup) }
 
-    fun sendVideoNoteAsync(
-        chatId: Long,
-        bytes: ByteArray,
-        duration: Double = 0.0,
-        length: Int = 384,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendVideoNote(chatId, bytes, duration, length, silent, replyTo, replyMarkup)
-    }
+    suspend fun sendVoice(chatId: Long, bytes: ByteArray, duration: Int = 0, caption: String = "", silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        sendVoice(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), duration, caption, silent, replyTo, replyMarkup)
 
-    suspend fun sendVideoNote(
-        chatId: Long,
-        bytes: ByteArray,
-        duration: Double = 0.0,
-        length: Int = 384,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendVideoNote(
-        peerId = chatId,
-        bytes = bytes,
-        duration = duration,
-        length = length,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    suspend fun sendVoice(peer: InputPeer, source: ByteSource, duration: Int = 0, caption: String = "", silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        user.messages.sendVoice(peer, source, duration, caption = caption, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
 
-    fun sendVideoNoteAsync(
-        chatId: Long,
-        source: ByteSource,
-        duration: Double = 0.0,
-        length: Int = 384,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendVideoNote(chatId, source, duration, length, silent, replyTo, replyMarkup)
-    }
+    fun sendVideoNoteAsync(peer: InputPeer, source: ByteSource, duration: Double = 0.0, length: Int = 384, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendVideoNote(peer, source, duration, length, silent, replyTo, replyMarkup) }
 
-    suspend fun sendVideoNote(
-        chatId: Long,
-        source: ByteSource,
-        duration: Double = 0.0,
-        length: Int = 384,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendVideoNote(
-        peerId = chatId,
-        source = source,
-        duration = duration,
-        length = length,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    fun sendVideoNoteAsync(chatId: Long, bytes: ByteArray, duration: Double = 0.0, length: Int = 384, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendVideoNote(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), duration, length, silent, replyTo, replyMarkup) }
 
-    fun sendDocumentAsync(
-        chatId: Long,
-        bytes: ByteArray,
-        fileName: String,
-        caption: String = "",
-        mimeType: String? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendDocument(chatId, bytes, fileName, caption, mimeType, silent, replyTo, replyMarkup)
-    }
+    suspend fun sendVideoNote(chatId: Long, bytes: ByteArray, duration: Double = 0.0, length: Int = 384, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        sendVideoNote(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), duration, length, silent, replyTo, replyMarkup)
 
-    suspend fun sendDocument(
-        chatId: Long,
-        bytes: ByteArray,
-        fileName: String,
-        caption: String = "",
-        mimeType: String? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendDocument(
-        peerId = chatId,
-        bytes = bytes,
-        fileName = fileName,
-        caption = caption,
-        mimeType = mimeType,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    suspend fun sendVideoNote(peer: InputPeer, source: ByteSource, duration: Double = 0.0, length: Int = 384, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        user.messages.sendVideoNote(peer, source, duration, length, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
 
-    fun sendDocumentAsync(
-        chatId: Long,
-        source: ByteSource,
-        fileName: String,
-        caption: String = "",
-        mimeType: String? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendDocument(chatId, source, fileName, caption, mimeType, silent, replyTo, replyMarkup)
-    }
+    fun sendDocumentAsync(peer: InputPeer, source: ByteSource, fileName: String, caption: String = "", mimeType: String? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendDocument(peer, source, fileName, caption, mimeType, silent, replyTo, replyMarkup) }
 
-    suspend fun sendDocument(
-        chatId: Long,
-        source: ByteSource,
-        fileName: String,
-        caption: String = "",
-        mimeType: String? = null,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendDocument(
-        peerId = chatId,
-        source = source,
-        fileName = fileName,
-        caption = caption,
-        mimeType = mimeType,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    fun sendDocumentAsync(chatId: Long, bytes: ByteArray, fileName: String, caption: String = "", mimeType: String? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendDocument(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), fileName, caption, mimeType, silent, replyTo, replyMarkup) }
 
-    fun sendGifAsync(
-        chatId: Long,
-        bytes: ByteArray,
-        caption: String = "",
-        fileName: String = "animation.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendGif(chatId, bytes, caption, fileName, duration, width, height, spoiler, silent, replyTo, replyMarkup)
-    }
+    suspend fun sendDocument(chatId: Long, bytes: ByteArray, fileName: String, caption: String = "", mimeType: String? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        sendDocument(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), fileName, caption, mimeType, silent, replyTo, replyMarkup)
 
-    suspend fun sendGif(
-        chatId: Long,
-        bytes: ByteArray,
-        caption: String = "",
-        fileName: String = "animation.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendGif(
-        peerId = chatId,
-        bytes = bytes,
-        caption = caption,
-        fileName = fileName,
-        duration = duration,
-        width = width,
-        height = height,
-        spoiler = spoiler,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    suspend fun sendDocument(peer: InputPeer, source: ByteSource, fileName: String, caption: String = "", mimeType: String? = null, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        user.messages.sendDocument(peer, source, fileName, caption, mimeType, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
 
-    fun sendGifAsync(
-        chatId: Long,
-        source: ByteSource,
-        caption: String = "",
-        fileName: String = "animation.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): Deferred<SentMessage> = client.apiAsync {
-        sendGif(chatId, source, caption, fileName, duration, width, height, spoiler, silent, replyTo, replyMarkup)
-    }
+    fun sendGifAsync(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendGif(peer, source, caption, fileName, duration, width, height, spoiler, silent, replyTo, replyMarkup) }
 
-    suspend fun sendGif(
-        chatId: Long,
-        source: ByteSource,
-        caption: String = "",
-        fileName: String = "animation.mp4",
-        duration: Double = 0.0,
-        width: Int = 0,
-        height: Int = 0,
-        spoiler: Boolean = false,
-        silent: Boolean = false,
-        replyTo: InputReplyTo? = null,
-        replyMarkup: ReplyMarkup? = null,
-    ): SentMessage = user.messages.sendGif(
-        peerId = chatId,
-        source = source,
-        caption = caption,
-        fileName = fileName,
-        duration = duration,
-        width = width,
-        height = height,
-        spoiler = spoiler,
-        silent = silent,
-        replyTo = replyTo,
-        replyMarkup = replyMarkup,
-    )
+    fun sendGifAsync(chatId: Long, bytes: ByteArray, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): Deferred<SentMessage> =
+        client.apiAsync { sendGif(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), caption, fileName, duration, width, height, spoiler, silent, replyTo, replyMarkup) }
+
+    suspend fun sendGif(chatId: Long, bytes: ByteArray, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        sendGif(client.inputPeerFromId(chatId), ByteArrayByteSource(bytes), caption, fileName, duration, width, height, spoiler, silent, replyTo, replyMarkup)
+
+    suspend fun sendGif(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): SentMessage =
+        user.messages.sendGif(peer, source, caption, fileName, duration, width, height, spoiler = spoiler, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
 
     fun incomingMessages(): Flow<BotMessage> =
-        client.incomingMessages()
-            .filter { !it.out }
-            .map { it.toBotMessage() }
+        client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
 }
 
 fun MessageCtor.toBotMessage(): BotMessage = BotMessage(
