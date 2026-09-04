@@ -100,7 +100,6 @@ class TelegramClient(
     private var supervisor = SupervisorJob()
     private var scope = CoroutineScope(supervisor + Dispatchers.Default)
     private val channels = ChannelCursors()
-    private var eventQueue = EventChannel<TlObject>(EventChannel.UNLIMITED)
     private var incoming = EventChannel<MessageCtor>(256, BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
     private var catchingChannel: Long? = null
@@ -150,7 +149,6 @@ class TelegramClient(
         updatesState = null
         user = null
         channels.clear()
-        eventQueue = EventChannel(EventChannel.UNLIMITED)
         incoming = EventChannel(256, BufferOverflow.DROP_OLDEST)
         val t = connectObfuscated(currentDc, proxy)
         transport = t
@@ -183,13 +181,6 @@ class TelegramClient(
     private fun startMux() {
         scope.launch { readerLoop() }
         scope.launch {
-            for (e in eventQueue) {
-                runCatching { dispatch(e) }.onFailure {
-                    if (!isDisconnect(it) && it !is CancellationException) logCaught("dispatch", it)
-                }
-            }
-        }
-        scope.launch {
             while (supervisor.isActive) {
                 delay(30_000)
                 runCatching { ping() }.onFailure {
@@ -204,11 +195,13 @@ class TelegramClient(
         while (supervisor.isActive) {
             val conn = connection ?: break
             try {
-                conn.runReader {
+                conn.runReader { obj ->
                     try {
-                        eventQueue.trySend(it)
+                        dispatch(obj)
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
-                        logCaught("eventQueue", e)
+                        if (!isDisconnect(e)) logCaught("dispatch", e)
                     }
                 }
                 break
@@ -391,18 +384,18 @@ class TelegramClient(
         return conn.sendRpc(obj)
     }
 
-    private suspend fun dispatch(obj: TlObject) {
+    private fun dispatch(obj: TlObject) {
         when (obj) {
             is Updates -> dispatchUpdates(obj)
             is UpdateNewMessage -> onCommon(obj.pts, obj.ptsCount, obj.message.asText())
             is UpdateNewChannelMessage -> onChannel(obj)
-            is UpdateChannelTooLong -> catchUpChannel(obj.channelId, obj.pts)
+            is UpdateChannelTooLong -> scheduleCatchUpChannel(obj.channelId, obj.pts)
             is Update -> Unit
             else -> Unit
         }
     }
 
-    private suspend fun dispatchUpdates(raw: Updates) {
+    private fun dispatchUpdates(raw: Updates) {
         when (raw) {
             is UpdateShortSentMessage -> applyCommonPts(raw.pts, raw.ptsCount)
             is UpdateShortMessage -> {
@@ -438,14 +431,14 @@ class TelegramClient(
                     if (st != null) updatesState = st.copy(date = raw.date, seq = raw.seq)
                 }
             }
-            is UpdatesTooLong -> catchUpCommon()
+            is UpdatesTooLong -> scheduleCatchUpCommon()
         }
     }
 
-    private suspend fun onCommon(pts: Int, count: Int, msg: MessageCtor?) {
+    private fun onCommon(pts: Int, count: Int, msg: MessageCtor?) {
         val st = updatesState
         if (st == null) {
-            getState()
+            scheduleCatchUpCommon()
             return
         }
         when {
@@ -454,11 +447,11 @@ class TelegramClient(
                 updatesState = st.copy(pts = pts)
                 if (msg != null) emit(msg)
             }
-            else -> catchUpCommon()
+            else -> scheduleCatchUpCommon()
         }
     }
 
-    private suspend fun onChannel(u: UpdateNewChannelMessage) {
+    private fun onChannel(u: UpdateNewChannelMessage) {
         val msg = u.message.asText() ?: return
         val id = (msg.peerId as? PeerChannel)?.channelId ?: return
         val cur = channels.get(id)
@@ -472,58 +465,79 @@ class TelegramClient(
                 channels.put(id, u.pts)
                 emit(msg)
             }
-            else -> catchUpChannel(id, cur.pts)
+            else -> scheduleCatchUpChannel(id, cur.pts)
+        }
+    }
+
+    private fun scheduleCatchUpCommon() {
+        if (catchingCommon) return
+        catchingCommon = true
+        scope.launch {
+            try {
+                catchUpCommon()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                if (!isDisconnect(e)) logCaught("catch-up", e)
+            } finally {
+                catchingCommon = false
+            }
+        }
+    }
+
+    private fun scheduleCatchUpChannel(channelId: Long, ptsHint: Int?) {
+        if (catchingChannel == channelId) return
+        if (storage.getAccessHash(channelId) == 0L) return
+        catchingChannel = channelId
+        scope.launch {
+            try {
+                catchUpChannel(channelId, ptsHint)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                if (!isDisconnect(e)) logCaught("catch-up-channel", e)
+            } finally {
+                if (catchingChannel == channelId) catchingChannel = null
+            }
         }
     }
 
     private suspend fun catchUpCommon() {
-        if (catchingCommon) return
-        catchingCommon = true
-        try {
-            if (updatesState == null) getState()
-            when (val diff = syncUpdates()) {
-                null -> Unit
-                else -> {
-                    rememberUsers(diff.users)
-                    rememberChats(diff.chats)
-                    incomingTexts(diff).forEach { emit(it) }
-                }
+        if (updatesState == null) getState()
+        when (val diff = syncUpdates()) {
+            null -> Unit
+            else -> {
+                rememberUsers(diff.users)
+                rememberChats(diff.chats)
+                incomingTexts(diff).forEach { emit(it) }
             }
-        } finally {
-            catchingCommon = false
         }
     }
 
     private suspend fun catchUpChannel(channelId: Long, ptsHint: Int?) {
-        if (catchingChannel == channelId) return
         val cur = channels.get(channelId)
         val hash = storage.getAccessHash(channelId)
         if (hash == 0L) return
         val pts = ptsHint ?: cur?.pts ?: return
-        catchingChannel = channelId
-        try {
-            when (
-                val diff = invoke(
-                    UpdatesGetChannelDifference(
-                        channel = InputChannelCtor(channelId, hash),
-                        filter = ChannelMessagesFilterEmpty,
-                        pts = pts,
-                        limit = 100,
-                    ),
-                )
-            ) {
-                is UpdatesChannelDifferenceEmpty -> channels.put(channelId, diff.pts)
-                is UpdatesChannelDifferenceCtor -> {
-                    rememberUsers(diff.users)
-                    rememberChats(diff.chats)
-                    channels.put(channelId, diff.pts)
-                    diff.newMessages.mapNotNull { it.asText() }.forEach { emit(it) }
-                    diff.otherUpdates.forEach { dispatch(it) }
-                }
-                is UpdatesChannelDifferenceTooLong -> channels.remove(channelId)
+        when (
+            val diff = invoke(
+                UpdatesGetChannelDifference(
+                    channel = InputChannelCtor(channelId, hash),
+                    filter = ChannelMessagesFilterEmpty,
+                    pts = pts,
+                    limit = 100,
+                ),
+            )
+        ) {
+            is UpdatesChannelDifferenceEmpty -> channels.put(channelId, diff.pts)
+            is UpdatesChannelDifferenceCtor -> {
+                rememberUsers(diff.users)
+                rememberChats(diff.chats)
+                channels.put(channelId, diff.pts)
+                diff.newMessages.mapNotNull { it.asText() }.forEach { emit(it) }
+                diff.otherUpdates.forEach { dispatch(it) }
             }
-        } finally {
-            catchingChannel = null
+            is UpdatesChannelDifferenceTooLong -> channels.remove(channelId)
         }
     }
 
@@ -586,7 +600,6 @@ class TelegramClient(
         layerInitialized = false
         updatesState = null
         channels.clear()
-        eventQueue.close()
         incoming.close()
     }
 }

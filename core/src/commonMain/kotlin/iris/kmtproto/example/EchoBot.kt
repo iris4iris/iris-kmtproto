@@ -17,21 +17,11 @@ suspend fun runEchoBot(
     val me = bot.client.user?.id ?: error("login() first")
     log("echo on, me=$me pts=${bot.client.updatesState?.pts}")
     bot.incomingMessages().collect { msg ->
-        try {
-            handle(bot, me, msg, log)
-        } catch (e: RpcException) {
-            val wait = e.floodWaitSeconds
-            if (wait != null) {
-                log("FLOOD_WAIT $wait s")
-            } else {
-                log("send failed ${e.code} ${e.message}")
-            }
-            e.printStackTrace()
-        }
+        handle(bot, me, msg, log)
     }
 }
 
-private suspend fun handle(
+private fun handle(
     bot: BotApi,
     me: Long,
     msg: BotMessage,
@@ -41,11 +31,17 @@ private suspend fun handle(
     val text = msg.text.trim()
     if (text.isEmpty()) return
     val reply = if (text.startsWith("/start")) "Echo is on." else text.take(4096)
-    try {
-        val sent = bot.sendMessage(msg.chatId, reply)
-        log("echo #${sent.id} -> chat ${msg.chatId}")
-    } catch (e: RpcException) {
-        log("send failed ${e.code} ${e.message} chat=${msg.chatId}")
-        e.printStackTrace()
+    val d = bot.sendMessageAsync(msg.chatId, reply)
+    d.invokeOnCompletion { e ->
+        if (e != null) {
+            val rpc = e as? RpcException ?: e.cause as? RpcException
+            val wait = rpc?.floodWaitSeconds
+            if (wait != null) log("FLOOD_WAIT $wait s")
+            else log("send failed ${rpc?.code ?: ""} ${e.message} chat=${msg.chatId}")
+            e.printStackTrace()
+        } else {
+            val sent = d.getCompleted()
+            log("echo #${sent.id} -> chat ${msg.chatId}")
+        }
     }
 }
