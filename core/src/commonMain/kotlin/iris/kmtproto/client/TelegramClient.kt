@@ -1,5 +1,6 @@
 package iris.kmtproto.client
 
+import iris.kmtproto.isDisconnect
 import iris.kmtproto.logCaught
 import iris.kmtproto.crypto.AuthKey
 import iris.kmtproto.crypto.PlatformCrypto
@@ -183,13 +184,17 @@ class TelegramClient(
         scope.launch { readerLoop() }
         scope.launch {
             for (e in eventQueue) {
-                runCatching { dispatch(e) }.onFailure { logCaught("dispatch", it) }
+                runCatching { dispatch(e) }.onFailure {
+                    if (!isDisconnect(it) && it !is CancellationException) logCaught("dispatch", it)
+                }
             }
         }
         scope.launch {
             while (supervisor.isActive) {
                 delay(30_000)
-                runCatching { ping() }.onFailure { logCaught("ping", it) }
+                runCatching { ping() }.onFailure {
+                    if (!isDisconnect(it) && it !is CancellationException) logCaught("ping", it)
+                }
             }
         }
     }
@@ -213,7 +218,8 @@ class TelegramClient(
                 delay(backoff)
             } catch (e: Throwable) {
                 if (!supervisor.isActive) break
-                logCaught("reader", e)
+                if (!isDisconnect(e)) logCaught("reader", e)
+                else println("kmtproto [reader] disconnected, reconnecting")
                 runCatching { rebindSocket() }.onFailure { logCaught("rebind", it) }
                 delay(backoff)
                 backoff = (backoff * 2).coerceAtMost(15_000L)
