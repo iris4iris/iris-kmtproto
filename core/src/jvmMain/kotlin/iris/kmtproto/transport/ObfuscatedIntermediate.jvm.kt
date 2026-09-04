@@ -1,3 +1,5 @@
+@file:Suppress("BlockingMethodInNonBlockingContext")
+
 package iris.kmtproto.transport
 
 import iris.kmtproto.crypto.AesCtr

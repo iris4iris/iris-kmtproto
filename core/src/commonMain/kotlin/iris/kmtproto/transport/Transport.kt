@@ -1,5 +1,9 @@
 package iris.kmtproto.transport
 
+/**
+ * Blocking TCP. Call from [iris.kmtproto.client.MuxThreads] read/write,
+ * not from [kotlinx.coroutines.Dispatchers.Default].
+ */
 interface MtprotoTransport {
     suspend fun send(payload: ByteArray)
     suspend fun receive(): ByteArray
