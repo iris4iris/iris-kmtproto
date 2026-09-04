@@ -4,7 +4,10 @@ import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.readLongLe
+import iris.kmtproto.tl.gen.DocumentAttributeFilename
+import iris.kmtproto.tl.gen.DocumentAttributeVideo
 import iris.kmtproto.tl.gen.InputMedia
+import iris.kmtproto.tl.gen.InputMediaUploadedDocument
 import iris.kmtproto.tl.gen.InputMediaUploadedPhoto
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
@@ -371,6 +374,245 @@ class Messages(private val client: TelegramClient) {
         )
     }
 
+    fun sendVideoAsync(
+        peer: InputPeer,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        mimeType: String? = null,
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        supportsStreaming: Boolean = true,
+        roundMessage: Boolean = false,
+        nosound: Boolean = false,
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideo(
+            peer, bytes, caption, fileName, mimeType, duration, width, height, thumb,
+            supportsStreaming, roundMessage, nosound, spoiler, ttlSeconds, randomId, silent,
+            background, clearDraft, noforwards, updateStickersetsOrder, invertMedia,
+            allowPaidFloodskip, replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod,
+            sendAs, sendAsId, quickReplyShortcut, effect, allowPaidStars, suggestedPost,
+        )
+    }
+
+    fun sendVideoAsync(
+        peerId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        mimeType: String? = null,
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        supportsStreaming: Boolean = true,
+        roundMessage: Boolean = false,
+        nosound: Boolean = false,
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideo(
+            peerId, bytes, caption, fileName, mimeType, duration, width, height, thumb,
+            supportsStreaming, roundMessage, nosound, spoiler, ttlSeconds, randomId, silent,
+            background, clearDraft, noforwards, updateStickersetsOrder, invertMedia,
+            allowPaidFloodskip, replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod,
+            sendAs, sendAsId, quickReplyShortcut, effect, allowPaidStars, suggestedPost,
+        )
+    }
+
+    suspend fun sendVideo(
+        peerId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        mimeType: String? = null,
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        supportsStreaming: Boolean = true,
+        roundMessage: Boolean = false,
+        nosound: Boolean = false,
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): SentMessage = sendVideo(
+        peer = client.inputPeerFromId(peerId),
+        bytes = bytes,
+        caption = caption,
+        fileName = fileName,
+        mimeType = mimeType,
+        duration = duration,
+        width = width,
+        height = height,
+        thumb = thumb,
+        supportsStreaming = supportsStreaming,
+        roundMessage = roundMessage,
+        nosound = nosound,
+        spoiler = spoiler,
+        ttlSeconds = ttlSeconds,
+        randomId = randomId,
+        silent = silent,
+        background = background,
+        clearDraft = clearDraft,
+        noforwards = noforwards,
+        updateStickersetsOrder = updateStickersetsOrder,
+        invertMedia = invertMedia,
+        allowPaidFloodskip = allowPaidFloodskip,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+        entities = entities,
+        scheduleDate = scheduleDate,
+        scheduleRepeatPeriod = scheduleRepeatPeriod,
+        sendAs = sendAs,
+        sendAsId = sendAsId,
+        quickReplyShortcut = quickReplyShortcut,
+        effect = effect,
+        allowPaidStars = allowPaidStars,
+        suggestedPost = suggestedPost,
+    )
+
+    suspend fun sendVideo(
+        peer: InputPeer,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        mimeType: String? = null,
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        supportsStreaming: Boolean = true,
+        roundMessage: Boolean = false,
+        nosound: Boolean = false,
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): SentMessage {
+        val upload = Upload(client)
+        val file = upload.saveFile(bytes, fileName)
+        val thumbFile = thumb?.let { upload.saveFile(it, "thumb.jpg") }
+        return sendMedia(
+            peer = peer,
+            media = InputMediaUploadedDocument(
+                file = file,
+                mimeType = mimeType ?: mimeFromName(fileName),
+                attributes = listOf(
+                    DocumentAttributeVideo(
+                        duration = duration,
+                        w = width,
+                        h = height,
+                        roundMessage = roundMessage,
+                        supportsStreaming = supportsStreaming,
+                        nosound = nosound,
+                    ),
+                    DocumentAttributeFilename(fileName),
+                ),
+                spoiler = spoiler,
+                thumb = thumbFile,
+                ttlSeconds = ttlSeconds,
+            ),
+            caption = caption,
+            randomId = randomId,
+            silent = silent,
+            background = background,
+            clearDraft = clearDraft,
+            noforwards = noforwards,
+            updateStickersetsOrder = updateStickersetsOrder,
+            invertMedia = invertMedia,
+            allowPaidFloodskip = allowPaidFloodskip,
+            replyTo = replyTo,
+            replyMarkup = replyMarkup,
+            entities = entities,
+            scheduleDate = scheduleDate,
+            scheduleRepeatPeriod = scheduleRepeatPeriod,
+            sendAs = sendAs,
+            sendAsId = sendAsId,
+            quickReplyShortcut = quickReplyShortcut,
+            effect = effect,
+            allowPaidStars = allowPaidStars,
+            suggestedPost = suggestedPost,
+        )
+    }
+
     private suspend fun sendMedia(
         peer: InputPeer,
         media: InputMedia,
@@ -421,6 +663,14 @@ class Messages(private val client: TelegramClient) {
             ),
         )
         return SentMessage.from(raw, caption)
+    }
+
+    private fun mimeFromName(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "webm" -> "video/webm"
+        "mov" -> "video/quicktime"
+        "mkv" -> "video/x-matroska"
+        "3gp" -> "video/3gpp"
+        else -> "video/mp4"
     }
 
     private fun nextRandomId(randomId: Long?): Long {

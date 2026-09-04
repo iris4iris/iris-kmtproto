@@ -189,6 +189,54 @@ class BotApi(val client: TelegramClient) {
         replyMarkup = replyMarkup,
     )
 
+    fun sendVideoAsync(
+        chatId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideo(
+            chatId, bytes, caption, fileName, duration, width, height, thumb,
+            spoiler, silent, replyTo, replyMarkup,
+        )
+    }
+
+    suspend fun sendVideo(
+        chatId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteArray? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendVideo(
+        peerId = chatId,
+        bytes = bytes,
+        caption = caption,
+        fileName = fileName,
+        duration = duration,
+        width = width,
+        height = height,
+        thumb = thumb,
+        spoiler = spoiler,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     fun incomingMessages(): Flow<BotMessage> =
         client.incomingMessages()
             .filter { !it.out }
