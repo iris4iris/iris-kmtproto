@@ -42,6 +42,7 @@ bot.login(token)
 bot.sendMessage(chatId, "hi")
 bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } }
 client.incomingUpdates().collect { upd -> /* UpdateNewMessage, UpdateUserStatus, … */ }
+client.incomingMessages() // sugar: UpdateNewMessage / UpdateNewChannelMessage → MessageCtor
 
 user.messages.send(peerId, "hi")
 user.messages.send(

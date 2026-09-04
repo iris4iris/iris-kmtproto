@@ -26,6 +26,7 @@ import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.PeerChannel
+import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.UpdateChannelTooLong
@@ -63,10 +64,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.channels.Channel as EventChannel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -103,8 +105,7 @@ class TelegramClient(
     private var scope = CoroutineScope(supervisor + Dispatchers.Default)
     private var apiScope = CoroutineScope(supervisor + Dispatchers.Default)
     private val channels = ChannelCursors()
-    private var incoming = EventChannel<MessageCtor>(256, BufferOverflow.DROP_OLDEST)
-    private var incomingUpdates = EventChannel<Update>(256, BufferOverflow.DROP_OLDEST)
+    private val incomingUpdates = MutableSharedFlow<Update>(extraBufferCapacity = 256, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
     private var catchingChannel: Long? = null
     private val bindMutex = Mutex()
@@ -130,9 +131,9 @@ class TelegramClient(
         )
     }
 
-    fun incomingMessages(): Flow<MessageCtor> = incoming.receiveAsFlow()
+    fun incomingUpdates(): Flow<Update> = incomingUpdates.asSharedFlow()
 
-    fun incomingUpdates(): Flow<Update> = incomingUpdates.receiveAsFlow()
+    fun incomingMessages(): Flow<MessageCtor> = incomingUpdates().mapNotNull { textFromUpdate(it) }
 
     fun accessHash(id: Long): Long = storage.getAccessHash(id)
 
@@ -158,8 +159,6 @@ class TelegramClient(
         updatesState = null
         user = null
         channels.clear()
-        incoming = EventChannel(256, BufferOverflow.DROP_OLDEST)
-        incomingUpdates = EventChannel(256, BufferOverflow.DROP_OLDEST)
         withContext(threads.read) {
             val t = connectObfuscated(currentDc, proxy)
             transport = t
@@ -414,18 +413,38 @@ class TelegramClient(
             is UpdateShortSentMessage -> applyCommonPts(raw.pts, raw.ptsCount)
             is UpdateShortMessage -> {
                 applyCommonPts(raw.pts, raw.ptsCount)
-                emit(
-                    MessageCtor(
-                        id = raw.id,
-                        peerId = PeerUser(raw.userId),
-                        date = raw.date,
-                        message = raw.message,
-                        out = raw.out,
-                        fromId = PeerUser(raw.userId),
+                emitUpdate(
+                    UpdateNewMessage(
+                        message = MessageCtor(
+                            id = raw.id,
+                            peerId = PeerUser(raw.userId),
+                            date = raw.date,
+                            message = raw.message,
+                            out = raw.out,
+                            fromId = PeerUser(raw.userId),
+                        ),
+                        pts = raw.pts,
+                        ptsCount = raw.ptsCount,
                     ),
                 )
             }
-            is UpdateShortChatMessage -> applyCommonPts(raw.pts, raw.ptsCount)
+            is UpdateShortChatMessage -> {
+                applyCommonPts(raw.pts, raw.ptsCount)
+                emitUpdate(
+                    UpdateNewMessage(
+                        message = MessageCtor(
+                            id = raw.id,
+                            peerId = PeerChat(raw.chatId),
+                            date = raw.date,
+                            message = raw.message,
+                            out = raw.out,
+                            fromId = PeerUser(raw.fromId),
+                        ),
+                        pts = raw.pts,
+                        ptsCount = raw.ptsCount,
+                    ),
+                )
+            }
             is UpdateShort -> dispatch(raw.update)
             is UpdatesCtor -> {
                 rememberUsers(raw.users)
@@ -459,7 +478,6 @@ class TelegramClient(
             pts <= st.pts -> Unit
             count > 0 && pts == st.pts + count -> {
                 updatesState = st.updated(pts = pts)
-                if (msg != null) emit(msg)
             }
             else -> scheduleCatchUpCommon()
         }
@@ -472,12 +490,10 @@ class TelegramClient(
         when {
             cur == null || cur.pts == 0 -> {
                 channels.put(id, u.pts)
-                emit(msg)
             }
             u.pts <= cur.pts -> Unit
             u.ptsCount > 0 && u.pts == cur.pts + u.ptsCount -> {
                 channels.put(id, u.pts)
-                emit(msg)
             }
             else -> scheduleCatchUpChannel(id, cur.pts)
         }
@@ -523,7 +539,7 @@ class TelegramClient(
             else -> {
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
-                incomingTexts(diff).forEach { emit(it) }
+                diff.newMessages.mapNotNull { it.asText() }.forEach { emitUpdate(UpdateNewMessage(message = it, pts = 0, ptsCount = 0)) }
                 diff.otherUpdates.forEach { if (it is Update) emitUpdate(it) }
             }
         }
@@ -549,7 +565,7 @@ class TelegramClient(
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
                 channels.put(channelId, diff.pts)
-                diff.newMessages.mapNotNull { it.asText() }.forEach { emit(it) }
+                diff.newMessages.mapNotNull { it.asText() }.forEach { emitUpdate(UpdateNewChannelMessage(message = it, pts = diff.pts, ptsCount = 0)) }
                 diff.otherUpdates.forEach { dispatch(it) }
             }
             is UpdatesChannelDifferenceTooLong -> channels.remove(channelId)
@@ -602,12 +618,8 @@ class TelegramClient(
         if (hash != 0L) storage.putAccessHash(user.id, hash)
     }
 
-    private fun emit(msg: MessageCtor) {
-        incoming.trySend(msg)
-    }
-
     private fun emitUpdate(update: Update) {
-        incomingUpdates.trySend(update)
+        incomingUpdates.tryEmit(update)
     }
 
     suspend fun close() {
@@ -619,8 +631,6 @@ class TelegramClient(
         layerInitialized = false
         updatesState = null
         channels.clear()
-        incoming.close()
-        incomingUpdates.close()
         mux?.close()
         mux = null
     }
