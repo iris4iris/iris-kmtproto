@@ -89,10 +89,7 @@ class HandshakeLiveTest {
         try {
             client.connect()
             bot.login(token)
-            if (accessHash != 0L) client.storage.putAccessHash(
-                if (chatId <= -1_000_000_000_000L) -chatId - 1_000_000_000_000L else chatId,
-                accessHash,
-            )
+            if (accessHash != 0L) client.storage.putAccessHash(chatId, accessHash)
             val sent = bot.sendMessage(chatId, "Iris kMTProto live ${System.currentTimeMillis()}")
             assertTrue(sent.id > 0, "id=${sent.id}")
             assertTrue(sent.date > 0, "date=${sent.date}")
@@ -116,10 +113,7 @@ class HandshakeLiveTest {
         try {
             client.connect()
             bot.login(token)
-            if (accessHash != 0L) client.storage.putAccessHash(
-                if (chatId <= -1_000_000_000_000L) -chatId - 1_000_000_000_000L else chatId,
-                accessHash,
-            )
+            if (accessHash != 0L) client.storage.putAccessHash(chatId, accessHash)
             val before = client.getState()
             assertTrue(before.pts >= 0, "pts=${before.pts}")
             val marker = "Iris kMTProto upd ${System.currentTimeMillis()}"

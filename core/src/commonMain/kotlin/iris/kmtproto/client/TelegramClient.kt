@@ -20,6 +20,7 @@ import iris.kmtproto.tl.RpcResult
 import iris.kmtproto.tl.TlMethod
 import iris.kmtproto.tl.TlObject
 import iris.kmtproto.tl.gen.Channel
+import iris.kmtproto.tl.gen.ChannelForbidden
 import iris.kmtproto.tl.gen.ChannelMessagesFilterEmpty
 import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeer
@@ -145,8 +146,7 @@ class TelegramClient(
     fun inputPeerFromId(peerId: Long): InputPeer = inputPeerFromBotApiId(peerId, hashFor(peerId))
 
     private fun hashFor(peerId: Long): Long = when {
-        peerId > 0L -> accessHash(peerId)
-        peerId <= -1_000_000_000_000L -> accessHash(-(peerId + 1_000_000_000_000L))
+        peerId > 0L || peerId <= -1_000_000_000_000L -> accessHash(peerId)
         else -> 0L
     }
 
@@ -545,7 +545,7 @@ class TelegramClient(
 
     private fun scheduleCatchUpChannel(channelId: Long, ptsHint: Int?) {
         if (catchingChannel == channelId) return
-        if (storage.getAccessHash(channelId) == 0L) return
+        if (storage.getAccessHash(PeerChannel(channelId).botApiChatId()) == 0L) return
         catchingChannel = channelId
         apiScope.launch {
             try {
@@ -575,7 +575,7 @@ class TelegramClient(
 
     private suspend fun catchUpChannel(channelId: Long, ptsHint: Int?) {
         val cur = channels.get(channelId)
-        val hash = storage.getAccessHash(channelId)
+        val hash = storage.getAccessHash(PeerChannel(channelId).botApiChatId())
         if (hash == 0L) return
         val pts = ptsHint ?: cur?.pts ?: return
         when (
@@ -628,11 +628,13 @@ class TelegramClient(
 
     private fun rememberChats(list: List<iris.kmtproto.tl.gen.Chat>) {
         for (obj in list) {
-            if (obj is Channel) {
-                val hash = obj.accessHash
-                if (hash != null) {
-                    storage.putAccessHash(obj.id, hash)
+            when (obj) {
+                is Channel -> {
+                    val hash = obj.accessHash ?: continue
+                    storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), hash)
                 }
+                is ChannelForbidden -> storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), obj.accessHash)
+                else -> Unit
             }
         }
     }

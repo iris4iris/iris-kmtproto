@@ -26,7 +26,7 @@ class SimpleFileStorage(private val file: File) : Storage {
 	override fun putAccessHash(id: Long, hash: Long) {
 		if (hash == 0L) return
 		val res = hashes.put(id, hash) ?: 0L
-		if (res == hash)
+		if (res != hash)
 			updateFile()
 	}
 

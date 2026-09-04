@@ -36,7 +36,7 @@ class StorageTest {
     fun inputPeerFromIdUsesStoredHash() {
         val s = MemoryStorage()
         s.putAccessHash(1001L, 11L)
-        s.putAccessHash(1234567890L, 99L)
+        s.putAccessHash(-1001234567890L, 99L)
         val client = TelegramClient(apiId = 1, apiHash = "x", storage = s)
         val user = client.inputPeerFromId(1001L) as InputPeerUser
         assertEquals(1001L, user.userId)
