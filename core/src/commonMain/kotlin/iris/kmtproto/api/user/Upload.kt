@@ -17,7 +17,8 @@ import kotlinx.coroutines.Deferred
 
 /** `upload.saveFilePart` / `upload.saveBigFilePart`. */
 object Upload {
-    internal const val PART = 512 * 1024L
+    internal const val PART = 512 * 1024
+    internal const val PART_LONG = PART.toLong()
     internal const val BIG_FILE = 10 * 1024 * 1024L
 
     fun saveFileAsync(client: TelegramClient, bytes: ByteArray, name: String): Deferred<InputFile> =
@@ -36,11 +37,11 @@ object Upload {
         val parts = ((size + PART - 1) / PART).toInt()
         val fileId = nextFileId()
         val hasher = if (big) null else Md5Hasher()
-        val buf = ByteArray(PART.toInt())
+        val buf = ByteArray(PART)
         var remaining = size
         var index = 0
         while (remaining > 0L) {
-            val want = minOf(PART, remaining).toInt()
+            val want = minOf(PART_LONG, remaining).toInt()
             var filled = 0
             while (filled < want) {
                 val n = source.read(buf, filled, want - filled)
@@ -48,7 +49,7 @@ object Upload {
                 filled += n
             }
             hasher?.update(buf, 0, filled)
-            val chunk = if (filled.toLong() == PART) buf else buf.copyOf(filled)
+            val chunk = if (filled == PART) buf else buf.copyOf(filled)
             val ok = if (big) {
                 client.invoke(
                     UploadSaveBigFilePart(
