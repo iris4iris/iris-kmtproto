@@ -7,6 +7,7 @@ import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.Storage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.io.ByteSource
 import iris.kmtproto.tl.API_LAYER
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
@@ -189,6 +190,42 @@ class BotApi(val client: TelegramClient) {
         replyMarkup = replyMarkup,
     )
 
+    fun sendPhotoAsync(
+        chatId: Long,
+        source: ByteSource,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendPhoto(chatId, source, caption, fileName, spoiler, ttlSeconds, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendPhoto(
+        chatId: Long,
+        source: ByteSource,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendPhoto(
+        peerId = chatId,
+        source = source,
+        caption = caption,
+        fileName = fileName,
+        spoiler = spoiler,
+        ttlSeconds = ttlSeconds,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     fun sendVideoAsync(
         chatId: Long,
         bytes: ByteArray,
@@ -237,6 +274,51 @@ class BotApi(val client: TelegramClient) {
         replyMarkup = replyMarkup,
     )
 
+    fun sendVideoAsync(
+        chatId: Long,
+        source: ByteSource,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteSource? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideo(chatId, source, caption, fileName, duration, width, height, thumb, spoiler, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendVideo(
+        chatId: Long,
+        source: ByteSource,
+        caption: String = "",
+        fileName: String = "video.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        thumb: ByteSource? = null,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendVideo(
+        peerId = chatId,
+        source = source,
+        caption = caption,
+        fileName = fileName,
+        duration = duration,
+        width = width,
+        height = height,
+        thumb = thumb,
+        spoiler = spoiler,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     fun sendVoiceAsync(
         chatId: Long,
         bytes: ByteArray,
@@ -267,6 +349,36 @@ class BotApi(val client: TelegramClient) {
         replyMarkup = replyMarkup,
     )
 
+    fun sendVoiceAsync(
+        chatId: Long,
+        source: ByteSource,
+        duration: Int = 0,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVoice(chatId, source, duration, caption, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendVoice(
+        chatId: Long,
+        source: ByteSource,
+        duration: Int = 0,
+        caption: String = "",
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendVoice(
+        peerId = chatId,
+        source = source,
+        duration = duration,
+        caption = caption,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     fun sendVideoNoteAsync(
         chatId: Long,
         bytes: ByteArray,
@@ -290,6 +402,36 @@ class BotApi(val client: TelegramClient) {
     ): SentMessage = user.messages.sendVideoNote(
         peerId = chatId,
         bytes = bytes,
+        duration = duration,
+        length = length,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendVideoNoteAsync(
+        chatId: Long,
+        source: ByteSource,
+        duration: Double = 0.0,
+        length: Int = 384,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendVideoNote(chatId, source, duration, length, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendVideoNote(
+        chatId: Long,
+        source: ByteSource,
+        duration: Double = 0.0,
+        length: Int = 384,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendVideoNote(
+        peerId = chatId,
+        source = source,
         duration = duration,
         length = length,
         silent = silent,
@@ -330,6 +472,39 @@ class BotApi(val client: TelegramClient) {
         replyMarkup = replyMarkup,
     )
 
+    fun sendDocumentAsync(
+        chatId: Long,
+        source: ByteSource,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendDocument(chatId, source, fileName, caption, mimeType, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendDocument(
+        chatId: Long,
+        source: ByteSource,
+        fileName: String,
+        caption: String = "",
+        mimeType: String? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendDocument(
+        peerId = chatId,
+        source = source,
+        fileName = fileName,
+        caption = caption,
+        mimeType = mimeType,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     fun sendGifAsync(
         chatId: Long,
         bytes: ByteArray,
@@ -361,6 +536,48 @@ class BotApi(val client: TelegramClient) {
     ): SentMessage = user.messages.sendGif(
         peerId = chatId,
         bytes = bytes,
+        caption = caption,
+        fileName = fileName,
+        duration = duration,
+        width = width,
+        height = height,
+        spoiler = spoiler,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
+    fun sendGifAsync(
+        chatId: Long,
+        source: ByteSource,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendGif(chatId, source, caption, fileName, duration, width, height, spoiler, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendGif(
+        chatId: Long,
+        source: ByteSource,
+        caption: String = "",
+        fileName: String = "animation.mp4",
+        duration: Double = 0.0,
+        width: Int = 0,
+        height: Int = 0,
+        spoiler: Boolean = false,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendGif(
+        peerId = chatId,
+        source = source,
         caption = caption,
         fileName = fileName,
         duration = duration,
