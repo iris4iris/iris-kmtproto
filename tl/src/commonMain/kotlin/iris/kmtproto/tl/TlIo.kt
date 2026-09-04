@@ -88,12 +88,22 @@ class TlWriter {
     }
 }
 
-class TlReader(private val data: ByteArray, private var pos: Int = 0) {
-    val remaining: Int get() = data.size - pos
+class TlReader(
+    private val data: ByteArray,
+    private var pos: Int = 0,
+    private val end: Int = data.size,
+) {
+    init {
+        require(pos >= 0 && end >= pos && end <= data.size) {
+            "TlReader range pos=$pos end=$end size=${data.size}"
+        }
+    }
+
+    val remaining: Int get() = end - pos
     val position: Int get() = pos
 
     fun readByte(): Int {
-        check(pos < data.size) { "eof" }
+        check(pos < end) { "eof" }
         return data[pos++].toInt() and 0xff
     }
 
@@ -116,7 +126,7 @@ class TlReader(private val data: ByteArray, private var pos: Int = 0) {
     fun readDouble(): Double = Double.fromBits(readLong())
 
     fun readRaw(n: Int): ByteArray {
-        check(pos + n <= data.size) { "eof reading $n bytes at $pos / ${data.size}" }
+        check(n >= 0 && pos + n <= end) { "eof reading $n bytes at $pos / $end" }
         val out = data.copyOfRange(pos, pos + n)
         pos += n
         return out

@@ -51,6 +51,21 @@ class TlAndCryptoTest {
     }
 
     @Test
+    fun tlReaderEndIgnoresPadding() {
+        val ping = Ping(99).toBytes()
+        val framed = ByteArray(32) + ping + ByteArray(12) { 0x5a }
+        val back = TlReader(framed, pos = 32, end = 32 + ping.size).readObject() as Ping
+        assertEquals(99L, back.pingId)
+        val tooFar = runCatching {
+            TlReader(framed, pos = 32, end = 32 + ping.size).apply {
+                readObject()
+                readByte()
+            }
+        }
+        assertTrue(tooFar.exceptionOrNull() is IllegalStateException)
+    }
+
+    @Test
     fun reqPqRoundtrip() {
         val nonce = ByteArray(16) { it.toByte() }
         val req = ReqPqMulti(nonce)

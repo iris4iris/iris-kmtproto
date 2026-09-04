@@ -311,11 +311,11 @@ internal class EncryptedConnection(
         val msgId = inner.readLongLe(16)
         val seqNo = inner.readIntLe(24)
         val length = inner.readIntLe(28)
-        val body = inner.copyOfRange(32, 32 + length)
+        require(length >= 0 && 32 + length <= inner.size) { "bad mtproto length=$length inner=${inner.size}" }
         val acks = ArrayList<Long>()
         if (seqNo % 2 == 1) acks += msgId
         val obj = try {
-            TlReader(body).readObject()
+            TlReader(inner, pos = 32, end = 32 + length).readObject()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
