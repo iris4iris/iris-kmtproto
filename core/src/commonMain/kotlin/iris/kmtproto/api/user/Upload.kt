@@ -1,7 +1,10 @@
 package iris.kmtproto.api.user
 
 import iris.kmtproto.client.TelegramClient
+import iris.kmtproto.crypto.Md5Hasher
 import iris.kmtproto.crypto.PlatformCrypto
+import iris.kmtproto.io.ByteArrayByteSource
+import iris.kmtproto.io.ByteSource
 import iris.kmtproto.readLongLe
 import iris.kmtproto.tl.gen.BoolTrue
 import iris.kmtproto.tl.gen.InputFile
@@ -20,16 +23,32 @@ object Upload {
     fun saveFileAsync(client: TelegramClient, bytes: ByteArray, name: String): Deferred<InputFile> =
         client.apiAsync { saveFile(client, bytes, name) }
 
-    suspend fun saveFile(client: TelegramClient, bytes: ByteArray, name: String): InputFile {
-        require(bytes.isNotEmpty()) { "empty file" }
+    fun saveFileAsync(client: TelegramClient, source: ByteSource, name: String): Deferred<InputFile> =
+        client.apiAsync { saveFile(client, source, name) }
+
+    suspend fun saveFile(client: TelegramClient, bytes: ByteArray, name: String): InputFile =
+        ByteArrayByteSource(bytes).use { saveFile(client, it, name) }
+
+    suspend fun saveFile(client: TelegramClient, source: ByteSource, name: String): InputFile {
+        val size = source.size
+        require(size > 0L) { "empty file" }
+        val big = size >= BIG_FILE
+        val parts = ((size + PART - 1) / PART).toInt()
         val fileId = nextFileId()
-        val big = bytes.size >= BIG_FILE
-        val parts = (bytes.size + PART - 1) / PART
-        var offset = 0
+        val hasher = if (big) null else Md5Hasher()
+        val buf = ByteArray(PART)
+        var remaining = size
         var index = 0
-        while (offset < bytes.size) {
-            val end = minOf(offset + PART, bytes.size)
-            val chunk = bytes.copyOfRange(offset, end)
+        while (remaining > 0L) {
+            val want = minOf(PART.toLong(), remaining).toInt()
+            var filled = 0
+            while (filled < want) {
+                val n = source.read(buf, filled, want - filled)
+                check(n > 0) { "unexpected eof at part #$index, expected $size" }
+                filled += n
+            }
+            hasher?.update(buf, 0, filled)
+            val chunk = if (filled == PART) buf else buf.copyOf(filled)
             val ok = if (big) {
                 client.invoke(
                     UploadSaveBigFilePart(
@@ -49,7 +68,7 @@ object Upload {
                 )
             }
             check(ok is BoolTrue) { "saveFilePart #$index failed: $ok" }
-            offset = end
+            remaining -= filled
             index++
         }
         return if (big) {
@@ -59,7 +78,7 @@ object Upload {
                 id = fileId,
                 parts = parts,
                 name = name,
-                md5Checksum = PlatformCrypto.md5(bytes).toHex(),
+                md5Checksum = hasher!!.digest().toHex(),
             )
         }
     }

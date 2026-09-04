@@ -12,6 +12,11 @@ internal expect object PlatformCrypto {
     fun gunzip(data: ByteArray): ByteArray
 }
 
+internal expect class Md5Hasher() {
+    fun update(data: ByteArray, offset: Int, length: Int)
+    fun digest(): ByteArray
+}
+
 internal expect class MpInt {
     fun toUnsignedBytes(): ByteArray
     fun modPow(exp: MpInt, mod: MpInt): MpInt

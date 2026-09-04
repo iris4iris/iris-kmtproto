@@ -48,6 +48,14 @@ internal actual object PlatformCrypto {
         GZIPInputStream(ByteArrayInputStream(data)).use { it.readBytes() }
 }
 
+internal actual class Md5Hasher actual constructor() {
+    private val digest = MessageDigest.getInstance("MD5")
+    actual fun update(data: ByteArray, offset: Int, length: Int) {
+        digest.update(data, offset, length)
+    }
+    actual fun digest(): ByteArray = digest.digest()
+}
+
 internal actual class MpInt(val inner: BigInteger) {
     actual fun toUnsignedBytes(): ByteArray {
         var b = inner.toByteArray()
