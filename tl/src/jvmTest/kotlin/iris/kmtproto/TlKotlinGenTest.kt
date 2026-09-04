@@ -24,7 +24,7 @@ class TlKotlinGenTest {
         assertTrue(files.keys.any { it.startsWith("T_") })
         assertTrue(files.keys.any { it.startsWith("Fn_") })
         val peerFile = files.entries.first { it.value.contains("sealed interface Peer") }.value
-        assertTrue(peerFile.contains("data class PeerUser("), peerFile.take(400))
+        assertTrue(peerFile.contains("class PeerUser("), peerFile.take(400))
         assertTrue(peerFile.contains("override fun serialize(w: TlWriter)"), peerFile.take(600))
     }
 

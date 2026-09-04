@@ -137,7 +137,7 @@ object TlKotlinGen {
             out.appendLine("}")
             return
         }
-        out.appendLine("data class $className(")
+        out.appendLine("class $className(")
         kotlinFields.forEachIndexed { idx, f ->
             val comma = if (idx == kotlinFields.lastIndex) "" else ","
             out.appendLine("    val ${f.name}: ${f.kotlinType}${f.default}$comma")
@@ -174,7 +174,7 @@ object TlKotlinGen {
             out.appendLine("}")
             return
         }
-        out.appendLine("data class $cls(")
+        out.appendLine("class $cls(")
         kotlinFields.forEachIndexed { idx, f ->
             val comma = if (idx == kotlinFields.lastIndex) "" else ","
             out.appendLine("    val ${f.name}: ${f.kotlinType}${f.default}$comma")

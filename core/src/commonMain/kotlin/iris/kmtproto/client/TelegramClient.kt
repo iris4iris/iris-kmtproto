@@ -419,7 +419,7 @@ class TelegramClient(
                 raw.updates.forEach { dispatch(it) }
                 if (raw.seq > 0) {
                     val st = updatesState
-                    if (st != null) updatesState = st.copy(date = raw.date, seq = raw.seq)
+                    if (st != null) updatesState = st.updated(date = raw.date, seq = raw.seq)
                 }
             }
             is UpdatesCombined -> {
@@ -428,7 +428,7 @@ class TelegramClient(
                 raw.updates.forEach { dispatch(it) }
                 if (raw.seq > 0) {
                     val st = updatesState
-                    if (st != null) updatesState = st.copy(date = raw.date, seq = raw.seq)
+                    if (st != null) updatesState = st.updated(date = raw.date, seq = raw.seq)
                 }
             }
             is UpdatesTooLong -> scheduleCatchUpCommon()
@@ -444,7 +444,7 @@ class TelegramClient(
         when {
             pts <= st.pts -> Unit
             count > 0 && pts == st.pts + count -> {
-                updatesState = st.copy(pts = pts)
+                updatesState = st.updated(pts = pts)
                 if (msg != null) emit(msg)
             }
             else -> scheduleCatchUpCommon()
@@ -544,14 +544,14 @@ class TelegramClient(
     private fun applyCommonPts(pts: Int, count: Int) {
         val st = updatesState ?: return
         if (count <= 0) return
-        if (pts == st.pts + count) updatesState = st.copy(pts = pts)
+        if (pts == st.pts + count) updatesState = st.updated(pts = pts)
     }
 
     private fun applyDifference(diff: UpdatesDifference) {
         when (diff) {
             is UpdatesDifferenceEmpty -> {
                 val st = updatesState
-                if (st != null) updatesState = st.copy(date = diff.date, seq = diff.seq)
+                if (st != null) updatesState = st.updated(date = diff.date, seq = diff.seq)
             }
             is UpdatesDifferenceTooLong -> Unit
             is UpdatesDifferenceCtor -> {
@@ -603,6 +603,18 @@ class TelegramClient(
         incoming.close()
     }
 }
+
+private fun UpdatesState.updated(
+    pts: Int = this.pts,
+    date: Int = this.date,
+    seq: Int = this.seq,
+): UpdatesState = UpdatesState(
+    pts = pts,
+    qts = qts,
+    date = date,
+    seq = seq,
+    unreadCount = unreadCount,
+)
 
 internal fun migrateDc(message: String): Int? {
     val match = Regex("(USER|PHONE|NETWORK|STATS)_MIGRATE_(\\d+)").find(message) ?: return null
