@@ -169,7 +169,8 @@ internal class EncryptedConnection(
         val sent = outgoing.trySend(msg)
         if (sent.isFailure) {
             if (deferred != null) pendingMutex.withLock { pending.remove(msg.msgId) }
-            throw sent.exceptionOrNull() ?: IllegalStateException("outgoing closed")
+            val cause = sent.exceptionOrNull()
+            throw IllegalStateException("Socket closed", cause)
         }
         msg.msgId
     }

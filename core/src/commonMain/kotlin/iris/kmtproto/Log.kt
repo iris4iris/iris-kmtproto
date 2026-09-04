@@ -15,6 +15,7 @@ internal fun isDisconnect(e: Throwable): Boolean {
             "SocketTimeoutException",
             "PortUnreachableException",
             "UnresolvedAddressException",
+            "ClosedSendChannelException",
             -> return true
         }
         val m = c.message.orEmpty()
@@ -22,6 +23,7 @@ internal fun isDisconnect(e: Throwable): Boolean {
             m.contains("Connection reset") ||
             m.contains("Socket closed") ||
             m.contains("Connection closed") ||
+            m.contains("Channel was closed") ||
             m.contains("No route to host") ||
             m.contains("Network is unreachable") ||
             m.contains("Host is down")
