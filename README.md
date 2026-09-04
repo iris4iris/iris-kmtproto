@@ -43,6 +43,13 @@ bot.sendMessage(chatId, "hi")
 bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } }
 
 user.messages.send(peerId, "hi")
+user.messages.send(
+    peerId,
+    "hi",
+    silent = true,
+    noWebpage = true,
+    replyTo = InputReplyToMessage(replyToMsgId = 42),
+)
 user.messages.sendAsync(peerId, "hi")  // Deferred
 ```
 

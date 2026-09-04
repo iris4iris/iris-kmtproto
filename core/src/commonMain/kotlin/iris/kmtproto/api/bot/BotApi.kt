@@ -8,10 +8,17 @@ import iris.kmtproto.client.Storage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.tl.API_LAYER
+import iris.kmtproto.tl.gen.InputPeer
+import iris.kmtproto.tl.gen.InputQuickReplyShortcut
+import iris.kmtproto.tl.gen.InputReplyTo
+import iris.kmtproto.tl.gen.InputRichMessage
 import iris.kmtproto.tl.gen.MessageCtor
+import iris.kmtproto.tl.gen.MessageEntity
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
+import iris.kmtproto.tl.gen.ReplyMarkup
+import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
@@ -63,11 +70,88 @@ class BotApi(val client: TelegramClient) {
         return me
     }
 
-    fun sendMessageAsync(chatId: Long, text: String): Deferred<SentMessage> =
-        client.apiAsync { sendMessage(chatId, text) }
+    fun sendMessageAsync(
+        chatId: Long,
+        text: String = "",
+        randomId: Long? = null,
+        noWebpage: Boolean = false,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+        richMessage: InputRichMessage? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendMessage(
+            chatId, text, randomId, noWebpage, silent, background, clearDraft, noforwards,
+            updateStickersetsOrder, invertMedia, allowPaidFloodskip, replyTo, replyMarkup,
+            entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId, quickReplyShortcut,
+            effect, allowPaidStars, suggestedPost, richMessage,
+        )
+    }
 
-    suspend fun sendMessage(chatId: Long, text: String): SentMessage =
-        user.messages.send(client.inputPeerFromId(chatId), text)
+    suspend fun sendMessage(
+        chatId: Long,
+        text: String = "",
+        randomId: Long? = null,
+        noWebpage: Boolean = false,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+        richMessage: InputRichMessage? = null,
+    ): SentMessage = user.messages.send(
+        peerId = chatId,
+        text = text,
+        randomId = randomId,
+        noWebpage = noWebpage,
+        silent = silent,
+        background = background,
+        clearDraft = clearDraft,
+        noforwards = noforwards,
+        updateStickersetsOrder = updateStickersetsOrder,
+        invertMedia = invertMedia,
+        allowPaidFloodskip = allowPaidFloodskip,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+        entities = entities,
+        scheduleDate = scheduleDate,
+        scheduleRepeatPeriod = scheduleRepeatPeriod,
+        sendAs = sendAs,
+        sendAsId = sendAsId,
+        quickReplyShortcut = quickReplyShortcut,
+        effect = effect,
+        allowPaidStars = allowPaidStars,
+        suggestedPost = suggestedPost,
+        richMessage = richMessage,
+    )
 
     fun incomingMessages(): Flow<BotMessage> =
         client.incomingMessages()
