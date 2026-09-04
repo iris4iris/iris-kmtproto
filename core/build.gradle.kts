@@ -30,8 +30,9 @@ tasks.named<Test>("jvmTest") {
         isFailOnNoMatchingTests = true
     }
     testLogging {
-        events("passed", "skipped", "failed")
+        events("passed", "skipped", "failed", "standardOut")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = true
     }
 }
 

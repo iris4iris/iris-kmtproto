@@ -192,7 +192,7 @@ internal class EncryptedConnection(
     private suspend fun readLoop(onEvent: (TlObject) -> Unit) {
         while (true) {
             val (acks, events) = try {
-                receiveUnwrapped()
+                unwrapFrame(transport.receive())
             } catch (e: CancellationException) {
                 failPending(e)
                 throw e
@@ -298,8 +298,7 @@ internal class EncryptedConnection(
         return concat(headerAndBody, PlatformCrypto.randomBytes(pad))
     }
 
-    private suspend fun receiveUnwrapped(): Pair<List<Long>, List<TlObject>> {
-        val frame = transport.receive()
+    internal fun unwrapFrame(frame: ByteArray): Pair<List<Long>, List<TlObject>> {
         require(frame.size >= 24) { "encrypted frame too short" }
         val keyId = frame.readLongLe(0)
         check(keyId == authKey.keyId) { "auth_key_id mismatch" }
