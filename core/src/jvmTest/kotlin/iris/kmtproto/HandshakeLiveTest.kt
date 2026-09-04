@@ -5,7 +5,6 @@ import iris.kmtproto.api.bot.BotApi
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.id
 import iris.kmtproto.client.incomingTexts
-import iris.kmtproto.mtproto.RpcException
 import iris.kmtproto.tl.gen.HelpGetNearestDc
 import iris.kmtproto.tl.gen.UpdatesDifferenceCtor
 import iris.kmtproto.tl.gen.UpdatesDifferenceEmpty
@@ -25,7 +24,7 @@ class HandshakeLiveTest {
             client.connect()
             val key = client.authKey ?: error("no auth key")
             assertEquals(256, key.key.size)
-            val pong = client.ping(42)
+            val pong = client.ping(42).result!!
             assertEquals(42L, pong.pingId)
             assertTrue(pong.msgId != 0L)
         } finally {
@@ -41,15 +40,19 @@ class HandshakeLiveTest {
         try {
             client.connect()
             val nearest = client.invoke(HelpGetNearestDc)
-            assertTrue(nearest.thisDc in 1..5, "thisDc=${nearest.thisDc}")
-            assertTrue(nearest.nearestDc in 1..5, "nearestDc=${nearest.nearestDc}")
-            assertTrue(nearest.country.isNotEmpty())
-        } catch (e: RpcException) {
-            assertTrue(
-                e.message.contains("API_ID_INVALID") ||
-                    e.message.contains("API_ID_PUBLISHED_FLOOD"),
-                "unexpected RPC ${e.code} ${e.message}",
-            )
+            val err = nearest.error
+            if (err != null) {
+                assertTrue(
+                    err.errorMessage.contains("API_ID_INVALID") ||
+                        err.errorMessage.contains("API_ID_PUBLISHED_FLOOD"),
+                    "unexpected RPC ${err.errorCode} ${err.errorMessage}",
+                )
+            } else {
+                val dc = nearest.result!!
+                assertTrue(dc.thisDc in 1..5, "thisDc=${dc.thisDc}")
+                assertTrue(dc.nearestDc in 1..5, "nearestDc=${dc.nearestDc}")
+                assertTrue(dc.country.isNotEmpty())
+            }
         } finally {
             client.close()
         }
@@ -91,8 +94,8 @@ class HandshakeLiveTest {
             bot.login(token)
             if (accessHash != 0L) client.storage.putAccessHash(chatId, accessHash)
             val sent = bot.sendMessage(chatId, "Iris kMTProto live ${System.currentTimeMillis()}")
-            assertTrue(sent.id > 0, "id=${sent.id}")
-            assertTrue(sent.date > 0, "date=${sent.date}")
+            assertTrue(sent.result!!.id > 0, "id=${sent.result?.id} err=${sent.error}")
+            assertTrue(sent.result!!.date > 0, "date=${sent.result!!.date}")
         } finally {
             client.close()
         }

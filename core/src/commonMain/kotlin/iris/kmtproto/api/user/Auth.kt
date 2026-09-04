@@ -4,6 +4,7 @@ import iris.kmtproto.client.ClientSession
 import iris.kmtproto.client.SessionPasswordNeeded
 import iris.kmtproto.client.SignUpRequired
 import iris.kmtproto.client.TelegramClient
+import iris.kmtproto.client.orThrow
 import iris.kmtproto.crypto.PasswordSrp
 import iris.kmtproto.mtproto.RpcException
 import iris.kmtproto.tl.gen.AccountGetPassword
@@ -51,7 +52,7 @@ class Auth(private val client: TelegramClient) {
                 apiHash = client.apiHash,
                 botAuthToken = token,
             ),
-        )
+        ).orThrow()
         return applyAuth(auth)
     }
 
@@ -70,7 +71,7 @@ class Auth(private val client: TelegramClient) {
                 apiHash = client.apiHash,
                 settings = settings,
             ),
-        )
+        ).orThrow()
         when (sent) {
             is AuthSentCodeSuccess -> applyAuth(sent.authorization)
             is AuthSentCodePaymentRequired ->
@@ -85,7 +86,7 @@ class Auth(private val client: TelegramClient) {
         client.apiAsync { resendCode(phone, phoneCodeHash, reason) }
 
     suspend fun resendCode(phone: String, phoneCodeHash: String, reason: String? = null): AuthSentCode =
-        client.invoke(AuthResendCode(phoneNumber = phone, phoneCodeHash = phoneCodeHash, reason = reason))
+        client.invoke(AuthResendCode(phoneNumber = phone, phoneCodeHash = phoneCodeHash, reason = reason)).orThrow()
 
     /**
      * Completes [sendCode]. Throws [SessionPasswordNeeded] if 2FA is on — then [checkPassword].
@@ -95,31 +96,28 @@ class Auth(private val client: TelegramClient) {
         client.apiAsync { signIn(phone, phoneCodeHash, phoneCode) }
 
     suspend fun signIn(phone: String, phoneCodeHash: String, phoneCode: String): User {
-        val auth = try {
-            client.invoke(
-                AuthSignIn(
-                    phoneNumber = phone,
-                    phoneCodeHash = phoneCodeHash,
-                    phoneCode = phoneCode,
-                ),
-            )
-        } catch (e: RpcException) {
-            if (e.message.contains("SESSION_PASSWORD_NEEDED")) {
-                val hint = runCatching { client.invoke(AccountGetPassword).hint }.getOrNull()
-                throw SessionPasswordNeeded(hint)
-            }
-            throw e
+        val r = client.invoke(
+            AuthSignIn(
+                phoneNumber = phone,
+                phoneCodeHash = phoneCodeHash,
+                phoneCode = phoneCode,
+            ),
+        )
+        val err = r.error
+        if (err != null && err.errorMessage.contains("SESSION_PASSWORD_NEEDED")) {
+            val hint = client.invoke(AccountGetPassword).result?.hint
+            throw SessionPasswordNeeded(hint)
         }
-        return applyAuth(auth, phone)
+        return applyAuth(r.orThrow(), phone)
     }
 
     /** Cloud password (2FA) after [SessionPasswordNeeded]. */
     fun checkPasswordAsync(password: String): Deferred<User> = client.apiAsync { checkPassword(password) }
 
     suspend fun checkPassword(password: String): User {
-        val acc = client.invoke(AccountGetPassword)
+        val acc = client.invoke(AccountGetPassword).orThrow()
         val srp = PasswordSrp.check(acc, password)
-        return applyAuth(client.invoke(AuthCheckPassword(password = srp)))
+        return applyAuth(client.invoke(AuthCheckPassword(password = srp)).orThrow())
     }
 
     private fun applyAuth(auth: AuthAuthorization, phone: String = ""): User {

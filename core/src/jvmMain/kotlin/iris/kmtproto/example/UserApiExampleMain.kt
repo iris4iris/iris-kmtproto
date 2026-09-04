@@ -57,7 +57,7 @@ private suspend fun runUserApiExample() {
         val chatId = env("TELEGRAM_CHAT_ID")?.toLongOrNull()
         if (chatId != null) {
             val sent = api.messages.send(chatId, "Iris kMTProto UserApi ${System.currentTimeMillis()}")
-            println("sent id=${sent.id} peer=$chatId")
+            println("sent id=${sent.result?.id} err=${sent.error?.errorMessage} peer=$chatId")
         } else {
             println("TELEGRAM_CHAT_ID not set — skip send")
         }

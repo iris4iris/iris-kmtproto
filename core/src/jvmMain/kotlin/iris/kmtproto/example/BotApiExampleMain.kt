@@ -41,7 +41,7 @@ private suspend fun runBotApiExample() {
         val chatId = env("TELEGRAM_CHAT_ID")?.toLongOrNull()
         if (chatId != null) {
             val sent = bot.sendMessage(chatId, "Iris kMTProto BotApi ${System.currentTimeMillis()}")
-            println("sent id=${sent.id} chat=$chatId")
+            println("sent id=${sent.result?.id} err=${sent.error?.errorMessage} chat=$chatId")
         } else {
             println("TELEGRAM_CHAT_ID not set — skip send")
         }

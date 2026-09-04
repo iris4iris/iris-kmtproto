@@ -41,7 +41,7 @@ Bot API-shaped adapter (still MTProto underneath):
 val bot = BotApi(apiId, apiHash)
 bot.client.connect()
 bot.login(token)
-bot.sendMessage(chatId, "hi")
+bot.sendMessage(chatId, "hi") // RpcResponse<SentMessage>: result / error
 bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } }
 client.incomingUpdates().collect { upd -> /* UpdateNewMessage, UpdateUserStatus, … */ }
 client.incomingMessages() // sugar: UpdateNewMessage / UpdateNewChannelMessage → MessageCtor
@@ -52,6 +52,8 @@ user.contacts.resolve(peerId) // Bot API id, access_hash from storage
 bot.getChat("durov")
 bot.getChat(-1002696504560L)
 bot.getStarGifts()
+
+val r = client.invoke(method) // RpcResponse: result or Telegram RpcError, no throw
 
 user.messages.send(peerId, "hi")
 user.messages.send(

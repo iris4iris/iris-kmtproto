@@ -1,5 +1,6 @@
 package iris.kmtproto.api.user
 
+import iris.kmtproto.client.RpcResponse
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.crypto.Md5Hasher
 import iris.kmtproto.crypto.PlatformCrypto
@@ -21,16 +22,16 @@ object Upload {
     internal const val PART_LONG = PART.toLong()
     internal const val BIG_FILE = 10 * 1024 * 1024L
 
-    fun saveFileAsync(client: TelegramClient, bytes: ByteArray, name: String): Deferred<InputFile> =
+    fun saveFileAsync(client: TelegramClient, bytes: ByteArray, name: String): Deferred<RpcResponse<InputFile>> =
         client.apiAsync { saveFile(client, bytes, name) }
 
-    fun saveFileAsync(client: TelegramClient, source: ByteSource, name: String): Deferred<InputFile> =
+    fun saveFileAsync(client: TelegramClient, source: ByteSource, name: String): Deferred<RpcResponse<InputFile>> =
         client.apiAsync { saveFile(client, source, name) }
 
-    suspend fun saveFile(client: TelegramClient, bytes: ByteArray, name: String): InputFile =
+    suspend fun saveFile(client: TelegramClient, bytes: ByteArray, name: String): RpcResponse<InputFile> =
         saveFile(client, ByteArrayByteSource(bytes), name)
 
-    suspend fun saveFile(client: TelegramClient, source: ByteSource, name: String): InputFile = source.use {
+    suspend fun saveFile(client: TelegramClient, source: ByteSource, name: String): RpcResponse<InputFile> = source.use {
         val size = source.size
         require(size > 0L) { "empty file" }
         val big = size >= BIG_FILE
@@ -68,18 +69,22 @@ object Upload {
                     ),
                 )
             }
-            check(ok is BoolTrue) { "saveFilePart #$index failed: $ok" }
+            if (ok.error != null) return@use RpcResponse(null, ok.error)
+            check(ok.result is BoolTrue) { "saveFilePart #$index failed: ${ok.result}" }
             remaining -= filled
             index++
         }
         if (big) {
-            InputFileBig(id = fileId, parts = parts, name = name)
+            RpcResponse(InputFileBig(id = fileId, parts = parts, name = name), null)
         } else {
-            InputFileCtor(
-                id = fileId,
-                parts = parts,
-                name = name,
-                md5Checksum = hasher!!.digest().toHex(),
+            RpcResponse(
+                InputFileCtor(
+                    id = fileId,
+                    parts = parts,
+                    name = name,
+                    md5Checksum = hasher!!.digest().toHex(),
+                ),
+                null,
             )
         }
     }

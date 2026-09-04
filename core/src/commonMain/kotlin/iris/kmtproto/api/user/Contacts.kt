@@ -1,5 +1,6 @@
 package iris.kmtproto.api.user
 
+import iris.kmtproto.client.RpcResponse
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.tl.gen.ChannelsGetFullChannel
 import iris.kmtproto.tl.gen.ContactsResolveUsername
@@ -14,39 +15,42 @@ import iris.kmtproto.tl.gen.UsersGetFullUser
 import kotlinx.coroutines.Deferred
 
 class Contacts(private val client: TelegramClient) {
-    fun resolveUsernameAsync(username: String, referer: String? = null): Deferred<ContactsResolvedPeer> = client.apiAsync { resolveUsername(username, referer) }
+    fun resolveUsernameAsync(username: String, referer: String? = null): Deferred<RpcResponse<ContactsResolvedPeer>> = client.apiAsync { resolveUsername(username, referer) }
 
-    suspend fun resolveUsername(username: String, referer: String? = null): ContactsResolvedPeer {
+    suspend fun resolveUsername(username: String, referer: String? = null): RpcResponse<ContactsResolvedPeer> {
         val name = stripUsername(username)
         require(name.isNotEmpty()) { "empty username" }
         val raw = client.invoke(ContactsResolveUsername(username = name, referer = referer))
-        client.rememberUsers(raw.users)
-        client.rememberChats(raw.chats)
+        raw.result?.let {
+            client.rememberUsers(it.users)
+            client.rememberChats(it.chats)
+        }
         return raw
     }
 
-    fun resolveAsync(peerId: Long): Deferred<ContactsResolvedPeer> = client.apiAsync { resolve(peerId) }
+    fun resolveAsync(peerId: Long): Deferred<RpcResponse<ContactsResolvedPeer>> = client.apiAsync { resolve(peerId) }
 
-    suspend fun resolve(peerId: Long): ContactsResolvedPeer {
+    suspend fun resolve(peerId: Long): RpcResponse<ContactsResolvedPeer> {
         val hash = client.accessHash(peerId)
         val raw = when {
-            peerId > 0L -> {
-                val full = client.invoke(UsersGetFullUser(InputUserCtor(peerId, hash)))
+            peerId > 0L -> client.invoke(UsersGetFullUser(InputUserCtor(peerId, hash))).map { full ->
                 ContactsResolvedPeer(peer = PeerUser(peerId), chats = full.chats, users = full.users)
             }
             peerId <= -1_000_000_000_000L -> {
                 val channelId = -(peerId + 1_000_000_000_000L)
-                val full = client.invoke(ChannelsGetFullChannel(InputChannelCtor(channelId, hash)))
-                ContactsResolvedPeer(peer = PeerChannel(channelId), chats = full.chats, users = full.users)
+                client.invoke(ChannelsGetFullChannel(InputChannelCtor(channelId, hash))).map { full ->
+                    ContactsResolvedPeer(peer = PeerChannel(channelId), chats = full.chats, users = full.users)
+                }
             }
-            peerId < 0L -> {
-                val full = client.invoke(MessagesGetFullChat(-peerId))
+            peerId < 0L -> client.invoke(MessagesGetFullChat(-peerId)).map { full ->
                 ContactsResolvedPeer(peer = PeerChat(-peerId), chats = full.chats, users = full.users)
             }
             else -> error("peer id 0")
         }
-        client.rememberUsers(raw.users)
-        client.rememberChats(raw.chats)
+        raw.result?.let {
+            client.rememberUsers(it.users)
+            client.rememberChats(it.chats)
+        }
         return raw
     }
 }

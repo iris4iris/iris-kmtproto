@@ -217,10 +217,13 @@ class TelegramClient(
 
     private suspend fun pingOpen(link: SocketLink) {
         if (!link.isBound) return
-        runCatching { invokeRaw(link, Ping(PlatformCrypto.randomBytes(8).readLongLe())) }.onFailure {
-            if (it.message == "call connect() first") return@onFailure
+        val r = runCatching { invokeRaw(link, Ping(PlatformCrypto.randomBytes(8).readLongLe())) }.getOrElse {
+            if (it.message == "call connect() first") return
             if (!isDisconnect(it) && it !is CancellationException) logCaught("${link.name}-ping", it)
+            return
         }
+        val err = r.error ?: return
+        if (err.errorMessage.contains("FLOOD_WAIT")) logCaught("${link.name}-ping", RpcException(err.errorCode, err.errorMessage))
     }
 
     private suspend fun rebindLink(link: SocketLink) {
@@ -270,10 +273,10 @@ class TelegramClient(
         link
     }
 
-    fun pingAsync(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Deferred<Pong> =
+    fun pingAsync(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Deferred<RpcResponse<Pong>> =
         apiAsync { ping(pingId) }
 
-    suspend fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): Pong {
+    suspend fun ping(pingId: Long = PlatformCrypto.randomBytes(8).readLongLe()): RpcResponse<Pong> {
         val link = updatesLink ?: error("call connect() first")
         return invokeRaw(link, Ping(pingId))
     }
@@ -281,7 +284,7 @@ class TelegramClient(
     fun getStateAsync(): Deferred<UpdatesState> = apiAsync { getState() }
 
     suspend fun getState(): UpdatesState {
-        val state = invoke(UpdatesGetState)
+        val state = invoke(UpdatesGetState).orThrow()
         updatesState = state
         return state
     }
@@ -304,7 +307,7 @@ class TelegramClient(
                 date = date ?: st?.date ?: 0,
                 qts = qts ?: st?.qts ?: 0,
             ),
-        )
+        ).orThrow()
         applyDifference(diff)
         return diff
     }
@@ -353,12 +356,12 @@ class TelegramClient(
         return UpdatesDifferenceCtor(messages, encrypted, updates, chats, users, state)
     }
 
-    fun <T : TlObject> invokeAsync(method: TlMethod<T>): Deferred<T> = apiAsync { invoke(method) }
+    fun <T : TlObject> invokeAsync(method: TlMethod<T>): Deferred<RpcResponse<T>> = apiAsync { invoke(method) }
 
     internal fun <T> apiAsync(block: suspend () -> T): Deferred<T> =
         apiScope.async { block() }
 
-    suspend fun <T : TlObject> invoke(method: TlMethod<T>): T {
+    suspend fun <T : TlObject> invoke(method: TlMethod<T>): RpcResponse<T> {
         val link = when {
             isUpdatesMethod(method) -> updatesLink ?: error("call connect() first")
             isMediaMethod(method) -> ensureMedia()
@@ -366,16 +369,16 @@ class TelegramClient(
         }
         if (link === mediaLink) mediaLastUse = PlatformCrypto.currentTimeMillis()
         val wrapped = wrapFor(link, method)
-        return try {
-            val result = invokeRaw(link, wrapped)
-            link.layerReady = true
-            result
-        } catch (e: RpcException) {
-            val migrateTo = migrateDc(e.message)
-            if (migrateTo == null || migrateTo == currentDc.id) throw e
+        val result = invokeRaw(link, wrapped)
+        val err = result.error
+        if (err != null) {
+            val migrateTo = migrateDc(err.errorMessage)
+            if (migrateTo == null || migrateTo == currentDc.id) return result
             connect(Datacenter.production(migrateTo))
-            invoke(method)
+            return invoke(method)
         }
+        link.layerReady = true
+        return result
     }
 
     private fun <T : TlObject> wrapFor(link: SocketLink, method: TlMethod<T>): TlMethod<T> {
@@ -406,18 +409,18 @@ class TelegramClient(
             method is UploadGetWebFile ||
             method is UploadGetCdnFile
 
-    private suspend fun <T : TlObject> invokeRaw(link: SocketLink, method: TlMethod<T>): T {
+    private suspend fun <T : TlObject> invokeRaw(link: SocketLink, method: TlMethod<T>): RpcResponse<T> {
         when (val raw = link.sendRpc(method)) {
-            is RpcError -> throw RpcException(raw.errorCode, raw.errorMessage)
+            is RpcError -> return RpcResponse(null, raw)
             is RpcResult -> {
                 val r = raw.result
-                if (r is RpcError) throw RpcException(r.errorCode, r.errorMessage)
+                if (r is RpcError) return RpcResponse(null, r)
                 @Suppress("UNCHECKED_CAST")
-                return r as T
+                return RpcResponse(r as T, null)
             }
             is Pong -> {
                 @Suppress("UNCHECKED_CAST")
-                return raw as T
+                return RpcResponse(raw as T, null)
             }
             is BadServerSalt -> return invokeRaw(link, method)
             is BadMsgNotification -> error("bad_msg_notification code=${raw.errorCode} msg=${raw.badMsgId}")
@@ -578,16 +581,16 @@ class TelegramClient(
         val hash = storage.getAccessHash(PeerChannel(channelId).botApiChatId())
         if (hash == 0L) return
         val pts = ptsHint ?: cur?.pts ?: return
-        when (
-            val diff = invoke(
-                UpdatesGetChannelDifference(
-                    channel = InputChannelCtor(channelId, hash),
-                    filter = ChannelMessagesFilterEmpty,
-                    pts = pts,
-                    limit = 100,
-                ),
-            )
-        ) {
+        val r = invoke(
+            UpdatesGetChannelDifference(
+                channel = InputChannelCtor(channelId, hash),
+                filter = ChannelMessagesFilterEmpty,
+                pts = pts,
+                limit = 100,
+            ),
+        )
+        when (val diff = r.result) {
+            null -> return
             is UpdatesChannelDifferenceEmpty -> channels.put(channelId, diff.pts)
             is UpdatesChannelDifferenceCtor -> {
                 rememberUsers(diff.users)

@@ -2,8 +2,8 @@ package iris.kmtproto.example
 
 import iris.kmtproto.api.bot.BotApi
 import iris.kmtproto.api.bot.BotMessage
+import iris.kmtproto.client.floodWaitSeconds
 import iris.kmtproto.client.id
-import iris.kmtproto.mtproto.RpcException
 import kotlinx.coroutines.flow.collect
 
 /**
@@ -34,14 +34,18 @@ private fun handle(
     val d = bot.sendMessageAsync(msg.chatId, reply)
     d.invokeOnCompletion { e ->
         if (e != null) {
-            val rpc = e as? RpcException ?: e.cause as? RpcException
-            val wait = rpc?.floodWaitSeconds
-            if (wait != null) log("FLOOD_WAIT $wait s")
-            else log("send failed ${rpc?.code ?: ""} ${e.message} chat=${msg.chatId}")
+            log("send failed ${e.message} chat=${msg.chatId}")
             e.printStackTrace()
+            return@invokeOnCompletion
+        }
+        val r = d.getCompleted()
+        val err = r.error
+        if (err != null) {
+            val wait = err.floodWaitSeconds
+            if (wait != null) log("FLOOD_WAIT $wait s")
+            else log("send failed ${err.errorCode} ${err.errorMessage} chat=${msg.chatId}")
         } else {
-            val sent = d.getCompleted()
-            log("echo #${sent.id} -> chat ${msg.chatId}")
+            log("echo #${r.result!!.id} -> chat ${msg.chatId}")
         }
     }
 }
