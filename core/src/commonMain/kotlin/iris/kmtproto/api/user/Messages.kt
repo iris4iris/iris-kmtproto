@@ -23,7 +23,10 @@ import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
 import kotlinx.coroutines.Deferred
 
-class Messages(private val client: TelegramClient) {
+class Messages(
+    private val client: TelegramClient,
+    private val upload: Upload,
+) {
     fun sendAsync(
         peer: InputPeer,
         text: String = "",
@@ -346,7 +349,7 @@ class Messages(private val client: TelegramClient) {
         allowPaidStars: Long? = null,
         suggestedPost: SuggestedPost? = null,
     ): SentMessage {
-        val file = Upload(client).saveFile(bytes, fileName)
+        val file = upload.saveFile(bytes, fileName)
         return sendMedia(
             peer = peer,
             media = InputMediaUploadedPhoto(
@@ -570,7 +573,6 @@ class Messages(private val client: TelegramClient) {
         allowPaidStars: Long? = null,
         suggestedPost: SuggestedPost? = null,
     ): SentMessage {
-        val upload = Upload(client)
         val file = upload.saveFile(bytes, fileName)
         val thumbFile = thumb?.let { upload.saveFile(it, "thumb.jpg") }
         return sendMedia(
@@ -965,7 +967,6 @@ class Messages(private val client: TelegramClient) {
         replyTo: InputReplyTo? = null,
         replyMarkup: ReplyMarkup? = null,
     ): SentMessage {
-        val upload = Upload(client)
         val file = upload.saveFile(bytes, fileName)
         val thumbFile = thumb?.let { upload.saveFile(it, "thumb.jpg") }
         return sendMedia(
