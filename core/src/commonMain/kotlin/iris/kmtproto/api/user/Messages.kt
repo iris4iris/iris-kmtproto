@@ -4,11 +4,14 @@ import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.readLongLe
+import iris.kmtproto.tl.gen.InputMedia
+import iris.kmtproto.tl.gen.InputMediaUploadedPhoto
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
 import iris.kmtproto.tl.gen.InputReplyTo
 import iris.kmtproto.tl.gen.InputRichMessage
 import iris.kmtproto.tl.gen.MessageEntity
+import iris.kmtproto.tl.gen.MessagesSendMedia
 import iris.kmtproto.tl.gen.MessagesSendMessage
 import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
@@ -184,6 +187,240 @@ class Messages(private val client: TelegramClient) {
             ),
         )
         return SentMessage.from(raw, text)
+    }
+
+    fun sendPhotoAsync(
+        peer: InputPeer,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendPhoto(
+            peer, bytes, caption, fileName, spoiler, ttlSeconds, randomId, silent, background,
+            clearDraft, noforwards, updateStickersetsOrder, invertMedia, allowPaidFloodskip,
+            replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId,
+            quickReplyShortcut, effect, allowPaidStars, suggestedPost,
+        )
+    }
+
+    fun sendPhotoAsync(
+        peerId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendPhoto(
+            peerId, bytes, caption, fileName, spoiler, ttlSeconds, randomId, silent, background,
+            clearDraft, noforwards, updateStickersetsOrder, invertMedia, allowPaidFloodskip,
+            replyTo, replyMarkup, entities, scheduleDate, scheduleRepeatPeriod, sendAs, sendAsId,
+            quickReplyShortcut, effect, allowPaidStars, suggestedPost,
+        )
+    }
+
+    suspend fun sendPhoto(
+        peerId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): SentMessage = sendPhoto(
+        peer = client.inputPeerFromId(peerId),
+        bytes = bytes,
+        caption = caption,
+        fileName = fileName,
+        spoiler = spoiler,
+        ttlSeconds = ttlSeconds,
+        randomId = randomId,
+        silent = silent,
+        background = background,
+        clearDraft = clearDraft,
+        noforwards = noforwards,
+        updateStickersetsOrder = updateStickersetsOrder,
+        invertMedia = invertMedia,
+        allowPaidFloodskip = allowPaidFloodskip,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+        entities = entities,
+        scheduleDate = scheduleDate,
+        scheduleRepeatPeriod = scheduleRepeatPeriod,
+        sendAs = sendAs,
+        sendAsId = sendAsId,
+        quickReplyShortcut = quickReplyShortcut,
+        effect = effect,
+        allowPaidStars = allowPaidStars,
+        suggestedPost = suggestedPost,
+    )
+
+    suspend fun sendPhoto(
+        peer: InputPeer,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        randomId: Long? = null,
+        silent: Boolean = false,
+        background: Boolean = false,
+        clearDraft: Boolean = false,
+        noforwards: Boolean = false,
+        updateStickersetsOrder: Boolean = false,
+        invertMedia: Boolean = false,
+        allowPaidFloodskip: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+        entities: List<MessageEntity>? = null,
+        scheduleDate: Int? = null,
+        scheduleRepeatPeriod: Int? = null,
+        sendAs: InputPeer? = null,
+        sendAsId: Long? = null,
+        quickReplyShortcut: InputQuickReplyShortcut? = null,
+        effect: Long? = null,
+        allowPaidStars: Long? = null,
+        suggestedPost: SuggestedPost? = null,
+    ): SentMessage {
+        val file = Upload(client).saveFile(bytes, fileName)
+        return sendMedia(
+            peer = peer,
+            media = InputMediaUploadedPhoto(
+                file = file,
+                spoiler = spoiler,
+                ttlSeconds = ttlSeconds,
+            ),
+            caption = caption,
+            randomId = randomId,
+            silent = silent,
+            background = background,
+            clearDraft = clearDraft,
+            noforwards = noforwards,
+            updateStickersetsOrder = updateStickersetsOrder,
+            invertMedia = invertMedia,
+            allowPaidFloodskip = allowPaidFloodskip,
+            replyTo = replyTo,
+            replyMarkup = replyMarkup,
+            entities = entities,
+            scheduleDate = scheduleDate,
+            scheduleRepeatPeriod = scheduleRepeatPeriod,
+            sendAs = sendAs,
+            sendAsId = sendAsId,
+            quickReplyShortcut = quickReplyShortcut,
+            effect = effect,
+            allowPaidStars = allowPaidStars,
+            suggestedPost = suggestedPost,
+        )
+    }
+
+    private suspend fun sendMedia(
+        peer: InputPeer,
+        media: InputMedia,
+        caption: String,
+        randomId: Long?,
+        silent: Boolean,
+        background: Boolean,
+        clearDraft: Boolean,
+        noforwards: Boolean,
+        updateStickersetsOrder: Boolean,
+        invertMedia: Boolean,
+        allowPaidFloodskip: Boolean,
+        replyTo: InputReplyTo?,
+        replyMarkup: ReplyMarkup?,
+        entities: List<MessageEntity>?,
+        scheduleDate: Int?,
+        scheduleRepeatPeriod: Int?,
+        sendAs: InputPeer?,
+        sendAsId: Long?,
+        quickReplyShortcut: InputQuickReplyShortcut?,
+        effect: Long?,
+        allowPaidStars: Long?,
+        suggestedPost: SuggestedPost?,
+    ): SentMessage {
+        val raw = client.invoke(
+            MessagesSendMedia(
+                peer = peer,
+                media = media,
+                message = caption,
+                randomId = nextRandomId(randomId),
+                silent = silent,
+                background = background,
+                clearDraft = clearDraft,
+                noforwards = noforwards,
+                updateStickersetsOrder = updateStickersetsOrder,
+                invertMedia = invertMedia,
+                allowPaidFloodskip = allowPaidFloodskip,
+                replyTo = replyTo,
+                replyMarkup = replyMarkup,
+                entities = entities,
+                scheduleDate = scheduleDate,
+                scheduleRepeatPeriod = scheduleRepeatPeriod,
+                sendAs = sendAs ?: sendAsId?.let { client.inputPeerFromId(it) },
+                quickReplyShortcut = quickReplyShortcut,
+                effect = effect,
+                allowPaidStars = allowPaidStars,
+                suggestedPost = suggestedPost,
+            ),
+        )
+        return SentMessage.from(raw, caption)
     }
 
     private fun nextRandomId(randomId: Long?): Long {

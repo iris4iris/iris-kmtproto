@@ -153,6 +153,42 @@ class BotApi(val client: TelegramClient) {
         richMessage = richMessage,
     )
 
+    fun sendPhotoAsync(
+        chatId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): Deferred<SentMessage> = client.apiAsync {
+        sendPhoto(chatId, bytes, caption, fileName, spoiler, ttlSeconds, silent, replyTo, replyMarkup)
+    }
+
+    suspend fun sendPhoto(
+        chatId: Long,
+        bytes: ByteArray,
+        caption: String = "",
+        fileName: String = "photo.jpg",
+        spoiler: Boolean = false,
+        ttlSeconds: Int? = null,
+        silent: Boolean = false,
+        replyTo: InputReplyTo? = null,
+        replyMarkup: ReplyMarkup? = null,
+    ): SentMessage = user.messages.sendPhoto(
+        peerId = chatId,
+        bytes = bytes,
+        caption = caption,
+        fileName = fileName,
+        spoiler = spoiler,
+        ttlSeconds = ttlSeconds,
+        silent = silent,
+        replyTo = replyTo,
+        replyMarkup = replyMarkup,
+    )
+
     fun incomingMessages(): Flow<BotMessage> =
         client.incomingMessages()
             .filter { !it.out }

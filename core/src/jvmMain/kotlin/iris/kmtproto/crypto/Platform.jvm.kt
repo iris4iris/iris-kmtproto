@@ -18,6 +18,9 @@ internal actual object PlatformCrypto {
     actual fun sha256(data: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA-256").digest(data)
 
+    actual fun md5(data: ByteArray): ByteArray =
+        MessageDigest.getInstance("MD5").digest(data)
+
     actual fun hmacSha512(key: ByteArray, data: ByteArray): ByteArray {
         val mac = Mac.getInstance("HmacSHA512")
         val specKey = if (key.isEmpty()) ByteArray(128) else key

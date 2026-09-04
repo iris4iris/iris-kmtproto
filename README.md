@@ -51,6 +51,8 @@ user.messages.send(
     replyTo = InputReplyToMessage(replyToMsgId = 42),
 )
 user.messages.sendAsync(peerId, "hi")  // Deferred
+user.messages.sendPhoto(peerId, jpegBytes, caption = "hi", fileName = "cat.jpg")
+bot.sendPhoto(chatId, jpegBytes, caption = "hi")
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.

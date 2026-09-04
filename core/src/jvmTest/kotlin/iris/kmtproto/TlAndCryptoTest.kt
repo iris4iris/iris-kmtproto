@@ -96,6 +96,11 @@ class TlAndCryptoTest {
     }
 
     @Test
+    fun md5EmptyIsRfc() {
+        assertEquals("d41d8cd98f00b204e9800998ecf8427e", PlatformCrypto.md5(ByteArray(0)).toHex())
+    }
+
+    @Test
     fun aesIgeDecryptsSlice() {
         val key = PlatformCrypto.randomBytes(32)
         val iv = PlatformCrypto.randomBytes(32)
