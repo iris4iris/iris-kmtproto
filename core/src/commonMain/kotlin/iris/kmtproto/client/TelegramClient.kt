@@ -104,6 +104,7 @@ class TelegramClient(
     private var apiScope = CoroutineScope(supervisor + Dispatchers.Default)
     private val channels = ChannelCursors()
     private var incoming = EventChannel<MessageCtor>(256, BufferOverflow.DROP_OLDEST)
+    private var incomingUpdates = EventChannel<Update>(256, BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
     private var catchingChannel: Long? = null
     private val bindMutex = Mutex()
@@ -131,6 +132,8 @@ class TelegramClient(
 
     fun incomingMessages(): Flow<MessageCtor> = incoming.receiveAsFlow()
 
+    fun incomingUpdates(): Flow<Update> = incomingUpdates.receiveAsFlow()
+
     fun accessHash(id: Long): Long = storage.getAccessHash(id)
 
     /** Bot-API chat id → [InputPeer], access_hash from [storage]. */
@@ -156,6 +159,7 @@ class TelegramClient(
         user = null
         channels.clear()
         incoming = EventChannel(256, BufferOverflow.DROP_OLDEST)
+        incomingUpdates = EventChannel(256, BufferOverflow.DROP_OLDEST)
         withContext(threads.read) {
             val t = connectObfuscated(currentDc, proxy)
             transport = t
@@ -395,12 +399,12 @@ class TelegramClient(
     }
 
     private fun dispatch(obj: TlObject) {
+        if (obj is Update) emitUpdate(obj)
         when (obj) {
             is Updates -> dispatchUpdates(obj)
             is UpdateNewMessage -> onCommon(obj.pts, obj.ptsCount, obj.message.asText())
             is UpdateNewChannelMessage -> onChannel(obj)
             is UpdateChannelTooLong -> scheduleCatchUpChannel(obj.channelId, obj.pts)
-            is Update -> Unit
             else -> Unit
         }
     }
@@ -520,6 +524,7 @@ class TelegramClient(
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
                 incomingTexts(diff).forEach { emit(it) }
+                diff.otherUpdates.forEach { if (it is Update) emitUpdate(it) }
             }
         }
     }
@@ -601,6 +606,10 @@ class TelegramClient(
         incoming.trySend(msg)
     }
 
+    private fun emitUpdate(update: Update) {
+        incomingUpdates.trySend(update)
+    }
+
     suspend fun close() {
         supervisor.cancel()
         connection?.failPending(CancellationException("closed"))
@@ -611,6 +620,7 @@ class TelegramClient(
         updatesState = null
         channels.clear()
         incoming.close()
+        incomingUpdates.close()
         mux?.close()
         mux = null
     }

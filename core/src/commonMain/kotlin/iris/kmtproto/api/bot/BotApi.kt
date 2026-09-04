@@ -21,6 +21,7 @@ import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
+import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
@@ -158,6 +159,8 @@ class BotApi(val client: TelegramClient) {
 
     fun incomingMessages(): Flow<BotMessage> =
         client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
+
+    fun incomingUpdates(): Flow<Update> = client.incomingUpdates()
 }
 
 fun MessageCtor.toBotMessage(): BotMessage = BotMessage(

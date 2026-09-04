@@ -41,6 +41,7 @@ bot.client.connect()
 bot.login(token)
 bot.sendMessage(chatId, "hi")
 bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } }
+client.incomingUpdates().collect { upd -> /* UpdateNewMessage, UpdateUserStatus, … */ }
 
 user.messages.send(peerId, "hi")
 user.messages.send(
