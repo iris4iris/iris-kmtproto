@@ -2,8 +2,7 @@ package iris.kmtproto.io
 
 /**
  * Sequential bytes with known [size]. Blocking [read].
- * [saveFile][iris.kmtproto.api.user.Upload.saveFile] consumes and does not close;
- * caller uses [use] for files.
+ * [Upload.saveFile][iris.kmtproto.api.user.Upload.saveFile] reads to EOF and closes.
  */
 interface ByteSource : AutoCloseable {
     val size: Long

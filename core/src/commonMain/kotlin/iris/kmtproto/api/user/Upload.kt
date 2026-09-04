@@ -27,9 +27,9 @@ object Upload {
         client.apiAsync { saveFile(client, source, name) }
 
     suspend fun saveFile(client: TelegramClient, bytes: ByteArray, name: String): InputFile =
-        ByteArrayByteSource(bytes).use { saveFile(client, it, name) }
+        saveFile(client, ByteArrayByteSource(bytes), name)
 
-    suspend fun saveFile(client: TelegramClient, source: ByteSource, name: String): InputFile {
+    suspend fun saveFile(client: TelegramClient, source: ByteSource, name: String): InputFile = source.use {
         val size = source.size
         require(size > 0L) { "empty file" }
         val big = size >= BIG_FILE
@@ -71,7 +71,7 @@ object Upload {
             remaining -= filled
             index++
         }
-        return if (big) {
+        if (big) {
             InputFileBig(id = fileId, parts = parts, name = name)
         } else {
             InputFileCtor(
