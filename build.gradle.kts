@@ -18,6 +18,6 @@ tasks.register("generateTl") {
 
 tasks.register("jvmRun") {
     group = "application"
-    description = "Echo bot — delegates to :core:jvmRun"
-    dependsOn(":core:jvmRun")
+    description = "Echo bot — delegates to :core:runEcho"
+    dependsOn(":core:runEcho")
 }

@@ -126,7 +126,7 @@ Windows: `.\gradlew.bat generateTl`
 ./gradlew generateTl          # :tl → build/generated
 ./gradlew :tl:jvmTest
 ./gradlew :core:jvmTest
-./gradlew :core:jvmRun        # echo bot (BotApi)
+./gradlew :core:runEcho       # echo bot (BotApi)
 ./gradlew :core:runBotApi     # BotApi: login + send + listen
 ./gradlew :core:runUserApi    # UserApi: SMS login + send + listen
 ```

@@ -3,13 +3,7 @@ plugins {
 }
 
 kotlin {
-    jvm {
-        binaries {
-            executable {
-                mainClass.set("iris.kmtproto.example.EchoBotMainKt")
-            }
-        }
-    }
+    jvm()
 
     sourceSets {
         commonMain.dependencies {
@@ -36,17 +30,6 @@ tasks.named<Test>("jvmTest") {
     }
 }
 
-tasks.register<JavaExec>("jvmRun") {
-    group = "application"
-    description = "Echo bot — same main as runJvm, name IDEA expects"
-    val compilation = kotlin.targets.getByName("jvm").compilations.getByName("main")
-    dependsOn(compilation.compileTaskProvider)
-    classpath = compilation.output.allOutputs + (compilation.runtimeDependencyFiles ?: files())
-    mainClass.set("iris.kmtproto.example.EchoBotMainKt")
-    workingDir = rootProject.projectDir
-    standardInput = System.`in`
-}
-
 fun JavaExec.exampleMain(cls: String, desc: String) {
     group = "application"
     description = desc
@@ -56,6 +39,10 @@ fun JavaExec.exampleMain(cls: String, desc: String) {
     mainClass.set(cls)
     workingDir = rootProject.projectDir
     standardInput = System.`in`
+}
+
+tasks.register<JavaExec>("runEcho") {
+    exampleMain("iris.kmtproto.example.EchoBotMainKt", "Echo bot (BotApi)")
 }
 
 tasks.register<JavaExec>("runBotApi") {
