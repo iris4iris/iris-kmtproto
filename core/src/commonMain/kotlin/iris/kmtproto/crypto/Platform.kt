@@ -24,6 +24,7 @@ internal expect object PlatformCrypto {
 
 /** AES-ECB session: one key schedule for many 16-byte blocks. Not shared across threads. */
 internal expect class AesEcb(key: ByteArray, encrypt: Boolean) {
+    fun init(key: ByteArray, encrypt: Boolean)
     fun block(src: ByteArray, srcOff: Int, dst: ByteArray, dstOff: Int)
 }
 

@@ -133,6 +133,14 @@ Windows: `.\gradlew.bat generateTl`
 
 `:core` зависит от `:tl` как от проекта — Gradle обязан проверить, актуален ли jar. Это доли секунды (`UP-TO-DATE`), не 19 с.
 
+JVM IGE: HotSpot AES-NI через внутренний `AESCrypt` (без JNI на каждый 16-байтный блок). Нужен флаг; без него — `Cipher` ECB.
+
+```
+--add-opens java.base/com.sun.crypto.provider=ALL-UNNAMED
+```
+
+`./gradlew :core:jvmTest` и `runEcho` / `runBotApi` / `runUserApi` уже передают его. IDEA Run: VM options → та же строка. В логе: `kmtproto [aes] AESCrypt (HotSpot AES-NI)` или `Cipher ECB fallback`.
+
 Чтобы `:core:jvmTest` вообще не ставил в граф `:tl:*`, в `gradle.properties`:
 
 ```

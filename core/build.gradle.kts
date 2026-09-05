@@ -42,6 +42,7 @@ tasks.named("compileKotlinJvm") {
 }
 
 tasks.named<Test>("jvmTest") {
+    jvmArgs("--add-opens=java.base/com.sun.crypto.provider=ALL-UNNAMED")
     filter {
         isFailOnNoMatchingTests = true
     }
@@ -63,6 +64,7 @@ fun JavaExec.exampleMain(cls: String, desc: String) {
     mainClass.set(cls)
     workingDir = rootProject.projectDir
     standardInput = System.`in`
+    jvmArgs("--add-opens=java.base/com.sun.crypto.provider=ALL-UNNAMED")
 }
 
 tasks.register<JavaExec>("runEcho") {

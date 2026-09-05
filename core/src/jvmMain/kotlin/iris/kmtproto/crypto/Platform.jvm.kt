@@ -67,18 +67,43 @@ internal actual object PlatformCrypto {
         GZIPInputStream(ByteArrayInputStream(data)).use { it.readBytes() }
 }
 
+internal fun aesCryptAvailable(): Boolean = AesNi.AVAILABLE
+
 internal actual class AesEcb actual constructor(key: ByteArray, encrypt: Boolean) {
-    private val cipher = Cipher.getInstance("AES/ECB/NoPadding")
+    private val ni: AesNi? = if (AesNi.AVAILABLE) AesNi(encrypt) else null
+    private val cipher: Cipher? = if (ni == null) Cipher.getInstance("AES/ECB/NoPadding") else null
+    private val encrypting = encrypt
 
     init {
-        cipher.init(
-            if (encrypt) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE,
-            SecretKeySpec(key, "AES"),
-        )
+        if (logged.compareAndSet(false, true)) {
+            if (AesNi.AVAILABLE) {
+                println("kmtproto [aes] AESCrypt (HotSpot AES-NI)")
+            } else {
+                println("kmtproto [aes] Cipher ECB fallback; JVM: --add-opens java.base/com.sun.crypto.provider=ALL-UNNAMED")
+            }
+        }
+        init(key, encrypt)
+    }
+
+    actual fun init(key: ByteArray, encrypt: Boolean) {
+        require(encrypt == encrypting) { "AesEcb direction is fixed at construction" }
+        if (ni != null) {
+            ni.init(key)
+        } else {
+            cipher!!.init(
+                if (encrypt) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE,
+                SecretKeySpec(key, "AES"),
+            )
+        }
     }
 
     actual fun block(src: ByteArray, srcOff: Int, dst: ByteArray, dstOff: Int) {
-        cipher.doFinal(src, srcOff, 16, dst, dstOff)
+        if (ni != null) ni.block(src, srcOff, dst, dstOff)
+        else cipher!!.doFinal(src, srcOff, 16, dst, dstOff)
+    }
+
+    private companion object {
+        val logged = java.util.concurrent.atomic.AtomicBoolean(false)
     }
 }
 

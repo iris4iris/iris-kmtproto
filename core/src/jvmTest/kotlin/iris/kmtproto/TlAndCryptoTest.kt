@@ -104,6 +104,11 @@ class TlAndCryptoTest {
     }
 
     @Test
+    fun aesCryptHotSpotIsOpen() {
+        assertTrue(iris.kmtproto.crypto.aesCryptAvailable(), "--add-opens java.base/com.sun.crypto.provider=ALL-UNNAMED")
+    }
+
+    @Test
     fun aesIgeInverts() {
         val key = PlatformCrypto.randomBytes(32)
         val iv = PlatformCrypto.randomBytes(32)

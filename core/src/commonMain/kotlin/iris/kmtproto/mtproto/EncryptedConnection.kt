@@ -2,8 +2,8 @@ package iris.kmtproto.mtproto
 
 import iris.kmtproto.logCaught
 import iris.kmtproto.concat
-import iris.kmtproto.crypto.AesIge
 import iris.kmtproto.crypto.AuthKey
+import iris.kmtproto.crypto.IgeCtx
 import iris.kmtproto.crypto.MsgKeys
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.readIntLe
@@ -270,8 +270,8 @@ internal class EncryptedConnection(
         val c = writeCrypto
         MsgKeys.msgKeyInto(authKey.key, inner, inner.size, 0, c.msgKey, 0, c.shaA)
         MsgKeys.deriveAesInto(authKey.key, c.msgKey, 0, 0, c.aesKey, c.aesIv, c.shaA, c.shaB)
-        val encrypted = AesIge.encrypt(c.aesKey, c.aesIv, inner)
-        return concat(authKey.keyId.toLeBytes(), c.msgKey, encrypted)
+        val encrypted = c.igeEnc.crypt(c.aesKey, c.aesIv, inner, 0, inner.size, c.encOut(inner.size), 0)
+        return concat(authKey.keyId.toLeBytes(), c.msgKey, encrypted.copyOf(inner.size))
     }
 
     private fun serializeContainer(msgs: List<PreparedMsg>): ByteArray {
@@ -308,8 +308,7 @@ internal class EncryptedConnection(
         val c = readCrypto
         MsgKeys.deriveAesInto(authKey.key, frame, 8, 8, c.aesKey, c.aesIv, c.shaA, c.shaB)
         val n = frame.size - 24
-        if (c.inner.size < n) c.inner = ByteArray(n.coerceAtLeast(c.inner.size * 2).coerceAtLeast(512))
-        val inner = AesIge.decrypt(c.aesKey, c.aesIv, frame, 24, frame.size, c.inner, 0)
+        val inner = c.igeDec.crypt(c.aesKey, c.aesIv, frame, 24, frame.size, c.innerBuf(n), 0)
         check(MsgKeys.msgKeyMatches(authKey.key, inner, n, 8, frame, 8, c.shaA)) { "msg_key mismatch (server)" }
 
         val session = inner.readLongLe(8)
@@ -373,5 +372,18 @@ private class FrameCrypto {
     val shaA = ByteArray(32)
     val shaB = ByteArray(32)
     val msgKey = ByteArray(16)
-    var inner = ByteArray(512)
+    val igeEnc = IgeCtx(encrypt = true)
+    val igeDec = IgeCtx(encrypt = false)
+    private var inner = ByteArray(512)
+    private var encOut = ByteArray(512)
+
+    fun innerBuf(n: Int): ByteArray {
+        if (inner.size < n) inner = ByteArray(n.coerceAtLeast(inner.size * 2).coerceAtLeast(512))
+        return inner
+    }
+
+    fun encOut(n: Int): ByteArray {
+        if (encOut.size < n) encOut = ByteArray(n.coerceAtLeast(encOut.size * 2).coerceAtLeast(512))
+        return encOut
+    }
 }

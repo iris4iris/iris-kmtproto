@@ -64,7 +64,7 @@ class InboundThroughputTest {
         assertTrue(probe.second[0] is UpdatesCtor)
         assertEquals(messagesPerFrame, (probe.second[0] as UpdatesCtor).updates.size)
 
-        repeat(200) { conn.unwrapFrame(frame) }
+        repeat(2_000) { conn.unwrapFrame(frame) }
         val t0 = System.nanoTime()
         var events = 0
         repeat(frames) {
