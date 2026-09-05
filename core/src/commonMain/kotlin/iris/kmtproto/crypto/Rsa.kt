@@ -21,9 +21,9 @@ internal object RsaPad {
         require(data.size <= 144) { "RSA_PAD data too large: ${data.size}" }
         val n = key.modulus
         val zeroIv = ByteArray(32)
+        val dataWithPadding = ByteArray(192)
+        data.copyInto(dataWithPadding)
         while (true) {
-            val dataWithPadding = ByteArray(192)
-            data.copyInto(dataWithPadding)
             PlatformCrypto.randomBytes(192 - data.size).copyInto(dataWithPadding, data.size)
             val tempKey = PlatformCrypto.randomBytes(32)
             val dataPadReversed = dataWithPadding.reversedArray()
