@@ -14,7 +14,7 @@ import kotlin.concurrent.thread
 
 /**
  * Local obfuscated-intermediate DC. Shared auth_key/salt/session with the client;
- * no DH. Each frame is [sampleUpdates] + [encodeInbound], same bodies as unwrap benches.
+ * no DH. Each frame is [sampleUpdates] + [InboundEncoder], same bodies as unwrap benches.
  */
 internal class FakeDc : AutoCloseable {
     private val server = ServerSocket().apply {
@@ -45,14 +45,15 @@ internal class FakeDc : AutoCloseable {
                 drainClient(input, fromClient)
             }
             val body = sampleUpdates(messagesPerFrame).toBytes()
+            val encoder = InboundEncoder()
+            val payloadLen = encoder.payloadBytes(body.size)
+            val wire = ByteArray(4 + payloadLen)
+            wire.putIntLe(0, payloadLen)
             var msgId = 8L
+            frameBytes = payloadLen
             repeat(frames) { i ->
-                val payload = encodeInbound(authKey, salt, sessionId, msgId, seqNo = 1, body = body)
+                encoder.encodeInto(authKey, salt, sessionId, msgId, seqNo = 1, body, wire, 4)
                 msgId += 2
-                if (i == 0) frameBytes = payload.size
-                val wire = ByteArray(4 + payload.size)
-                payload.size.toLeBytes().copyInto(wire)
-                payload.copyInto(wire, 4)
                 output.write(toClient.process(wire))
                 if (i and 127 == 127) output.flush()
             }
@@ -99,4 +100,11 @@ private fun drainClient(input: DataInputStream, fromClient: AesCtr) {
         }
     } catch (_: Exception) {
     }
+}
+
+private fun ByteArray.putIntLe(off: Int, v: Int) {
+    this[off] = v.toByte()
+    this[off + 1] = (v shr 8).toByte()
+    this[off + 2] = (v shr 16).toByte()
+    this[off + 3] = (v shr 24).toByte()
 }
