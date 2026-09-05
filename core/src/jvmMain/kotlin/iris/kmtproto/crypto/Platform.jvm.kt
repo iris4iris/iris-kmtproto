@@ -12,30 +12,33 @@ import javax.crypto.spec.SecretKeySpec
 private val rng = SecureRandom()
 
 internal actual object PlatformCrypto {
-    actual fun sha1(data: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA-1").digest(data)
+    private val sha1 = ThreadLocal.withInitial { MessageDigest.getInstance("SHA-1") }
+    private val sha256 = ThreadLocal.withInitial { MessageDigest.getInstance("SHA-256") }
+    private val md5 = ThreadLocal.withInitial { MessageDigest.getInstance("MD5") }
+    private val hmacSha512 = ThreadLocal.withInitial { Mac.getInstance("HmacSHA512") }
+    private val aesEcb = ThreadLocal.withInitial { Cipher.getInstance("AES/ECB/NoPadding") }
 
-    actual fun sha256(data: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA-256").digest(data)
+    actual fun sha1(data: ByteArray): ByteArray = sha1.get().digest(data)
 
-    actual fun md5(data: ByteArray): ByteArray =
-        MessageDigest.getInstance("MD5").digest(data)
+    actual fun sha256(data: ByteArray): ByteArray = sha256.get().digest(data)
+
+    actual fun md5(data: ByteArray): ByteArray = md5.get().digest(data)
 
     actual fun hmacSha512(key: ByteArray, data: ByteArray): ByteArray {
-        val mac = Mac.getInstance("HmacSHA512")
+        val mac = hmacSha512.get()
         val specKey = if (key.isEmpty()) ByteArray(128) else key
         mac.init(SecretKeySpec(specKey, "HmacSHA512"))
         return mac.doFinal(data)
     }
 
     actual fun aesEcbEncrypt(key: ByteArray, data: ByteArray): ByteArray {
-        val c = Cipher.getInstance("AES/ECB/NoPadding")
+        val c = aesEcb.get()
         c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"))
         return c.doFinal(data)
     }
 
     actual fun aesEcbDecrypt(key: ByteArray, data: ByteArray): ByteArray {
-        val c = Cipher.getInstance("AES/ECB/NoPadding")
+        val c = aesEcb.get()
         c.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"))
         return c.doFinal(data)
     }
@@ -46,6 +49,21 @@ internal actual object PlatformCrypto {
 
     actual fun gunzip(data: ByteArray): ByteArray =
         GZIPInputStream(ByteArrayInputStream(data)).use { it.readBytes() }
+}
+
+internal actual class AesEcb actual constructor(key: ByteArray, encrypt: Boolean) {
+    private val cipher = Cipher.getInstance("AES/ECB/NoPadding")
+
+    init {
+        cipher.init(
+            if (encrypt) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE,
+            SecretKeySpec(key, "AES"),
+        )
+    }
+
+    actual fun block(src: ByteArray, srcOff: Int, dst: ByteArray, dstOff: Int) {
+        cipher.doFinal(src, srcOff, 16, dst, dstOff)
+    }
 }
 
 internal actual class Md5Hasher actual constructor() {

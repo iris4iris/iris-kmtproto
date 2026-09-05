@@ -12,6 +12,11 @@ internal expect object PlatformCrypto {
     fun gunzip(data: ByteArray): ByteArray
 }
 
+/** AES-ECB session: one key schedule for many 16-byte blocks. Not shared across threads. */
+internal expect class AesEcb(key: ByteArray, encrypt: Boolean) {
+    fun block(src: ByteArray, srcOff: Int, dst: ByteArray, dstOff: Int)
+}
+
 internal expect class Md5Hasher() {
     fun update(data: ByteArray, offset: Int, length: Int)
     fun digest(): ByteArray

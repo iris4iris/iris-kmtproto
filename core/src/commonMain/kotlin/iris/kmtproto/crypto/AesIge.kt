@@ -13,20 +13,24 @@ internal object AesIge {
             "IGE input must be multiple of 16, got $n"
         }
         require(iv.size == 32)
-        var iv1 = iv.copyOfRange(0, 16)
-        var iv2 = iv.copyOfRange(16, 32)
+        val iv1 = iv.copyOfRange(0, 16)
+        val iv2 = iv.copyOfRange(16, 32)
+        val tmp = ByteArray(16)
         val out = ByteArray(n)
+        val aes = AesEcb(key, encrypt = true)
         var offset = 0
         while (offset < n) {
             val src = start + offset
-            val xored = ByteArray(16) { i ->
-                (data[src + i].toInt() xor iv1[i].toInt()).toByte()
+            for (i in 0 until 16) {
+                tmp[i] = (data[src + i].toInt() xor iv1[i].toInt()).toByte()
             }
-            val encrypted = PlatformCrypto.aesEcbEncrypt(key, xored)
-            val cipher = ByteArray(16) { (encrypted[it].toInt() xor iv2[it].toInt()).toByte() }
-            cipher.copyInto(out, offset)
-            iv1 = cipher
-            iv2 = data.copyOfRange(src, src + 16)
+            aes.block(tmp, 0, tmp, 0)
+            for (i in 0 until 16) {
+                val c = (tmp[i].toInt() xor iv2[i].toInt()).toByte()
+                out[offset + i] = c
+                iv2[i] = data[src + i]
+                iv1[i] = c
+            }
             offset += 16
         }
         return out
@@ -44,20 +48,24 @@ internal object AesIge {
             "IGE input must be multiple of 16, got $n"
         }
         require(iv.size == 32)
-        var iv1 = iv.copyOfRange(0, 16)
-        var iv2 = iv.copyOfRange(16, 32)
+        val iv1 = iv.copyOfRange(0, 16)
+        val iv2 = iv.copyOfRange(16, 32)
+        val tmp = ByteArray(16)
         val out = ByteArray(n)
+        val aes = AesEcb(key, encrypt = false)
         var offset = 0
         while (offset < n) {
             val src = start + offset
-            val xored = ByteArray(16) { i ->
-                (data[src + i].toInt() xor iv2[i].toInt()).toByte()
+            for (i in 0 until 16) {
+                tmp[i] = (data[src + i].toInt() xor iv2[i].toInt()).toByte()
             }
-            val decrypted = PlatformCrypto.aesEcbDecrypt(key, xored)
-            val plain = ByteArray(16) { (decrypted[it].toInt() xor iv1[it].toInt()).toByte() }
-            plain.copyInto(out, offset)
-            iv1 = data.copyOfRange(src, src + 16)
-            iv2 = plain
+            aes.block(tmp, 0, tmp, 0)
+            for (i in 0 until 16) {
+                val p = (tmp[i].toInt() xor iv1[i].toInt()).toByte()
+                out[offset + i] = p
+                iv1[i] = data[src + i]
+                iv2[i] = p
+            }
             offset += 16
         }
         return out
