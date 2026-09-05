@@ -21,8 +21,7 @@ internal object RsaPad {
         require(data.size <= 144) { "RSA_PAD data too large: ${data.size}" }
         val n = key.modulus
         val zeroIv = ByteArray(32)
-        val dataWithPadding = ByteArray(192)
-        data.copyInto(dataWithPadding)
+        val dataWithPadding = data.copyOf(192)
         while (true) {
             PlatformCrypto.randomBytes(192 - data.size).copyInto(dataWithPadding, data.size)
             val tempKey = PlatformCrypto.randomBytes(32)
