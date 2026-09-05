@@ -22,24 +22,67 @@ class AuthKey(val key: ByteArray) {
 internal object MsgKeys {
     /** x = 0 client→server, x = 8 server→client */
     fun deriveAes(authKey: ByteArray, msgKey: ByteArray, x: Int): Pair<ByteArray, ByteArray> {
-        val sha256a = PlatformCrypto.sha256(concat(msgKey, authKey.copyOfRange(x, x + 36)))
-        val sha256b = PlatformCrypto.sha256(concat(authKey.copyOfRange(40 + x, 40 + x + 36), msgKey))
-        val aesKey = concat(
-            sha256a.copyOfRange(0, 8),
-            sha256b.copyOfRange(8, 24),
-            sha256a.copyOfRange(24, 32),
-        )
-        val aesIv = concat(
-            sha256b.copyOfRange(0, 8),
-            sha256a.copyOfRange(8, 24),
-            sha256b.copyOfRange(24, 32),
-        )
+        val aesKey = ByteArray(32)
+        val aesIv = ByteArray(32)
+        deriveAesInto(authKey, msgKey, 0, x, aesKey, aesIv, ByteArray(32), ByteArray(32))
         return aesKey to aesIv
     }
 
+    fun deriveAesInto(
+        authKey: ByteArray,
+        msgKey: ByteArray,
+        msgKeyOff: Int,
+        x: Int,
+        aesKey: ByteArray,
+        aesIv: ByteArray,
+        shaA: ByteArray,
+        shaB: ByteArray,
+    ) {
+        PlatformCrypto.sha256(msgKey, msgKeyOff, 16, authKey, x, 36, shaA, 0)
+        PlatformCrypto.sha256(authKey, 40 + x, 36, msgKey, msgKeyOff, 16, shaB, 0)
+        shaA.copyInto(aesKey, 0, 0, 8)
+        shaB.copyInto(aesKey, 8, 8, 24)
+        shaA.copyInto(aesKey, 24, 24, 32)
+        shaB.copyInto(aesIv, 0, 0, 8)
+        shaA.copyInto(aesIv, 8, 8, 24)
+        shaB.copyInto(aesIv, 24, 24, 32)
+    }
+
     fun msgKey(authKey: ByteArray, plaintext: ByteArray, x: Int): ByteArray {
-        val large = PlatformCrypto.sha256(concat(authKey.copyOfRange(88 + x, 88 + x + 32), plaintext))
-        return large.copyOfRange(8, 24)
+        val out = ByteArray(16)
+        msgKeyInto(authKey, plaintext, plaintext.size, x, out, 0, ByteArray(32))
+        return out
+    }
+
+    fun msgKeyInto(
+        authKey: ByteArray,
+        plaintext: ByteArray,
+        plaintextLen: Int,
+        x: Int,
+        dest: ByteArray,
+        destOff: Int,
+        shaTmp: ByteArray,
+    ) {
+        PlatformCrypto.sha256(authKey, 88 + x, 32, plaintext, 0, plaintextLen, shaTmp, 0)
+        shaTmp.copyInto(dest, destOff, 8, 24)
+    }
+
+    fun msgKeyMatches(
+        authKey: ByteArray,
+        plaintext: ByteArray,
+        plaintextLen: Int,
+        x: Int,
+        expected: ByteArray,
+        expectedOff: Int,
+        shaTmp: ByteArray,
+    ): Boolean {
+        PlatformCrypto.sha256(authKey, 88 + x, 32, plaintext, 0, plaintextLen, shaTmp, 0)
+        var i = 0
+        while (i < 16) {
+            if (shaTmp[8 + i] != expected[expectedOff + i]) return false
+            i++
+        }
+        return true
     }
 }
 

@@ -73,6 +73,8 @@ internal class EncryptedConnection(
     private val ackBuf = ArrayList<Long>(ACK_BATCH)
     /** container msg_id → inner RPC msg_ids (for bad_server_salt). */
     private val bundles = HashMap<Long, LongArray>()
+    private val readCrypto = FrameCrypto()
+    private val writeCrypto = FrameCrypto()
 
     private fun nextSeq(contentRelated: Boolean): Int {
         val value = seq * 2 + if (contentRelated) 1 else 0
@@ -265,10 +267,11 @@ internal class EncryptedConnection(
 
     private fun encryptPacket(msgId: Long, seqNo: Int, body: ByteArray): ByteArray {
         val inner = buildInner(msgId, seqNo, body)
-        val msgKey = MsgKeys.msgKey(authKey.key, inner, x = 0)
-        val (aesKey, aesIv) = MsgKeys.deriveAes(authKey.key, msgKey, x = 0)
-        val encrypted = AesIge.encrypt(aesKey, aesIv, inner)
-        return concat(authKey.keyId.toLeBytes(), msgKey, encrypted)
+        val c = writeCrypto
+        MsgKeys.msgKeyInto(authKey.key, inner, inner.size, 0, c.msgKey, 0, c.shaA)
+        MsgKeys.deriveAesInto(authKey.key, c.msgKey, 0, 0, c.aesKey, c.aesIv, c.shaA, c.shaB)
+        val encrypted = AesIge.encrypt(c.aesKey, c.aesIv, inner)
+        return concat(authKey.keyId.toLeBytes(), c.msgKey, encrypted)
     }
 
     private fun serializeContainer(msgs: List<PreparedMsg>): ByteArray {
@@ -302,11 +305,12 @@ internal class EncryptedConnection(
         require(frame.size >= 24) { "encrypted frame too short" }
         val keyId = frame.readLongLe(0)
         check(keyId == authKey.keyId) { "auth_key_id mismatch" }
-        val msgKey = frame.copyOfRange(8, 24)
-        val (aesKey, aesIv) = MsgKeys.deriveAes(authKey.key, msgKey, x = 8)
-        val inner = AesIge.decrypt(aesKey, aesIv, frame, 24, frame.size)
-        val computed = MsgKeys.msgKey(authKey.key, inner, x = 8)
-        check(computed.contentEquals(msgKey)) { "msg_key mismatch (server)" }
+        val c = readCrypto
+        MsgKeys.deriveAesInto(authKey.key, frame, 8, 8, c.aesKey, c.aesIv, c.shaA, c.shaB)
+        val n = frame.size - 24
+        if (c.inner.size < n) c.inner = ByteArray(n.coerceAtLeast(c.inner.size * 2).coerceAtLeast(512))
+        val inner = AesIge.decrypt(c.aesKey, c.aesIv, frame, 24, frame.size, c.inner, 0)
+        check(MsgKeys.msgKeyMatches(authKey.key, inner, n, 8, frame, 8, c.shaA)) { "msg_key mismatch (server)" }
 
         val session = inner.readLongLe(8)
         check(session == sessionId) { "session_id mismatch" }
@@ -361,4 +365,13 @@ internal class EncryptedConnection(
             else -> listOf(obj)
         }
     }
+}
+
+private class FrameCrypto {
+    val aesKey = ByteArray(32)
+    val aesIv = ByteArray(32)
+    val shaA = ByteArray(32)
+    val shaB = ByteArray(32)
+    val msgKey = ByteArray(16)
+    var inner = ByteArray(512)
 }

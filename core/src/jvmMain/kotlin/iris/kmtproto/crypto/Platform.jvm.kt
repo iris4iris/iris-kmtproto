@@ -22,6 +22,22 @@ internal actual object PlatformCrypto {
 
     actual fun sha256(data: ByteArray): ByteArray = sha256.get().digest(data)
 
+    actual fun sha256(
+        a: ByteArray,
+        aOff: Int,
+        aLen: Int,
+        b: ByteArray,
+        bOff: Int,
+        bLen: Int,
+        out: ByteArray,
+        outOff: Int,
+    ) {
+        val d = sha256.get()
+        d.update(a, aOff, aLen)
+        d.update(b, bOff, bLen)
+        d.digest(out, outOff, 32)
+    }
+
     actual fun md5(data: ByteArray): ByteArray = md5.get().digest(data)
 
     actual fun hmacSha512(key: ByteArray, data: ByteArray): ByteArray {

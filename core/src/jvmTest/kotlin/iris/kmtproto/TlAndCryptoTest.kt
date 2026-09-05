@@ -86,6 +86,24 @@ class TlAndCryptoTest {
     }
 
     @Test
+    fun msgKeyAndDeriveMatchBufferedPath() {
+        val auth = PlatformCrypto.randomBytes(256)
+        val msgKey = PlatformCrypto.randomBytes(16)
+        val (k1, iv1) = iris.kmtproto.crypto.MsgKeys.deriveAes(auth, msgKey, x = 8)
+        val k2 = ByteArray(32)
+        val iv2 = ByteArray(32)
+        iris.kmtproto.crypto.MsgKeys.deriveAesInto(auth, msgKey, 0, 8, k2, iv2, ByteArray(32), ByteArray(32))
+        assertContentEquals(k1, k2)
+        assertContentEquals(iv1, iv2)
+        val plain = PlatformCrypto.randomBytes(80)
+        val mk = iris.kmtproto.crypto.MsgKeys.msgKey(auth, plain, x = 8)
+        val buf = ByteArray(32)
+        assertTrue(iris.kmtproto.crypto.MsgKeys.msgKeyMatches(auth, plain, plain.size, 8, mk, 0, buf))
+        mk[0] = (mk[0].toInt() xor 1).toByte()
+        assertTrue(!iris.kmtproto.crypto.MsgKeys.msgKeyMatches(auth, plain, plain.size, 8, mk, 0, buf))
+    }
+
+    @Test
     fun aesIgeInverts() {
         val key = PlatformCrypto.randomBytes(32)
         val iv = PlatformCrypto.randomBytes(32)
