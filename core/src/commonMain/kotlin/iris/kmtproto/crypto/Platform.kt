@@ -28,6 +28,34 @@ internal expect class AesEcb(key: ByteArray, encrypt: Boolean) {
     fun block(src: ByteArray, srcOff: Int, dst: ByteArray, dstOff: Int)
 }
 
+internal expect fun igeCryptLoop(
+    aes: AesEcb,
+    encrypt: Boolean,
+    iv1: ByteArray,
+    iv2: ByteArray,
+    tmpIn: ByteArray,
+    tmpOut: ByteArray,
+    data: ByteArray,
+    start: Int,
+    n: Int,
+    dest: ByteArray,
+    destOff: Int,
+)
+
+/** Returns new keystream offset. */
+internal expect fun ctrProcessInto(
+    aes: AesEcb,
+    counter: ByteArray,
+    keystream: ByteArray,
+    offset: Int,
+    src: ByteArray,
+    srcOff: Int,
+    dst: ByteArray,
+    dstOff: Int,
+    len: Int,
+): Int
+
+
 internal expect class Md5Hasher() {
     fun update(data: ByteArray, offset: Int, length: Int)
     fun digest(): ByteArray

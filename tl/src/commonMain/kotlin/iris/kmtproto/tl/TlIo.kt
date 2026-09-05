@@ -108,18 +108,28 @@ class TlReader(
     }
 
     fun readInt(): Int {
-        val b0 = readByte()
-        val b1 = readByte()
-        val b2 = readByte()
-        val b3 = readByte()
-        return b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24)
+        check(pos + 4 <= end) { "eof" }
+        val p = pos
+        val v = (data[p].toInt() and 0xff) or
+            ((data[p + 1].toInt() and 0xff) shl 8) or
+            ((data[p + 2].toInt() and 0xff) shl 16) or
+            ((data[p + 3].toInt() and 0xff) shl 24)
+        pos = p + 4
+        return v
     }
 
     fun readLong(): Long {
-        var v = 0L
-        for (i in 0 until 8) {
-            v = v or ((readByte().toLong()) shl (8 * i))
-        }
+        check(pos + 8 <= end) { "eof" }
+        val p = pos
+        val v = (data[p].toLong() and 0xff) or
+            ((data[p + 1].toLong() and 0xff) shl 8) or
+            ((data[p + 2].toLong() and 0xff) shl 16) or
+            ((data[p + 3].toLong() and 0xff) shl 24) or
+            ((data[p + 4].toLong() and 0xff) shl 32) or
+            ((data[p + 5].toLong() and 0xff) shl 40) or
+            ((data[p + 6].toLong() and 0xff) shl 48) or
+            ((data[p + 7].toLong() and 0xff) shl 56)
+        pos = p + 8
         return v
     }
 
@@ -144,7 +154,10 @@ class TlReader(
         val bytes = readRaw(len)
         val consumed = if (len < 254) 1 + len else 4 + len
         val padding = (4 - (consumed % 4)) % 4
-        if (padding > 0) readRaw(padding)
+        if (padding > 0) {
+            check(pos + padding <= end) { "eof padding" }
+            pos += padding
+        }
         return bytes
     }
 
@@ -168,7 +181,14 @@ class TlReader(
         val id = readInt()
         check(id == TlWriter.VECTOR) { "expected vector constructor, got ${id.toUInt().toString(16)}" }
         val n = readInt()
-        return List(n) { readOne() }
+        if (n == 0) return emptyList()
+        val out = ArrayList<T>(n)
+        var i = 0
+        while (i < n) {
+            out.add(readOne())
+            i++
+        }
+        return out
     }
 
     fun readBool(): Boolean = when (val id = readInt()) {
