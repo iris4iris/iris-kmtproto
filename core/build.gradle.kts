@@ -23,6 +23,8 @@ tasks.named<Test>("jvmTest") {
     filter {
         isFailOnNoMatchingTests = true
     }
+    // Don't skip: benches and `--tests Class` would otherwise print BUILD SUCCESSFUL and do nothing.
+    outputs.upToDateWhen { false }
     testLogging {
         events("passed", "skipped", "failed", "standardOut")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
