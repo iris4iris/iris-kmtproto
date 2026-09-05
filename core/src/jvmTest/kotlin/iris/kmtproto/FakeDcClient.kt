@@ -12,6 +12,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 internal suspend fun runFakeDcClient(
     label: String,
@@ -23,10 +24,15 @@ internal suspend fun runFakeDcClient(
     messagesPerFrame: Int,
     frames: Int,
     frameBytes: Int,
+    warmup: Int = benchWarmup(),
 ) {
-    val expected = frames * messagesPerFrame
+    val warmupUpdates = warmup * messagesPerFrame
+    val benchUpdates = frames * messagesPerFrame
     val threads = MuxThreads("dc-bench")
+    val warmed = AtomicInteger(0)
     val seen = AtomicInteger(0)
+    val t0 = AtomicLong(0)
+    val hot = CompletableDeferred<Unit>()
     val done = CompletableDeferred<Unit>()
     try {
         coroutineScope {
@@ -43,21 +49,35 @@ internal suspend fun runFakeDcClient(
                 try {
                     conn.runReader { obj ->
                         val box = obj as? UpdatesCtor ?: return@runReader
-                        if (seen.addAndGet(box.updates.size) >= expected) {
+                        val n = box.updates.size
+                        if (warmupUpdates > 0 && warmed.get() < warmupUpdates) {
+                            if (warmed.addAndGet(n) >= warmupUpdates) {
+                                t0.set(System.nanoTime())
+                                hot.complete(Unit)
+                            }
+                            return@runReader
+                        }
+                        if (seen.addAndGet(n) >= benchUpdates) {
                             done.complete(Unit)
                         }
                     }
                 } catch (e: Throwable) {
+                    hot.completeExceptionally(e)
                     done.completeExceptionally(e)
                 }
             }
-            val t0 = System.nanoTime()
+            val start = if (warmupUpdates > 0) {
+                withTimeout(180_000) { hot.await() }
+                t0.get()
+            } else {
+                System.nanoTime()
+            }
             withTimeout(180_000) { done.await() }
-            val sec = (System.nanoTime() - t0) / 1e9
+            val sec = (System.nanoTime() - start) / 1e9
             job.cancel()
             runCatching { transport.close() }
             printBench("dc $label", frames, frameBytes, sec, seen.get())
-            check(seen.get() == expected) { "dc $label expected $expected updates, got ${seen.get()}" }
+            check(seen.get() == benchUpdates) { "dc $label expected $benchUpdates updates, got ${seen.get()}" }
         }
     } finally {
         threads.close()

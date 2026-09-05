@@ -38,6 +38,7 @@ internal class FakeDc(
         sessionId: Long,
         messagesPerFrame: Int,
         frames: Int,
+        warmup: Int = benchWarmup(),
     ): Thread = thread(name = "fake-dc") {
         server.soTimeout = 20_000
         val socket = server.accept()
@@ -61,11 +62,12 @@ internal class FakeDc(
             wire.putIntLe(0, payloadLen)
             var msgId = 8L
             frameBytes = payloadLen
-            repeat(frames) { i ->
+            val total = warmup + frames
+            repeat(total) { i ->
                 encoder.encodeInto(authKey, salt, sessionId, msgId, seqNo = 1, body, wire, 4)
                 msgId += 2
                 output.write(toClient.process(wire))
-                if (i and 127 == 127) output.flush()
+                if (i + 1 == warmup || i and 127 == 127) output.flush()
             }
             output.flush()
             keepOpen.await(3, TimeUnit.MINUTES)

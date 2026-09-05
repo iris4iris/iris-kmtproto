@@ -57,7 +57,7 @@ class InboundThroughputTest {
         assertTrue(probe.second[0] is UpdatesCtor)
         assertEquals(messagesPerFrame, (probe.second[0] as UpdatesCtor).updates.size)
 
-        repeat(2_000) { conn.unwrapFrame(frame) }
+        repeat(benchWarmup()) { conn.unwrapFrame(frame) }
         val t0 = System.nanoTime()
         var events = 0
         repeat(frames) {
@@ -70,12 +70,13 @@ class InboundThroughputTest {
     }
 
     private fun runFakeDcBench(label: String, messagesPerFrame: Int, frames: Int) = runBlocking {
+        val warmup = benchWarmup()
         if (System.getenv("KMTPROTO_FAKE_DC_INPROCESS") == "1") {
             val key = AuthKey(PlatformCrypto.randomBytes(256))
             val salt = 0x1111_2222_3333_4444L
             val session = 0x5555_6666_7777_8888L
             FakeDc().use { dc ->
-                dc.start(key, salt, session, messagesPerFrame, frames)
+                dc.start(key, salt, session, messagesPerFrame, frames, warmup = warmup)
                 val frameBytes = InboundEncoder().payloadBytes(sampleUpdates(messagesPerFrame).toBytes().size)
                 runFakeDcClient(
                     label = label,
@@ -87,11 +88,12 @@ class InboundThroughputTest {
                     messagesPerFrame = messagesPerFrame,
                     frames = frames,
                     frameBytes = frameBytes,
+                    warmup = warmup,
                 )
             }
             return@runBlocking
         }
-        startFakeDcProcess(messagesPerFrame, frames).use { dc ->
+        startFakeDcProcess(messagesPerFrame, frames, warmup = warmup).use { dc ->
             runFakeDcClient(
                 label = label,
                 host = dc.ready.host,
@@ -102,6 +104,7 @@ class InboundThroughputTest {
                 messagesPerFrame = dc.ready.messages,
                 frames = dc.ready.frames,
                 frameBytes = dc.ready.frameBytes,
+                warmup = dc.ready.warmup,
             )
         }
     }

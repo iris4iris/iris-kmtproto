@@ -21,10 +21,10 @@ fun main(args: Array<String>) {
         println(
             "kmtproto fake-dc ready host=${a.bind} port=${dc.port} key=${key.key.toHex()} " +
                 "salt=${salt.toUnsignedHex()} session=${session.toUnsignedHex()} " +
-                "frames=${a.frames} messages=${a.messages} frameBytes=$frameBytes",
+                "frames=${a.frames} messages=${a.messages} warmup=${a.warmup} frameBytes=$frameBytes",
         )
         System.out.flush()
-        dc.start(key, salt, session, a.messages, a.frames).join()
+        dc.start(key, salt, session, a.messages, a.frames, warmup = a.warmup).join()
     }
 }
 
@@ -33,6 +33,7 @@ internal class FakeDcArgs(
     val port: Int,
     val frames: Int,
     val messages: Int,
+    val warmup: Int,
 )
 
 internal fun parseFakeDcArgs(args: Array<String>): FakeDcArgs {
@@ -53,6 +54,7 @@ internal fun parseFakeDcArgs(args: Array<String>): FakeDcArgs {
         port = m["port"]?.toInt() ?: 0,
         frames = m["frames"]?.toInt() ?: 1_000,
         messages = m["messages"]?.toInt() ?: 1,
+        warmup = m["warmup"]?.toInt() ?: benchWarmup(),
     )
 }
 

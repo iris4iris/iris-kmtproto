@@ -12,6 +12,7 @@ internal class FakeDcReady(
     val sessionId: Long,
     val frames: Int,
     val messages: Int,
+    val warmup: Int,
     val frameBytes: Int,
 )
 
@@ -25,7 +26,11 @@ internal class FakeDcProcess(
     }
 }
 
-internal fun startFakeDcProcess(messagesPerFrame: Int, frames: Int): FakeDcProcess {
+internal fun startFakeDcProcess(
+    messagesPerFrame: Int,
+    frames: Int,
+    warmup: Int = benchWarmup(),
+): FakeDcProcess {
     val javaHome = File(System.getProperty("java.home"), "bin")
     val java = listOf("java.exe", "java").map { File(javaHome, it) }.first { it.isFile }.absolutePath
     val cp = System.getProperty("java.class.path")
@@ -42,6 +47,8 @@ internal fun startFakeDcProcess(messagesPerFrame: Int, frames: Int): FakeDcProce
         messagesPerFrame.toString(),
         "--frames",
         frames.toString(),
+        "--warmup",
+        warmup.toString(),
     ).redirectError(ProcessBuilder.Redirect.INHERIT).start()
     try {
         val reader = proc.inputStream.bufferedReader()
@@ -77,6 +84,7 @@ internal fun parseFakeDcReady(line: String): FakeDcReady {
         sessionId = parseUnsignedHex(map.getValue("session")),
         frames = map.getValue("frames").toInt(),
         messages = map.getValue("messages").toInt(),
+        warmup = map["warmup"]?.toInt() ?: 0,
         frameBytes = map.getValue("frameBytes").toInt(),
     )
 }

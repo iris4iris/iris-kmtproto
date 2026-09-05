@@ -120,3 +120,7 @@ private fun ByteArray.putLongLe(off: Int, v: Long) {
 
 internal fun envInt(name: String, default: Int): Int =
     System.getenv(name)?.toIntOrNull()?.takeIf { it > 0 } ?: default
+
+/** 0 allowed (skip). Default 20_000 — enough for C2 on both Fake DC and client. */
+internal fun benchWarmup(): Int =
+    System.getenv("KMTPROTO_BENCH_WARMUP")?.toIntOrNull()?.takeIf { it >= 0 } ?: 20_000

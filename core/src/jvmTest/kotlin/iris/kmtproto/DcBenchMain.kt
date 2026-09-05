@@ -23,11 +23,12 @@ fun main(args: Array<String>) {
                 messagesPerFrame = a.messages,
                 frames = a.frames,
                 frameBytes = attached.frameBytes,
+                warmup = a.warmup,
             )
         }
         return
     }
-    startFakeDcProcess(a.messages, a.frames).use { dc ->
+    startFakeDcProcess(a.messages, a.frames, warmup = a.warmup).use { dc ->
         check(dc.ready.messages == a.messages && dc.ready.frames == a.frames) {
             "fake-dc ready mismatch: ${dc.ready.messages}×${dc.ready.frames}"
         }
@@ -42,6 +43,7 @@ fun main(args: Array<String>) {
                 messagesPerFrame = dc.ready.messages,
                 frames = dc.ready.frames,
                 frameBytes = dc.ready.frameBytes,
+                warmup = dc.ready.warmup,
             )
         }
     }
@@ -73,6 +75,7 @@ private fun parseAttached(args: Array<String>): FakeDcReady? {
         sessionId = parseUnsignedHex(m.getValue("session")),
         frames = m["frames"]?.toInt() ?: 0,
         messages = messages,
+        warmup = m["warmup"]?.toInt() ?: benchWarmup(),
         frameBytes = frameBytes,
     )
 }
