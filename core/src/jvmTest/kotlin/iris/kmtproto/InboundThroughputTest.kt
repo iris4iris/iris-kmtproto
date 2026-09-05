@@ -1,20 +1,13 @@
 package iris.kmtproto
 
-import iris.kmtproto.client.MuxThreads
 import iris.kmtproto.crypto.AuthKey
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.mtproto.EncryptedConnection
 import iris.kmtproto.mtproto.MsgIdFactory
 import iris.kmtproto.tl.gen.UpdatesCtor
 import iris.kmtproto.tl.toBytes
-import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.MtprotoTransport
-import iris.kmtproto.transport.connectObfuscated
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -77,59 +70,41 @@ class InboundThroughputTest {
     }
 
     private fun runFakeDcBench(label: String, messagesPerFrame: Int, frames: Int) = runBlocking {
-        val key = AuthKey(PlatformCrypto.randomBytes(256))
-        val salt = 0x1111_2222_3333_4444L
-        val session = 0x5555_6666_7777_8888L
-        val expected = frames * messagesPerFrame
-        val dc = FakeDc()
-        val threads = MuxThreads("dc-bench")
-        val seen = AtomicInteger(0)
-        val done = CompletableDeferred<Unit>()
-        try {
-            dc.start(key, salt, session, messagesPerFrame, frames)
-            val transport = connectObfuscated(Datacenter(99, "127.0.0.1", dc.port))
-            val conn = EncryptedConnection(
-                transport = transport,
-                authKey = key,
-                salt = salt,
-                sessionId = session,
-                msgIds = MsgIdFactory(0),
-                writeContext = threads.write,
-            )
-            val job = launch(threads.read) {
-                try {
-                    conn.runReader { obj ->
-                        val box = obj as? UpdatesCtor ?: return@runReader
-                        if (seen.addAndGet(box.updates.size) >= expected) {
-                            done.complete(Unit)
-                        }
-                    }
-                } catch (e: Throwable) {
-                    done.completeExceptionally(e)
-                }
+        if (System.getenv("KMTPROTO_FAKE_DC_INPROCESS") == "1") {
+            val key = AuthKey(PlatformCrypto.randomBytes(256))
+            val salt = 0x1111_2222_3333_4444L
+            val session = 0x5555_6666_7777_8888L
+            FakeDc().use { dc ->
+                dc.start(key, salt, session, messagesPerFrame, frames)
+                val frameBytes = InboundEncoder().payloadBytes(sampleUpdates(messagesPerFrame).toBytes().size)
+                runFakeDcClient(
+                    label = label,
+                    host = "127.0.0.1",
+                    port = dc.port,
+                    authKey = key,
+                    salt = salt,
+                    sessionId = session,
+                    messagesPerFrame = messagesPerFrame,
+                    frames = frames,
+                    frameBytes = frameBytes,
+                )
             }
-            val t0 = System.nanoTime()
-            withTimeout(120_000) { done.await() }
-            val sec = (System.nanoTime() - t0) / 1e9
-            job.cancel()
-            runCatching { transport.close() }
-            printBench("dc $label", frames, dc.frameBytes, sec, seen.get())
-            assertEquals(expected, seen.get())
-        } finally {
-            dc.close()
-            threads.close()
+            return@runBlocking
+        }
+        startFakeDcProcess(messagesPerFrame, frames).use { dc ->
+            runFakeDcClient(
+                label = label,
+                host = dc.ready.host,
+                port = dc.ready.port,
+                authKey = dc.ready.authKey,
+                salt = dc.ready.salt,
+                sessionId = dc.ready.sessionId,
+                messagesPerFrame = dc.ready.messages,
+                frames = dc.ready.frames,
+                frameBytes = dc.ready.frameBytes,
+            )
         }
     }
-}
-
-private fun printBench(label: String, frames: Int, frameBytes: Int, sec: Double, events: Int) {
-    val fps = frames / sec
-    val eps = events / sec
-    val mbs = (frames.toLong() * frameBytes) / sec / (1024.0 * 1024.0)
-    println(
-        "kmtproto bench $label: $frames frames × $frameBytes B in ${"%.3f".format(sec)}s → " +
-            "${"%.0f".format(fps)} frames/s, ${"%.0f".format(eps)} updates/s, ${"%.1f".format(mbs)} MiB/s",
-    )
 }
 
 private object NoopTransport : MtprotoTransport {

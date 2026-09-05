@@ -67,6 +67,17 @@ fun JavaExec.exampleMain(cls: String, desc: String) {
     jvmArgs("--add-opens=java.base/com.sun.crypto.provider=ALL-UNNAMED")
 }
 
+fun JavaExec.testMain(cls: String, desc: String) {
+    group = "application"
+    description = desc
+    val compilation = kotlin.targets.getByName("jvm").compilations.getByName("test")
+    dependsOn(compilation.compileTaskProvider)
+    classpath = compilation.output.allOutputs + (compilation.runtimeDependencyFiles ?: files())
+    mainClass.set(cls)
+    workingDir = rootProject.projectDir
+    jvmArgs("--add-opens=java.base/com.sun.crypto.provider=ALL-UNNAMED")
+}
+
 tasks.register<JavaExec>("runEcho") {
     exampleMain("iris.kmtproto.example.EchoBotMainKt", "Echo bot (BotApi)")
 }
@@ -77,4 +88,12 @@ tasks.register<JavaExec>("runBotApi") {
 
 tasks.register<JavaExec>("runUserApi") {
     exampleMain("iris.kmtproto.example.UserApiExampleMainKt", "UserApi example: SMS login, send, listen")
+}
+
+tasks.register<JavaExec>("runFakeDc") {
+    testMain("iris.kmtproto.FakeDcMainKt", "Fake DC server process (inbound bench)")
+}
+
+tasks.register<JavaExec>("runDcBench") {
+    testMain("iris.kmtproto.DcBenchMainKt", "Fake DC bench client (spawns FakeDc JVM)")
 }

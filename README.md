@@ -153,7 +153,18 @@ tl.prebuilt=true
 ./gradlew :core:jvmTest --tests iris.kmtproto.InboundThroughputTest
 ```
 
-`unwrap*` — только IGE+TL. `fakeDc*` — TCP + obfuscated intermediate + `EncryptedConnection.runReader`. Packed = 32 `UpdateNewMessage` в одном `UpdatesCtor`.
+`unwrap*` — только IGE+TL в том же процессе. `fakeDc*` — отдельная JVM с Fake DC (`FakeDcMain`) + клиент в тесте; так encrypt/GC сервера не делят кучу с unwrap. Packed = 32 `UpdateNewMessage` в одном `UpdatesCtor`.
+
+`KMTPROTO_FAKE_DC_INPROCESS=1` — старый режим, сервер-тред в JVM теста.
+
+Два процесса вручную:
+
+```
+./gradlew :core:runFakeDc --args="--messages 32 --frames 500000"
+./gradlew :core:runDcBench --args="--messages 32 --frames 500000"
+```
+
+`runDcBench` сам поднимает Fake DC. Подключиться к уже запущенному серверу: `--port --key --salt --session` из ready-строки.
 
 ```
 KMTPROTO_BENCH_N=1000000

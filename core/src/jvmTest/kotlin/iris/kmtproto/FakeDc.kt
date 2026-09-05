@@ -15,11 +15,17 @@ import kotlin.concurrent.thread
 /**
  * Local obfuscated-intermediate DC. Shared auth_key/salt/session with the client;
  * no DH. Each frame is [sampleUpdates] + [InboundEncoder], same bodies as unwrap benches.
+ *
+ * Bench runs this in a **separate JVM** ([FakeDcMain]) so encrypt/GC do not share
+ * the client heap and compiler.
  */
-internal class FakeDc : AutoCloseable {
+internal class FakeDc(
+    host: String = "127.0.0.1",
+    port: Int = 0,
+) : AutoCloseable {
     private val server = ServerSocket().apply {
         reuseAddress = true
-        bind(InetSocketAddress("127.0.0.1", 0))
+        bind(InetSocketAddress(host, port))
     }
     private val keepOpen = CountDownLatch(1)
     val port: Int get() = server.localPort
@@ -42,7 +48,11 @@ internal class FakeDc : AutoCloseable {
             val output = DataOutputStream(socket.getOutputStream())
             val (toClient, fromClient) = handshake(input)
             val drain = thread(name = "fake-dc-drain", isDaemon = true) {
-                drainClient(input, fromClient)
+                try {
+                    drainClient(input, fromClient)
+                } finally {
+                    keepOpen.countDown()
+                }
             }
             val body = sampleUpdates(messagesPerFrame).toBytes()
             val encoder = InboundEncoder()
