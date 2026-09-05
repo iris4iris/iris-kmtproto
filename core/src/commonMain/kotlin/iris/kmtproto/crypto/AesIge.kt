@@ -49,7 +49,36 @@ internal class IgeCtx(private val encrypt: Boolean) {
         aes.init(key, encrypt)
         iv.copyInto(iv1, 0, 0, 16)
         iv.copyInto(iv2, 0, 16, 32)
-        igeCryptLoop(aes, encrypt, iv1, iv2, tmpIn, tmpOut, data, start, n, out, destOff)
+        var offset = 0
+        if (encrypt) {
+            while (offset < n) {
+                val src = start + offset
+                val dst = destOff + offset
+                for (i in 0 until 16) tmpIn[i] = (data[src + i].toInt() xor iv1[i].toInt()).toByte()
+                aes.block(tmpIn, 0, tmpOut, 0)
+                for (i in 0 until 16) {
+                    val c = (tmpOut[i].toInt() xor iv2[i].toInt()).toByte()
+                    out[dst + i] = c
+                    iv2[i] = data[src + i]
+                    iv1[i] = c
+                }
+                offset += 16
+            }
+        } else {
+            while (offset < n) {
+                val src = start + offset
+                val dst = destOff + offset
+                for (i in 0 until 16) tmpIn[i] = (data[src + i].toInt() xor iv2[i].toInt()).toByte()
+                aes.block(tmpIn, 0, tmpOut, 0)
+                for (i in 0 until 16) {
+                    val p = (tmpOut[i].toInt() xor iv1[i].toInt()).toByte()
+                    out[dst + i] = p
+                    iv1[i] = data[src + i]
+                    iv2[i] = p
+                }
+                offset += 16
+            }
+        }
         return out
     }
 }

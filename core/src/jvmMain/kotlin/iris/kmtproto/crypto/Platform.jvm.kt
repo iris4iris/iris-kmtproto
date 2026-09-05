@@ -107,34 +107,6 @@ internal actual class AesEcb actual constructor(key: ByteArray, encrypt: Boolean
     }
 }
 
-internal actual fun igeCryptLoop(
-    aes: AesEcb,
-    encrypt: Boolean,
-    iv1: ByteArray,
-    iv2: ByteArray,
-    tmpIn: ByteArray,
-    tmpOut: ByteArray,
-    data: ByteArray,
-    start: Int,
-    n: Int,
-    dest: ByteArray,
-    destOff: Int,
-) {
-    AesBlocks.ige(aes, encrypt, iv1, iv2, tmpIn, tmpOut, data, start, n, dest, destOff)
-}
-
-internal actual fun ctrProcessInto(
-    aes: AesEcb,
-    counter: ByteArray,
-    keystream: ByteArray,
-    offset: Int,
-    src: ByteArray,
-    srcOff: Int,
-    dst: ByteArray,
-    dstOff: Int,
-    len: Int,
-): Int = AesBlocks.ctr(aes, counter, keystream, offset, src, srcOff, dst, dstOff, len)
-
 internal actual class Md5Hasher actual constructor() {
     private val digest = MessageDigest.getInstance("MD5")
     actual fun update(data: ByteArray, offset: Int, length: Int) {

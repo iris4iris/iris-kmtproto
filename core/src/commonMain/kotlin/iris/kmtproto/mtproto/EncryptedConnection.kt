@@ -75,8 +75,6 @@ internal class EncryptedConnection(
     private val bundles = HashMap<Long, LongArray>()
     private val readCrypto = FrameCrypto()
     private val writeCrypto = FrameCrypto()
-    private val acksOut = ArrayList<Long>(4)
-    private val eventsOut = ArrayList<TlObject>(4)
 
     private fun nextSeq(contentRelated: Boolean): Int {
         val value = seq * 2 + if (contentRelated) 1 else 0
@@ -319,26 +317,24 @@ internal class EncryptedConnection(
         val seqNo = inner.readIntLe(24)
         val length = inner.readIntLe(28)
         require(length >= 0 && 32 + length <= inner.size) { "bad mtproto length=$length inner=${inner.size}" }
-        acksOut.clear()
-        eventsOut.clear()
-        if (seqNo % 2 == 1) acksOut += msgId
+        val acks = ArrayList<Long>()
+        if (seqNo % 2 == 1) acks += msgId
         val obj = try {
             TlReader(inner, pos = 32, end = 32 + length).readObject()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logCaught("tl-read", e)
-            return acksOut to eventsOut
+            return acks to emptyList()
         }
         try {
-            collectAcks(obj, msgId, seqNo, acksOut)
-            flattenInto(obj, eventsOut)
-            return acksOut to eventsOut
+            collectAcks(obj, msgId, seqNo, acks)
+            return acks to flatten(obj)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logCaught("tl-unwrap", e)
-            return acksOut to eventsOut
+            return acks to emptyList()
         }
     }
 
@@ -356,18 +352,16 @@ internal class EncryptedConnection(
         }
     }
 
-    private fun flattenInto(obj: TlObject, into: ArrayList<TlObject>) {
-        when (obj) {
-            is MsgContainer -> obj.messages.forEach { flattenInto(it.body, into) }
-            is GzipPacked -> flattenInto(TlReader(PlatformCrypto.gunzip(obj.packedData)).readObject(), into)
-            is MtMessage -> flattenInto(obj.body, into)
+    private fun flatten(obj: TlObject): List<TlObject> {
+        return when (obj) {
+            is MsgContainer -> obj.messages.flatMap { flatten(it.body) }
+            is GzipPacked -> flatten(TlReader(PlatformCrypto.gunzip(obj.packedData)).readObject())
+            is MtMessage -> flatten(obj.body)
             is RpcResult -> {
-                val at = into.size
-                flattenInto(obj.result, into)
-                val inner = if (into.size == at + 1) into.removeAt(into.lastIndex) else obj.result
-                into.add(obj.copy(result = inner))
+                val inner = flatten(obj.result).singleOrNull() ?: obj.result
+                listOf(obj.copy(result = inner))
             }
-            else -> into.add(obj)
+            else -> listOf(obj)
         }
     }
 }
