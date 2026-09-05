@@ -131,6 +131,16 @@ Windows: `.\gradlew.bat generateTl`
 ./gradlew :core:runUserApi    # UserApi: SMS login + send + listen
 ```
 
+`:core` зависит от `:tl` как от проекта — Gradle обязан проверить, актуален ли jar. Это доли секунды (`UP-TO-DATE`), не 19 с.
+
+Чтобы `:core:jvmTest` вообще не ставил в граф `:tl:*`, в `gradle.properties`:
+
+```
+tl.prebuilt=true
+```
+
+Сначала один раз `./gradlew :tl:jvmJar` (или `generateTl` + `:tl:jvmJar`). Дальше core берёт `tl/build/libs/tl-jvm-*.jar`. Схема/генератор поменялись — снова `:tl:jvmJar`. Снять флаг или `-Ptl.prebuilt=false`, если нужна живая связь модулей.
+
 Mains:
 
 - `iris.kmtproto.example.EchoBotMainKt`

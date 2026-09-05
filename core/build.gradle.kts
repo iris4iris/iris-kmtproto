@@ -2,19 +2,41 @@ plugins {
     kotlin("multiplatform")
 }
 
+val tlPrebuilt = providers.gradleProperty("tl.prebuilt")
+    .map { it.equals("true", ignoreCase = true) }
+    .orElse(false)
+val tlJarFile = rootProject.layout.projectDirectory
+    .file("tl/build/libs/tl-jvm-${rootProject.version}.jar")
+    .asFile
+
 kotlin {
     jvm()
 
     sourceSets {
         commonMain.dependencies {
-            api(project(":tl"))
+            if (!tlPrebuilt.get()) {
+                api(project(":tl"))
+            }
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+        }
+        jvmMain.dependencies {
+            if (tlPrebuilt.get()) {
+                api(files(tlJarFile))
+            }
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))
+        }
+    }
+}
+
+tasks.named("compileKotlinJvm") {
+    doFirst {
+        if (tlPrebuilt.get() && !tlJarFile.isFile) {
+            error("tl.prebuilt=true, but ${tlJarFile.name} is missing. Run: ./gradlew :tl:jvmJar")
         }
     }
 }
