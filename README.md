@@ -141,6 +141,18 @@ tl.prebuilt=true
 
 Сначала один раз `./gradlew :tl:jvmJar` (или `generateTl` + `:tl:jvmJar`). Дальше core берёт `tl/build/libs/tl-jvm-*.jar`. Схема/генератор поменялись — снова `:tl:jvmJar`. Снять флаг или `-Ptl.prebuilt=false`, если нужна живая связь модулей.
 
+```
+./gradlew :core:jvmTest --tests iris.kmtproto.InboundThroughputTest
+```
+
+`unwrap*` — только IGE+TL. `fakeDc*` — TCP + obfuscated intermediate + `EncryptedConnection.runReader`. Packed = 32 `UpdateNewMessage` в одном `UpdatesCtor`.
+
+```
+KMTPROTO_BENCH_N=1000000
+KMTPROTO_BENCH_DC_N=100000
+KMTPROTO_BENCH_DC_N_FAT=20000
+```
+
 Mains:
 
 - `iris.kmtproto.example.EchoBotMainKt`
