@@ -1,20 +1,20 @@
 package iris.kmtproto
 
 import iris.kmtproto.crypto.AesCtr
+import iris.kmtproto.crypto.AuthKey
 import iris.kmtproto.readIntLe
+import iris.kmtproto.tl.toBytes
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
-import java.net.Socket
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /**
- * Local obfuscated-intermediate DC. Shared [authKey]/salt/session with the client;
- * no DH. After the 64-byte CTR handshake it can blast the same encrypted MTProto
- * payload (single UpdatesCtor or a packed one).
+ * Local obfuscated-intermediate DC. Shared auth_key/salt/session with the client;
+ * no DH. Each frame is [sampleUpdates] + [encodeInbound], same bodies as unwrap benches.
  */
 internal class FakeDc : AutoCloseable {
     private val server = ServerSocket().apply {
@@ -23,8 +23,16 @@ internal class FakeDc : AutoCloseable {
     }
     private val keepOpen = CountDownLatch(1)
     val port: Int get() = server.localPort
+    @Volatile var frameBytes: Int = 0
+        private set
 
-    fun start(payload: ByteArray, frames: Int): Thread = thread(name = "fake-dc") {
+    fun start(
+        authKey: AuthKey,
+        salt: Long,
+        sessionId: Long,
+        messagesPerFrame: Int,
+        frames: Int,
+    ): Thread = thread(name = "fake-dc") {
         server.soTimeout = 20_000
         val socket = server.accept()
         socket.tcpNoDelay = true
@@ -36,10 +44,15 @@ internal class FakeDc : AutoCloseable {
             val drain = thread(name = "fake-dc-drain", isDaemon = true) {
                 drainClient(input, fromClient)
             }
-            val wire = ByteArray(4 + payload.size)
-            payload.size.toLeBytes().copyInto(wire)
-            payload.copyInto(wire, 4)
+            val body = sampleUpdates(messagesPerFrame).toBytes()
+            var msgId = 8L
             repeat(frames) { i ->
+                val payload = encodeInbound(authKey, salt, sessionId, msgId, seqNo = 1, body = body)
+                msgId += 2
+                if (i == 0) frameBytes = payload.size
+                val wire = ByteArray(4 + payload.size)
+                payload.size.toLeBytes().copyInto(wire)
+                payload.copyInto(wire, 4)
                 output.write(toClient.process(wire))
                 if (i and 127 == 127) output.flush()
             }

@@ -80,15 +80,13 @@ class InboundThroughputTest {
         val key = AuthKey(PlatformCrypto.randomBytes(256))
         val salt = 0x1111_2222_3333_4444L
         val session = 0x5555_6666_7777_8888L
-        val body = sampleUpdates(messagesPerFrame).toBytes()
-        val payload = encodeInbound(key, salt, session, msgId = 8L, seqNo = 1, body = body)
         val expected = frames * messagesPerFrame
         val dc = FakeDc()
         val threads = MuxThreads("dc-bench")
         val seen = AtomicInteger(0)
         val done = CompletableDeferred<Unit>()
         try {
-            dc.start(payload, frames)
+            dc.start(key, salt, session, messagesPerFrame, frames)
             val transport = connectObfuscated(Datacenter(99, "127.0.0.1", dc.port))
             val conn = EncryptedConnection(
                 transport = transport,
@@ -115,7 +113,7 @@ class InboundThroughputTest {
             val sec = (System.nanoTime() - t0) / 1e9
             job.cancel()
             runCatching { transport.close() }
-            printBench("dc $label", frames, payload.size, sec, seen.get())
+            printBench("dc $label", frames, dc.frameBytes, sec, seen.get())
             assertEquals(expected, seen.get())
         } finally {
             dc.close()
