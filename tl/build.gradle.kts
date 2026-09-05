@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.PathSensitivity
+
 plugins {
     kotlin("multiplatform")
 }
@@ -12,7 +14,7 @@ kotlin {
 
     sourceSets {
         commonMain {
-            kotlin.srcDir(generatedTlRoot)
+            // generated sources attached after generateTl is registered (builtBy)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -40,21 +42,14 @@ tasks.register<JavaExec>("generateTl") {
     classpath = tlgenCompilation.output.allOutputs + (tlgenCompilation.runtimeDependencyFiles ?: files())
     mainClass.set("iris.kmtproto.tlgen.GenerateTlKt")
     workingDir = projectDir
-    outputs.dir(generatedTlRoot)
-    inputs.file(layout.projectDirectory.file("schema/api.tl"))
-    inputs.files(tlgenCompilation.output.allOutputs)
-    doFirst {
-        val dir = generatedTlPkg.get().asFile
-        dir.mkdirs()
-        args = listOf(dir.absolutePath)
-    }
+    args(generatedTlPkg.get().asFile.absolutePath)
+    inputs.file(layout.projectDirectory.file("schema/api.tl")).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(generatedTlPkg)
 }
 
-tasks.matching {
-    it.name.startsWith("compile") && it.name.contains("Kotlin") && !it.name.contains("Tlgen", ignoreCase = true)
-}.configureEach {
-    dependsOn("generateTl")
-}
+kotlin.sourceSets.getByName("commonMain").kotlin.srcDir(
+    files(generatedTlRoot).builtBy(tasks.named("generateTl")),
+)
 
 tasks.named<Test>("jvmTest") {
     filter {

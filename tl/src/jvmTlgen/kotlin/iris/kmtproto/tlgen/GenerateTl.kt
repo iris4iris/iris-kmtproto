@@ -11,11 +11,19 @@ fun main(args: Array<String>) {
     ).firstOrNull { it.isFile } ?: error("schema/api.tl not found from $root")
     val dir = File(args.getOrNull(0) ?: error("output dir argument required"))
     dir.mkdirs()
-    dir.listFiles()?.filter { it.extension == "kt" }?.forEach { it.delete() }
     val schema = TlParser.parse(api.readText())
     val files = TlKotlinGen.generateFiles(schema)
-    for ((name, src) in files) {
-        File(dir, name).writeText(src)
+    val expected = files.keys.toSet()
+    dir.listFiles()?.forEach { f ->
+        if (f.extension == "kt" && f.name !in expected) f.delete()
     }
-    println("wrote ${files.size} files to ${dir.canonicalPath} layer=${schema.layer}")
+    var written = 0
+    for ((name, src) in files) {
+        val dest = File(dir, name)
+        if (!dest.isFile || dest.readText(Charsets.UTF_8) != src) {
+            dest.writeText(src, Charsets.UTF_8)
+            written++
+        }
+    }
+    println("tlgen layer=${schema.layer}: wrote $written/${files.size} to ${dir.canonicalPath}")
 }
