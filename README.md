@@ -157,7 +157,9 @@ tl.prebuilt=true
 
 `KMTPROTO_FAKE_DC_INPROCESS=1` — старый режим, сервер-тред в JVM теста.
 
-Прогрев: 20 000 кадров (не входят в таблицу). `KMTPROTO_BENCH_WARMUP=0` — без него. Fake DC шлёт прогрев по тому же TCP, чтобы C2 встал и на сервере, и на клиенте.
+Прогрев: 20 000 кадров (не входят в таблицу). `KMTPROTO_BENCH_WARMUP=0` — без него.
+
+Fake DC не шифрует на горячем пути: IGE-кадры один раз пишутся в `build/fake-dc-cache/m{messages}-n{warmup+frames}.bin`, грузятся в RAM, после handshake весь блоб CTR'ится один раз и отдаётся в сокет. Packed 520 000 кадров ≈ 1.1 GiB; процессу нужно `-Xmx2g` (уже в `runFakeDc` и spawn из теста). Каталог: `KMTPROTO_FAKE_DC_CACHE`.
 
 Два процесса вручную:
 

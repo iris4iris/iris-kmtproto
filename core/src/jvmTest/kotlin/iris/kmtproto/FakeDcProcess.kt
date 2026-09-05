@@ -39,7 +39,7 @@ internal fun startFakeDcProcess(
         java,
         "--add-opens=java.base/com.sun.crypto.provider=ALL-UNNAMED",
         "-Xms256m",
-        "-Xmx512m",
+        "-Xmx2g",
         "-cp",
         cp,
         "iris.kmtproto.FakeDcMainKt",

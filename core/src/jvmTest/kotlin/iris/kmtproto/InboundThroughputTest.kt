@@ -72,22 +72,19 @@ class InboundThroughputTest {
     private fun runFakeDcBench(label: String, messagesPerFrame: Int, frames: Int) = runBlocking {
         val warmup = benchWarmup()
         if (System.getenv("KMTPROTO_FAKE_DC_INPROCESS") == "1") {
-            val key = AuthKey(PlatformCrypto.randomBytes(256))
-            val salt = 0x1111_2222_3333_4444L
-            val session = 0x5555_6666_7777_8888L
+            val tape = FakeDcCache.loadOrBuild(messagesPerFrame, warmup + frames)
             FakeDc().use { dc ->
-                dc.start(key, salt, session, messagesPerFrame, frames, warmup = warmup)
-                val frameBytes = InboundEncoder().payloadBytes(sampleUpdates(messagesPerFrame).toBytes().size)
+                dc.start(tape)
                 runFakeDcClient(
                     label = label,
                     host = "127.0.0.1",
                     port = dc.port,
-                    authKey = key,
-                    salt = salt,
-                    sessionId = session,
+                    authKey = tape.authKey,
+                    salt = tape.salt,
+                    sessionId = tape.sessionId,
                     messagesPerFrame = messagesPerFrame,
                     frames = frames,
-                    frameBytes = frameBytes,
+                    frameBytes = tape.frameBytes,
                     warmup = warmup,
                 )
             }

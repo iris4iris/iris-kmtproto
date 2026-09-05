@@ -6,10 +6,13 @@ import iris.kmtproto.crypto.AesCtr
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.readIntLe
 import iris.kmtproto.toHex
-import iris.kmtproto.toLeBytes
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.Socket
+
+private const val STREAM_BUF = 64 * 1024
 
 private class ObfuscatedIntermediate(
     private val socket: Socket,
@@ -18,26 +21,38 @@ private class ObfuscatedIntermediate(
     private val encryptor: AesCtr,
     private val decryptor: AesCtr,
 ) : MtprotoTransport {
+    private val sendLen = ByteArray(4)
+    private var sendBuf = ByteArray(2048)
+    private val lenBuf = ByteArray(4)
+    private var payloadBuf = ByteArray(2048)
+
     override suspend fun send(payload: ByteArray) {
-        val framed = payload.size.toLeBytes() + payload
-        val encrypted = encryptor.process(framed)
-        output.write(encrypted)
+        val n = 4 + payload.size
+        if (sendBuf.size < n) sendBuf = ByteArray(n.coerceAtLeast(sendBuf.size * 2))
+        val size = payload.size
+        sendLen[0] = size.toByte()
+        sendLen[1] = (size shr 8).toByte()
+        sendLen[2] = (size shr 16).toByte()
+        sendLen[3] = (size shr 24).toByte()
+        sendLen.copyInto(sendBuf, 0)
+        payload.copyInto(sendBuf, 4)
+        encryptor.processInto(sendBuf, 0, sendBuf, 0, n)
+        output.write(sendBuf, 0, n)
         output.flush()
     }
 
     override suspend fun receive(): ByteArray {
         while (true) {
-            val lenEnc = ByteArray(4)
-            input.readFully(lenEnc)
-            val lenDec = decryptor.process(lenEnc)
-            val len = lenDec.readIntLe() and 0x7fffffff
+            input.readFully(lenBuf)
+            decryptor.processInto(lenBuf, 0, lenBuf, 0, 4)
+            val len = lenBuf.readIntLe() and 0x7fffffff
             require(len in 0..2_000_000) {
-                "implausible frame length $len (head=${lenDec.toHex()})"
+                "implausible frame length $len (head=${lenBuf.toHex()})"
             }
-            val payloadEnc = ByteArray(len)
-            input.readFully(payloadEnc)
-            val payload = decryptor.process(payloadEnc)
-            if (payload.size >= 20) return payload
+            if (payloadBuf.size != len) payloadBuf = ByteArray(len)
+            input.readFully(payloadBuf, 0, len)
+            decryptor.processInto(payloadBuf, 0, payloadBuf, 0, len)
+            if (len >= 20) return payloadBuf
         }
     }
 
@@ -56,21 +71,28 @@ private class PlainIntermediate(
     private val input: DataInputStream,
     private val output: DataOutputStream,
 ) : MtprotoTransport {
+    private val lenBuf = ByteArray(4)
+    private var payloadBuf = ByteArray(2048)
+
     override suspend fun send(payload: ByteArray) {
-        output.write(payload.size.toLeBytes())
+        val size = payload.size
+        lenBuf[0] = size.toByte()
+        lenBuf[1] = (size shr 8).toByte()
+        lenBuf[2] = (size shr 16).toByte()
+        lenBuf[3] = (size shr 24).toByte()
+        output.write(lenBuf)
         output.write(payload)
         output.flush()
     }
 
     override suspend fun receive(): ByteArray {
         while (true) {
-            val lenBuf = ByteArray(4)
             input.readFully(lenBuf)
             val len = lenBuf.readIntLe() and 0x7fffffff
             require(len in 0..2_000_000) { "implausible frame length $len" }
-            val payload = ByteArray(len)
-            input.readFully(payload)
-            if (payload.size >= 20) return payload
+            if (payloadBuf.size != len) payloadBuf = ByteArray(len)
+            input.readFully(payloadBuf, 0, len)
+            if (len >= 20) return payloadBuf
         }
     }
 
@@ -89,8 +111,8 @@ actual suspend fun connectObfuscated(dc: Datacenter, proxy: Proxy?): MtprotoTran
 
 private fun connectObfuscatedAt(host: String, port: Int, proxy: Proxy?): MtprotoTransport {
     val socket = openTcp(host, port, proxy)
-    val input = DataInputStream(socket.getInputStream())
-    val output = DataOutputStream(socket.getOutputStream())
+    val input = DataInputStream(BufferedInputStream(socket.getInputStream(), STREAM_BUF))
+    val output = DataOutputStream(BufferedOutputStream(socket.getOutputStream(), STREAM_BUF))
 
     val init = ByteArray(64)
     while (true) {

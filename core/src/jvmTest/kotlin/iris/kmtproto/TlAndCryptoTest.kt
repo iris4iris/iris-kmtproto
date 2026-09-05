@@ -183,4 +183,18 @@ class TlAndCryptoTest {
         val back = b.process(cipher)
         assertContentEquals(plain, back)
     }
+
+    @Test
+    fun aesCtrInPlaceMatchesCopy() {
+        val key = PlatformCrypto.randomBytes(32)
+        val iv = PlatformCrypto.randomBytes(16)
+        val plain = PlatformCrypto.randomBytes(2252)
+        val copy = iris.kmtproto.crypto.AesCtr(key, iv.copyOf()).process(plain)
+        val inplace = plain.copyOf()
+        iris.kmtproto.crypto.AesCtr(key, iv.copyOf()).processInto(inplace, 0, inplace, 0, inplace.size)
+        assertContentEquals(copy, inplace)
+        val back = ByteArray(inplace.size)
+        iris.kmtproto.crypto.AesCtr(key, iv.copyOf()).processInto(inplace, 0, back, 0, inplace.size)
+        assertContentEquals(plain, back)
+    }
 }

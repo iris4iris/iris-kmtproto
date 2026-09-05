@@ -1,9 +1,5 @@
 package iris.kmtproto
 
-import iris.kmtproto.crypto.AuthKey
-import iris.kmtproto.crypto.PlatformCrypto
-import iris.kmtproto.tl.toBytes
-
 /**
  * Standalone Fake DC process. Prints one ready line, then accepts one client.
  *
@@ -13,18 +9,16 @@ import iris.kmtproto.tl.toBytes
  */
 fun main(args: Array<String>) {
     val a = parseFakeDcArgs(args)
-    val key = AuthKey(PlatformCrypto.randomBytes(256))
-    val salt = 0x1111_2222_3333_4444L
-    val session = 0x5555_6666_7777_8888L
-    val frameBytes = InboundEncoder().payloadBytes(sampleUpdates(a.messages).toBytes().size)
+    val total = a.warmup + a.frames
+    val tape = FakeDcCache.loadOrBuild(a.messages, total)
     FakeDc(a.bind, a.port).use { dc ->
         println(
-            "kmtproto fake-dc ready host=${a.bind} port=${dc.port} key=${key.key.toHex()} " +
-                "salt=${salt.toUnsignedHex()} session=${session.toUnsignedHex()} " +
-                "frames=${a.frames} messages=${a.messages} warmup=${a.warmup} frameBytes=$frameBytes",
+            "kmtproto fake-dc ready host=${a.bind} port=${dc.port} key=${tape.authKey.key.toHex()} " +
+                "salt=${tape.salt.toUnsignedHex()} session=${tape.sessionId.toUnsignedHex()} " +
+                "frames=${a.frames} messages=${a.messages} warmup=${a.warmup} frameBytes=${tape.frameBytes}",
         )
         System.out.flush()
-        dc.start(key, salt, session, a.messages, a.frames, warmup = a.warmup).join()
+        dc.start(tape).join()
     }
 }
 

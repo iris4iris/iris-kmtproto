@@ -92,6 +92,7 @@ tasks.register<JavaExec>("runUserApi") {
 
 tasks.register<JavaExec>("runFakeDc") {
     testMain("iris.kmtproto.FakeDcMainKt", "Fake DC server process (inbound bench)")
+    jvmArgs("-Xmx2g")
 }
 
 tasks.register<JavaExec>("runDcBench") {
