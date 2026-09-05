@@ -8,10 +8,9 @@ class AuthKey(val key: ByteArray) {
         require(key.size == 256) { "auth_key must be 256 bytes, got ${key.size}" }
     }
 
-    val auxHash: ByteArray = PlatformCrypto.sha1(key).copyOfRange(0, 8)
-    val keyId: Long = PlatformCrypto.sha1(key).let { hash ->
-        hash.copyOfRange(hash.size - 8, hash.size).readLongLe()
-    }
+    val sha1 = PlatformCrypto.sha1(key)
+    val auxHash: ByteArray = sha1.copyOfRange(0, 8)
+    val keyId: Long = sha1.readLongLe(sha1.size - 8)
 
     fun newNonceHash(newNonce: ByteArray, number: Int): ByteArray {
         val data = concat(newNonce, byteArrayOf(number.toByte()), auxHash)
