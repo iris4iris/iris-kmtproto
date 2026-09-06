@@ -102,3 +102,9 @@ tasks.register<JavaExec>("runDcBench") {
 tasks.register<JavaExec>("runIgeBench") {
     testMain("iris.kmtproto.IgeThroughputTestKt", "Raw AES-256-IGE decrypt bench")
 }
+
+tasks.register<JavaExec>("runEventProcessorTest") {
+    testMain("iris.kmtproto.EventProcessorTestKt", "Incoming event processor unit tests")
+}
+
+

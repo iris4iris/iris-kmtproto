@@ -107,6 +107,32 @@ user.restrict(channelId, userId, ChatBannedRights(untilDate = 0, sendMessages = 
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.
+
+Incoming dispatch sits **above** [TelegramClient] — the client stays a raw `incomingUpdates()` stream. Two processors, one handler each:
+
+```kotlin
+import iris.kmtproto.events.ArraySingleEventHandler
+import iris.kmtproto.events.SingleEventHandler
+import iris.kmtproto.events.SingleUpdateProcessor
+
+val handler = object : SingleEventHandler {
+    override suspend fun handleMessage(message: MessageCtor) { /* one update */ }
+    override suspend fun handleChatMember(event: ChatMemberEvent) { /* join/leave */ }
+}
+val processor = SingleUpdateProcessor(
+    client,
+    ArraySingleEventHandler(
+        filters = arrayOf(/* SingleEventFilter, AND */),
+        handlers = arrayOf(handler),
+    ),
+)
+processor.start(scope)
+```
+
+`PackUpdateProcessor` + `PackEventHandler` get `List<>` per type (drain queue → split → wait for the handler → next pack). Compose with `One*` / `Array*` / `List*` — the processor does not know about lists.
+
+Types wired today: message, edit, chatMember, callback, userStatus; everything else → `handleUnknown`.
+
 ## Layout
 
 One Gradle build, two modules:
