@@ -17,8 +17,8 @@ class RpcResponse<T>(
     }
 }
 
-val RpcError.floodWaitSeconds: Int?
-    get() = if (errorMessage.startsWith("FLOOD_WAIT_")) errorMessage.removePrefix("FLOOD_WAIT_").toIntOrNull() else null
+val RpcError.floodWaitSeconds: Int
+    get() = if (errorMessage.startsWith("FLOOD_WAIT_")) errorMessage.removePrefix("FLOOD_WAIT_").toIntOrNull() ?: 0 else 0
 
 internal fun <T> RpcResponse<T>.orThrow(): T {
     val e = error

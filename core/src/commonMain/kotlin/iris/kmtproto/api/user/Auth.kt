@@ -142,7 +142,7 @@ private fun isDeadAuth(message: String): Boolean =
 
 private fun restoreUser(session: ClientSession): UserCtor = UserCtor(
     id = session.userId,
-    accessHash = session.accessHash.takeIf { it != 0L },
+    accessHash = session.accessHash,
     bot = true,
     self = true,
 )

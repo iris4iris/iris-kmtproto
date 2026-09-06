@@ -42,7 +42,7 @@ private fun handle(
         val err = r.error
         if (err != null) {
             val wait = err.floodWaitSeconds
-            if (wait != null) log("FLOOD_WAIT $wait s")
+            if (wait != 0) log("FLOOD_WAIT $wait s")
             else log("send failed ${err.errorCode} ${err.errorMessage} chat=${msg.chatId}")
         } else {
             log("echo #${r.result!!.id} -> chat ${msg.chatId}")

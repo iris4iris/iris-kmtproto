@@ -26,6 +26,17 @@ class TlKotlinGenTest {
         val peerFile = files.entries.first { it.value.contains("sealed interface Peer") }.value
         assertTrue(peerFile.contains("class PeerUser("), peerFile.take(400))
         assertTrue(peerFile.contains("override fun serialize(w: TlWriter)"), peerFile.take(600))
+        for ((name, src) in files) {
+            assertTrue("Int? = null" !in src, "$name still has Int? = null")
+            assertTrue("Long? = null" !in src, "$name still has Long? = null")
+        }
+        val fwdSrc = files.entries.first { it.value.contains("class MessageFwdHeader(") }.value
+        assertTrue(fwdSrc.contains("val channelPost: Int = 0"), fwdSrc)
+        assertTrue(fwdSrc.contains("if (channelPost != 0)"), fwdSrc)
+        val userSrc = files.entries.first { it.value.contains("class UserCtor(") }.value
+        assertTrue(userSrc.contains("val accessHash: Long = 0L"), userSrc)
+        assertTrue(userSrc.contains("if (accessHash != 0L)"), userSrc)
+        assertTrue(userSrc.contains("val self: Boolean = false"), userSrc)
     }
 
     @Test
@@ -45,6 +56,12 @@ class TlKotlinGenTest {
         assertTrue(fwdBack.imported)
         assertEquals(7L, (fwdBack.fromId as PeerUser).userId)
         assertEquals("Ann", fwdBack.fromName)
+        assertEquals(0, fwdBack.channelPost)
+
+        val withPost = MessageFwdHeader(date = 100, channelPost = 7)
+        val postBack = readMessageFwdHeader(TlReader(withPost.toBytes()))
+        assertEquals(7, postBack.channelPost)
+        assertTrue(withPost.toBytes().size > MessageFwdHeader(date = 100).toBytes().size)
 
         val replies = MessageReplies(
             replies = 3,

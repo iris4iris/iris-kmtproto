@@ -198,9 +198,28 @@ object TlKotlinGen {
         val name = ident(camel(p.name))
         return when {
             p.type is TlType.True -> KField(name, "Boolean", " = false", p)
+            p.condition != null && isBareInt(p.type) -> KField(name, "Int", " = 0", p)
+            p.condition != null && isBareLong(p.type) -> KField(name, "Long", " = 0L", p)
             p.condition != null -> KField(name, kotlinType(p.type) + "?", " = null", p)
             else -> KField(name, kotlinType(p.type), "", p)
         }
+    }
+
+    private fun isBareInt(type: TlType) = type is TlType.Named && type.ident == "int"
+
+    private fun isBareLong(type: TlType) = type is TlType.Named && type.ident == "long"
+
+    private fun presentCheck(field: String, p: TlParam): String = when {
+        p.type is TlType.True -> field
+        isBareInt(p.type) -> "$field != 0"
+        isBareLong(p.type) -> "$field != 0L"
+        else -> "$field != null"
+    }
+
+    private fun absentLit(p: TlParam): String = when {
+        isBareInt(p.type) -> "0"
+        isBareLong(p.type) -> "0L"
+        else -> "null"
     }
 
     private fun serializeExpr(name: String): String = if (name == "w") "this.w" else name
@@ -213,8 +232,7 @@ object TlKotlinGen {
                 val cond = p.condition ?: continue
                 if (cond.flagsParam != fp) continue
                 val field = serializeExpr(ident(camel(p.name)))
-                val check = if (p.type is TlType.True) field else "$field != null"
-                out.appendLine("${indent}if ($check) $fp = $fp or (1 shl ${cond.bit})")
+                out.appendLine("${indent}if (${presentCheck(field, p)}) $fp = $fp or (1 shl ${cond.bit})")
             }
             out.appendLine("${indent}w.writeInt($fp)")
         }
@@ -222,7 +240,7 @@ object TlKotlinGen {
             if (p.type is TlType.Flags || p.type is TlType.True) continue
             val field = serializeExpr(ident(camel(p.name)))
             if (p.condition != null) {
-                out.appendLine("${indent}if ($field != null) {")
+                out.appendLine("${indent}if (${presentCheck(field, p)}) {")
                 emitWrite(out, field, p.type, indent + "    ")
                 out.appendLine("$indent}")
             } else {
@@ -245,7 +263,7 @@ object TlKotlinGen {
                 p.condition != null -> {
                     val cond = p.condition
                     out.appendLine(
-                        "${indent}val ${ident(camel(p.name))} = if (${cond.flagsParam} and (1 shl ${cond.bit}) != 0) ${readExpr(p.type)} else null",
+                        "${indent}val ${ident(camel(p.name))} = if (${cond.flagsParam} and (1 shl ${cond.bit}) != 0) ${readExpr(p.type)} else ${absentLit(p)}",
                     )
                 }
                 else ->

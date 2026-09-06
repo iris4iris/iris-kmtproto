@@ -29,7 +29,7 @@ val User.id: Long
         is UserCtor -> id
     }
 
-val User.accessHashOrZero: Long
+val User.accessHash: Long
     get() = (this as? UserCtor)?.accessHash ?: 0L
 
 fun inputPeerFromBotApiId(chatId: Long, accessHash: Long = 0L): InputPeer = when {

@@ -108,7 +108,7 @@ class TelegramClient(
     private val channels = ChannelCursors()
     private val incomingUpdates = MutableSharedFlow<Update>(extraBufferCapacity = 256, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
-    private var catchingChannel: Long? = null
+    private var catchingChannel: Long = 0
     private var updatesLink: SocketLink? = null
     private var rpcLink: SocketLink? = null
     private var mediaLink: SocketLink? = null
@@ -132,7 +132,7 @@ class TelegramClient(
             authKey = keyBytes.copyOf(),
             salt = updatesLink?.connection?.salt ?: loadedSession?.salt ?: 0L,
             userId = user?.id ?: loadedSession?.userId ?: 0L,
-            accessHash = user?.accessHashOrZero ?: loadedSession?.accessHash ?: 0L,
+            accessHash = user?.accessHash ?: loadedSession?.accessHash ?: 0L,
         )
     }
 
@@ -290,22 +290,22 @@ class TelegramClient(
     }
 
     fun getDifferenceAsync(
-        pts: Int? = null,
-        date: Int? = null,
-        qts: Int? = null,
+        pts: Int = -1,
+        date: Int = -1,
+        qts: Int = -1,
     ): Deferred<UpdatesDifference> = apiAsync { getDifference(pts, date, qts) }
 
     suspend fun getDifference(
-        pts: Int? = null,
-        date: Int? = null,
-        qts: Int? = null,
+        pts: Int = -1,
+        date: Int = -1,
+        qts: Int = -1,
     ): UpdatesDifference {
         val st = updatesState
         val diff = invoke(
             UpdatesGetDifference(
-                pts = pts ?: st?.pts ?: error("call getState() first"),
-                date = date ?: st?.date ?: 0,
-                qts = qts ?: st?.qts ?: 0,
+                pts = if (pts != -1) pts else st?.pts ?: error("call getState() first"),
+                date = if (date != -1) date else st?.date ?: 0,
+                qts = if (qts != -1) qts else st?.qts ?: 0,
             ),
         ).orThrow()
         applyDifference(diff)
@@ -373,7 +373,7 @@ class TelegramClient(
         val err = result.error
         if (err != null) {
             val migrateTo = migrateDc(err.errorMessage)
-            if (migrateTo == null || migrateTo == currentDc.id) return result
+            if (migrateTo == 0 || migrateTo == currentDc.id) return result
             connect(Datacenter.production(migrateTo))
             return invoke(method)
         }
@@ -546,7 +546,7 @@ class TelegramClient(
         }
     }
 
-    private fun scheduleCatchUpChannel(channelId: Long, ptsHint: Int?) {
+    private fun scheduleCatchUpChannel(channelId: Long, ptsHint: Int = 0) {
         if (catchingChannel == channelId) return
         if (storage.getAccessHash(PeerChannel(channelId).botApiChatId()) == 0L) return
         catchingChannel = channelId
@@ -558,7 +558,7 @@ class TelegramClient(
             } catch (e: Throwable) {
                 if (!isDisconnect(e)) logCaught("catch-up-channel", e)
             } finally {
-                if (catchingChannel == channelId) catchingChannel = null
+                if (catchingChannel == channelId) catchingChannel = 0
             }
         }
     }
@@ -576,11 +576,11 @@ class TelegramClient(
         }
     }
 
-    private suspend fun catchUpChannel(channelId: Long, ptsHint: Int?) {
+    private suspend fun catchUpChannel(channelId: Long, ptsHint: Int) {
         val cur = channels.get(channelId)
         val hash = storage.getAccessHash(PeerChannel(channelId).botApiChatId())
         if (hash == 0L) return
-        val pts = ptsHint ?: cur?.pts ?: return
+        val pts = if (ptsHint != 0) ptsHint else cur?.pts ?: return
         val r = invoke(
             UpdatesGetChannelDifference(
                 channel = InputChannelCtor(channelId, hash),
@@ -633,7 +633,8 @@ class TelegramClient(
         for (obj in list) {
             when (obj) {
                 is Channel -> {
-                    val hash = obj.accessHash ?: continue
+                    val hash = obj.accessHash
+                    if (hash == 0L) continue
                     storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), hash)
                 }
                 is ChannelForbidden -> storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), obj.accessHash)
@@ -647,7 +648,7 @@ class TelegramClient(
     }
 
     internal fun rememberUser(user: User) {
-        val hash = user.accessHashOrZero
+        val hash = user.accessHash
         if (hash != 0L) storage.putAccessHash(user.id, hash)
     }
 
@@ -680,8 +681,8 @@ private fun UpdatesState.updated(
     unreadCount = unreadCount,
 )
 
-internal fun migrateDc(message: String): Int? {
-    val match = Regex("(USER|PHONE|NETWORK|STATS)_MIGRATE_(\\d+)").find(message) ?: return null
+internal fun migrateDc(message: String): Int {
+    val match = Regex("(USER|PHONE|NETWORK|STATS)_MIGRATE_(\\d+)").find(message) ?: return 0
     return match.groupValues[2].toInt()
 }
 

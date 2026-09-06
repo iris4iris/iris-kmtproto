@@ -38,8 +38,8 @@ import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.CoroutineContext
 
 class RpcException(val code: Int, override val message: String) : RuntimeException("RPC $code: $message") {
-    val floodWaitSeconds: Int?
-        get() = if (message.startsWith("FLOOD_WAIT_")) message.removePrefix("FLOOD_WAIT_").toIntOrNull() else null
+    val floodWaitSeconds: Int
+        get() = if (message.startsWith("FLOOD_WAIT_")) message.removePrefix("FLOOD_WAIT_").toIntOrNull() ?: 0 else 0
 }
 
 internal const val ACK_BATCH = 1000
