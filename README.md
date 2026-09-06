@@ -179,6 +179,17 @@ tl.prebuilt=true
 ./gradlew :core:jvmTest --tests iris.kmtproto.InboundThroughputTest
 ```
 
+Замер: Xeon Platinum 8481C, 2 vCPU, HotSpot AES-NI. Прогрев 20 000 кадров не входит.
+
+| путь | кадр | frames/s | updates/s | MiB/s |
+|---|---|---|---|---|
+| unwrap (IGE+TL, тот же процесс) | 1 `UpdateNewMessage`, 168 B | 350k | 350k | 56 |
+| unwrap | 32 packed, 2248 B | 63k | 2.0M | 134 |
+| Fake DC → клиент | 1×, 168 B | 240k | 240k | 38 |
+| Fake DC → клиент | 32 packed, 2248 B | 48k | 1.5M | 103 |
+
+Файлы в `core/src/jvmTest/kotlin/iris/kmtproto/`: [`InboundThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/InboundThroughputTest.kt) (`unwrap*` / `fakeDc*`), [`FakeDcMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcMain.kt) + [`FakeDcClient.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcClient.kt) + [`DcBenchMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/DcBenchMain.kt) (сокет), [`FakeDcCache.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcCache.kt) (лента кадров).
+
 `unwrap*` — только IGE+TL в том же процессе. `fakeDc*` — отдельная JVM с Fake DC (`FakeDcMain`) + клиент в тесте; так encrypt/GC сервера не делят кучу с unwrap. Packed = 32 `UpdateNewMessage` в одном `UpdatesCtor`.
 
 `KMTPROTO_FAKE_DC_INPROCESS=1` — старый режим, сервер-тред в JVM теста.
