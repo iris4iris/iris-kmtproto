@@ -4,14 +4,18 @@ import iris.kmtproto.tl.TlReader
 import iris.kmtproto.tl.gen.MessageFwdHeader
 import iris.kmtproto.tl.gen.MessageReplies
 import iris.kmtproto.tl.gen.PeerUser
+import iris.kmtproto.tl.gen.UpdateDeleteMessages
+import iris.kmtproto.tl.gen.UpdateDeleteScheduledMessages
 import iris.kmtproto.tl.gen.readMessageFwdHeader
 import iris.kmtproto.tl.gen.readMessageReplies
 import iris.kmtproto.tl.gen.readPeer
+import iris.kmtproto.tl.gen.readUpdate
 import iris.kmtproto.tl.toBytes
 import iris.kmtproto.tlgen.TlKotlinGen
 import iris.kmtproto.tlgen.TlParser
 import java.io.File
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -29,6 +33,8 @@ class TlKotlinGenTest {
         for ((name, src) in files) {
             assertTrue("Int? = null" !in src, "$name still has Int? = null")
             assertTrue("Long? = null" !in src, "$name still has Long? = null")
+            assertTrue("List<Int>" !in src, "$name still has List<Int>")
+            assertTrue("List<Long>" !in src, "$name still has List<Long>")
         }
         val fwdSrc = files.entries.first { it.value.contains("class MessageFwdHeader(") }.value
         assertTrue(fwdSrc.contains("val channelPost: Int = 0"), fwdSrc)
@@ -37,6 +43,12 @@ class TlKotlinGenTest {
         assertTrue(userSrc.contains("val accessHash: Long = 0L"), userSrc)
         assertTrue(userSrc.contains("if (accessHash != 0L)"), userSrc)
         assertTrue(userSrc.contains("val self: Boolean = false"), userSrc)
+        val delSrc = files.entries.first { it.value.contains("class UpdateDeleteMessages(") }.value
+        assertTrue(delSrc.contains("val messages: IntArray"), delSrc)
+        assertTrue(delSrc.contains("w.writeVectorInt(messages)"), delSrc)
+        val schedSrc = files.entries.first { it.value.contains("class UpdateDeleteScheduledMessages(") }.value
+        assertTrue(schedSrc.contains("val sentMessages: IntArray = intArrayOf()"), schedSrc)
+        assertTrue(schedSrc.contains("if (sentMessages.isNotEmpty())"), schedSrc)
     }
 
     @Test
@@ -75,6 +87,26 @@ class TlKotlinGenTest {
         assertTrue(rBack.comments)
         assertEquals(99L, rBack.channelId)
         assertEquals(listOf(1L, 2L), rBack.recentRepliers!!.map { (it as PeerUser).userId })
+    }
+
+    @Test
+    fun vectorIntLongRoundtrip() {
+        val del = UpdateDeleteMessages(messages = intArrayOf(1, 2, 3), pts = 10, ptsCount = 3)
+        val delBack = readUpdate(TlReader(del.toBytes())) as UpdateDeleteMessages
+        assertContentEquals(intArrayOf(1, 2, 3), delBack.messages)
+        assertEquals(10, delBack.pts)
+
+        val absent = UpdateDeleteScheduledMessages(peer = PeerUser(1L), messages = intArrayOf(5))
+        val present = UpdateDeleteScheduledMessages(
+            peer = PeerUser(1L),
+            messages = intArrayOf(5),
+            sentMessages = intArrayOf(9, 10),
+        )
+        assertTrue(present.toBytes().size > absent.toBytes().size)
+        val presentBack = readUpdate(TlReader(present.toBytes())) as UpdateDeleteScheduledMessages
+        assertContentEquals(intArrayOf(9, 10), presentBack.sentMessages)
+        val absentBack = readUpdate(TlReader(absent.toBytes())) as UpdateDeleteScheduledMessages
+        assertContentEquals(intArrayOf(), absentBack.sentMessages)
     }
 }
 

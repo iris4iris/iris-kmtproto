@@ -200,6 +200,8 @@ object TlKotlinGen {
             p.type is TlType.True -> KField(name, "Boolean", " = false", p)
             p.condition != null && isBareInt(p.type) -> KField(name, "Int", " = 0", p)
             p.condition != null && isBareLong(p.type) -> KField(name, "Long", " = 0L", p)
+            p.condition != null && isVectorInt(p.type) -> KField(name, "IntArray", " = intArrayOf()", p)
+            p.condition != null && isVectorLong(p.type) -> KField(name, "LongArray", " = longArrayOf()", p)
             p.condition != null -> KField(name, kotlinType(p.type) + "?", " = null", p)
             else -> KField(name, kotlinType(p.type), "", p)
         }
@@ -209,16 +211,23 @@ object TlKotlinGen {
 
     private fun isBareLong(type: TlType) = type is TlType.Named && type.ident == "long"
 
+    private fun isVectorInt(type: TlType) = type is TlType.Vector && isBareInt(type.inner)
+
+    private fun isVectorLong(type: TlType) = type is TlType.Vector && isBareLong(type.inner)
+
     private fun presentCheck(field: String, p: TlParam): String = when {
         p.type is TlType.True -> field
         isBareInt(p.type) -> "$field != 0"
         isBareLong(p.type) -> "$field != 0L"
+        isVectorInt(p.type) || isVectorLong(p.type) -> "$field.isNotEmpty()"
         else -> "$field != null"
     }
 
     private fun absentLit(p: TlParam): String = when {
         isBareInt(p.type) -> "0"
         isBareLong(p.type) -> "0L"
+        isVectorInt(p.type) -> "intArrayOf()"
+        isVectorLong(p.type) -> "longArrayOf()"
         else -> "null"
     }
 
@@ -278,12 +287,16 @@ object TlKotlinGen {
     private fun emitWrite(out: StringBuilder, expr: String, type: TlType, indent: String) {
         when (type) {
             is TlType.Named -> out.appendLine("$indent${writeStmt(expr, type)}")
-            is TlType.Vector -> {
-                out.appendLine("${indent}w.writeInt(TlWriter.VECTOR)")
-                out.appendLine("${indent}w.writeInt($expr.size)")
-                out.appendLine("${indent}$expr.forEach {")
-                emitWrite(out, "it", type.inner, indent + "    ")
-                out.appendLine("$indent}")
+            is TlType.Vector -> when {
+                isBareInt(type.inner) -> out.appendLine("${indent}w.writeVectorInt($expr)")
+                isBareLong(type.inner) -> out.appendLine("${indent}w.writeVectorLong($expr)")
+                else -> {
+                    out.appendLine("${indent}w.writeInt(TlWriter.VECTOR)")
+                    out.appendLine("${indent}w.writeInt($expr.size)")
+                    out.appendLine("${indent}$expr.forEach {")
+                    emitWrite(out, "it", type.inner, indent + "    ")
+                    out.appendLine("$indent}")
+                }
             }
             is TlType.Bang -> out.appendLine("${indent}w.writeObject($expr)")
             TlType.Flags, TlType.True -> Unit
@@ -312,7 +325,11 @@ object TlKotlinGen {
             "int256" -> "reader.readInt256()"
             else -> "read${safeTypeName(type.ident)}(reader)"
         }
-        is TlType.Vector -> "reader.readVector { ${readExpr(type.inner)} }"
+        is TlType.Vector -> when {
+            isBareInt(type.inner) -> "reader.readVectorInt()"
+            isBareLong(type.inner) -> "reader.readVectorLong()"
+            else -> "reader.readVector { ${readExpr(type.inner)} }"
+        }
         is TlType.Bang -> "reader.readObject()"
         TlType.Flags -> error("flags")
         TlType.True -> error("true")
@@ -327,7 +344,11 @@ object TlKotlinGen {
             "bytes", "int128", "int256" -> "ByteArray"
             else -> safeTypeName(type.ident)
         }
-        is TlType.Vector -> "List<${kotlinType(type.inner)}>"
+        is TlType.Vector -> when {
+            isBareInt(type.inner) -> "IntArray"
+            isBareLong(type.inner) -> "LongArray"
+            else -> "List<${kotlinType(type.inner)}>"
+        }
         is TlType.Bang -> "TlObject"
         TlType.True -> "Boolean"
         TlType.Flags -> error("flags")
