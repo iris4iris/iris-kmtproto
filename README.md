@@ -1,6 +1,6 @@
 # Iris kMTProto
 
-Kotlin Multiplatform MTProto client (`iris.kmtproto`). First target: **JVM**. Session is in-memory only — no disk, no local message database.
+Kotlin Multiplatform MTProto client (`iris.kmtproto`). First target: **JVM**. Session is in-memory only — no disk, no local message database. **0.x — API will break.**
 
 ```kotlin
 import iris.kmtproto.client.TelegramClient
