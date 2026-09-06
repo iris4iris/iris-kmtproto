@@ -19,6 +19,9 @@ import iris.kmtproto.tl.RpcError
 import iris.kmtproto.tl.RpcResult
 import iris.kmtproto.tl.TlMethod
 import iris.kmtproto.tl.TlObject
+import iris.kmtproto.tl.gen.AuthExportAuthorization
+import iris.kmtproto.tl.gen.AuthExportedAuthorization
+import iris.kmtproto.tl.gen.AuthImportAuthorization
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelForbidden
 import iris.kmtproto.tl.gen.ChannelMessagesFilterEmpty
@@ -114,6 +117,8 @@ class TelegramClient(
     private var mediaLink: SocketLink? = null
     private val mediaMutex = Mutex()
     private var mediaLastUse = 0L
+    private val fileDcMutex = Mutex()
+    private val fileDcs = mutableMapOf<Int, SocketLink>()
 
     var user: User? = null
         internal set
@@ -379,6 +384,75 @@ class TelegramClient(
         }
         link.layerReady = true
         return result
+    }
+
+    internal suspend fun <T : TlObject> invokeOnDc(dcId: Int, method: TlMethod<T>): RpcResponse<T> {
+        if (dcId <= 0 || dcId == currentDc.id) return invoke(method)
+        if (dcId > 5) return RpcResponse(null, RpcError(400, "FILE_MIGRATE_$dcId"))
+        val opened = openFileDc(dcId)
+        val err = opened.second
+        if (err != null) return RpcResponse(null, err)
+        return invokeOnLink(opened.first!!, method)
+    }
+
+    private suspend fun <T : TlObject> invokeOnLink(link: SocketLink, method: TlMethod<T>): RpcResponse<T> {
+        val wrapped = wrapFor(link, method)
+        val result = invokeRaw(link, wrapped)
+        link.layerReady = true
+        return result
+    }
+
+    private suspend fun openFileDc(dcId: Int): Pair<SocketLink?, RpcError?> {
+        fileDcMutex.withLock {
+            val existing = fileDcs[dcId]
+            if (existing != null && existing.isBound && !existing.stop) return existing to null
+        }
+        val exported = invoke(AuthExportAuthorization(dcId))
+        val expErr = exported.error
+        if (expErr != null) return null to expErr
+        val auth = exported.result!!
+        val link = fileDcMutex.withLock {
+            val existing = fileDcs[dcId]
+            if (existing != null && existing.isBound && !existing.stop) return@withLock existing
+            startFileDc(dcId)
+        }
+        if (link.layerReady) return link to null
+        val imported = invokeOnLink(link, AuthImportAuthorization(auth.id, auth.bytes))
+        val impErr = imported.error
+        if (impErr != null) {
+            dropFileDc(dcId, link)
+            return null to impErr
+        }
+        return link to null
+    }
+
+    private suspend fun startFileDc(dcId: Int): SocketLink {
+        val dc = Datacenter.production(dcId)
+        val link = SocketLink("file-dc$dcId")
+        withContext(link.threads.read) {
+            val t = connectObfuscated(dc, proxy)
+            val hs = Handshake.perform(t, dc.id)
+            link.attach(t, hs.authKey, hs.serverSalt, hs.timeOffset)
+        }
+        fileDcs[dcId] = link
+        scope.launch {
+            try {
+                link.readerLoop(
+                    alive = { supervisor.isActive && !link.stop },
+                    onEvent = { },
+                    reconnect = { link.stop = true },
+                )
+            } finally {
+                fileDcMutex.withLock { if (fileDcs[dcId] === link) fileDcs.remove(dcId) }
+            }
+        }
+        return link
+    }
+
+    private suspend fun dropFileDc(dcId: Int, link: SocketLink) {
+        link.stop = true
+        fileDcMutex.withLock { if (fileDcs[dcId] === link) fileDcs.remove(dcId) }
+        link.shutdown()
     }
 
     private fun <T : TlObject> wrapFor(link: SocketLink, method: TlMethod<T>): TlMethod<T> {
@@ -661,6 +735,8 @@ class TelegramClient(
         updatesLink?.shutdown()
         rpcLink?.shutdown()
         mediaLink?.shutdown()
+        val extra = fileDcMutex.withLock { fileDcs.values.toList().also { fileDcs.clear() } }
+        extra.forEach { it.shutdown() }
         updatesLink = null
         rpcLink = null
         mediaLink = null
@@ -684,6 +760,11 @@ private fun UpdatesState.updated(
 internal fun migrateDc(message: String): Int {
     val match = Regex("(USER|PHONE|NETWORK|STATS)_MIGRATE_(\\d+)").find(message) ?: return 0
     return match.groupValues[2].toInt()
+}
+
+internal fun fileMigrateDc(message: String): Int {
+    if (!message.startsWith("FILE_MIGRATE_")) return 0
+    return message.removePrefix("FILE_MIGRATE_").toIntOrNull() ?: 0
 }
 
 internal fun incomingTexts(diff: UpdatesDifferenceCtor): List<MessageCtor> {

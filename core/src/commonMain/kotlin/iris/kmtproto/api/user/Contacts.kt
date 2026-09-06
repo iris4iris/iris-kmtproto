@@ -69,3 +69,22 @@ internal fun stripUsername(raw: String): String {
     if (s.startsWith("@")) s = s.drop(1)
     return s
 }
+
+internal fun stripInviteHash(raw: String): String {
+    var s = raw.trim()
+    if (s.startsWith("https://", ignoreCase = true)) s = s.substring(8)
+    else if (s.startsWith("http://", ignoreCase = true)) s = s.substring(7)
+    if (s.startsWith("tg://join", ignoreCase = true)) {
+        return s.substringAfter("invite=", "").substringBefore('&').trim()
+    }
+    s = s.trimStart('/')
+    when {
+        s.startsWith("t.me/+", ignoreCase = true) -> s = s.substring(6)
+        s.startsWith("t.me/joinchat/", ignoreCase = true) -> s = s.substring(14)
+        s.startsWith("telegram.me/joinchat/", ignoreCase = true) -> s = s.substring(21)
+        s.startsWith("telegram.dog/joinchat/", ignoreCase = true) -> s = s.substring(22)
+        s.startsWith("+") && s.drop(1).any { it.isLetter() } -> s = s.drop(1)
+        else -> return ""
+    }
+    return s.substringBefore('/').substringBefore('?').trim()
+}

@@ -87,6 +87,13 @@ user.messages.delete(peerId, intArrayOf(id))
 user.messages.forward(toId = chatId, fromId = peerId, ids = intArrayOf(id))
 user.messages.dialogs()
 user.messages.read(peerId)
+user.messages.download(peerId, id)
+user.messages.search(peerId, "query")
+user.messages.searchGlobal("query")
+user.join("durov")
+user.join("https://t.me/+invitehash")
+user.join(channelId)
+user.leave(channelId)
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.

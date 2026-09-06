@@ -4,34 +4,42 @@ import iris.kmtproto.client.RpcResponse
 import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.asInputChannel
+import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.id
+import iris.kmtproto.client.inputPeerFrom
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
 import iris.kmtproto.readLongLe
+import iris.kmtproto.tl.RpcError
 import iris.kmtproto.tl.gen.BoolTrue
 import iris.kmtproto.tl.gen.ChannelsDeleteMessages
 import iris.kmtproto.tl.gen.ChannelsGetMessages
 import iris.kmtproto.tl.gen.ChannelsReadHistory
 import iris.kmtproto.tl.gen.Chat
 import iris.kmtproto.tl.gen.Dialog
+import iris.kmtproto.tl.gen.Document
 import iris.kmtproto.tl.gen.DocumentAttribute
 import iris.kmtproto.tl.gen.DocumentAttributeAnimated
 import iris.kmtproto.tl.gen.DocumentAttributeAudio
 import iris.kmtproto.tl.gen.DocumentAttributeFilename
 import iris.kmtproto.tl.gen.DocumentAttributeVideo
+import iris.kmtproto.tl.gen.InputFileLocation
 import iris.kmtproto.tl.gen.InputMedia
 import iris.kmtproto.tl.gen.InputMediaUploadedDocument
 import iris.kmtproto.tl.gen.InputMediaUploadedPhoto
 import iris.kmtproto.tl.gen.InputMessage
 import iris.kmtproto.tl.gen.InputMessageID
+import iris.kmtproto.tl.gen.InputMessagesFilterEmpty
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputPeerEmpty
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
 import iris.kmtproto.tl.gen.InputReplyTo
 import iris.kmtproto.tl.gen.InputRichMessage
 import iris.kmtproto.tl.gen.Message
+import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntity
+import iris.kmtproto.tl.gen.MessageService
 import iris.kmtproto.tl.gen.MessagesAffectedMessages
 import iris.kmtproto.tl.gen.MessagesChannelMessages
 import iris.kmtproto.tl.gen.MessagesDeleteMessages
@@ -40,6 +48,7 @@ import iris.kmtproto.tl.gen.MessagesDialogsCtor
 import iris.kmtproto.tl.gen.MessagesDialogsNotModified
 import iris.kmtproto.tl.gen.MessagesDialogsSlice
 import iris.kmtproto.tl.gen.MessagesEditMessage
+import iris.kmtproto.tl.gen.MessagesFilter
 import iris.kmtproto.tl.gen.MessagesForwardMessages
 import iris.kmtproto.tl.gen.MessagesGetDialogs
 import iris.kmtproto.tl.gen.MessagesGetHistory
@@ -49,8 +58,11 @@ import iris.kmtproto.tl.gen.MessagesMessagesCtor
 import iris.kmtproto.tl.gen.MessagesMessagesNotModified
 import iris.kmtproto.tl.gen.MessagesMessagesSlice
 import iris.kmtproto.tl.gen.MessagesReadHistory
+import iris.kmtproto.tl.gen.MessagesSearch
+import iris.kmtproto.tl.gen.MessagesSearchGlobal
 import iris.kmtproto.tl.gen.MessagesSendMedia
 import iris.kmtproto.tl.gen.MessagesSendMessage
+import iris.kmtproto.tl.gen.Photo
 import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.Updates
@@ -374,6 +386,246 @@ class Messages(
         } else {
             client.invoke(MessagesReadHistory(peer, maxId)).map { true }
         }
+    }
+
+    fun downloadAsync(peer: InputPeer, id: Int, thumbSize: String = ""): Deferred<RpcResponse<ByteArray>> =
+        client.apiAsync { download(peer, id, thumbSize) }
+
+    fun downloadAsync(peerId: Long, id: Int, thumbSize: String = ""): Deferred<RpcResponse<ByteArray>> =
+        client.apiAsync { download(client.inputPeerFromId(peerId), id, thumbSize) }
+
+    suspend fun download(peerId: Long, id: Int, thumbSize: String = ""): RpcResponse<ByteArray> =
+        download(client.inputPeerFromId(peerId), id, thumbSize)
+
+    suspend fun download(peer: InputPeer, id: Int, thumbSize: String = ""): RpcResponse<ByteArray> {
+        val got = get(peer, id)
+        val err = got.error
+        if (err != null) return RpcResponse(null, err)
+        val msg = got.result?.firstOrNull() ?: return RpcResponse(null, RpcError(400, "MESSAGE_ID_INVALID"))
+        return download(msg, thumbSize)
+    }
+
+    fun downloadAsync(message: Message, thumbSize: String = ""): Deferred<RpcResponse<ByteArray>> =
+        client.apiAsync { download(message, thumbSize) }
+
+    suspend fun download(message: Message, thumbSize: String = ""): RpcResponse<ByteArray> {
+        val ref = fileRefFromMessage(message, thumbSize)
+            ?: return RpcResponse(null, RpcError(400, "NO_MEDIA"))
+        return download(ref)
+    }
+
+    fun downloadAsync(document: Document, thumbSize: String = ""): Deferred<RpcResponse<ByteArray>> =
+        client.apiAsync { download(document, thumbSize) }
+
+    suspend fun download(document: Document, thumbSize: String = ""): RpcResponse<ByteArray> {
+        val ref = fileRefFromDocument(document, thumbSize)
+            ?: return RpcResponse(null, RpcError(400, "NO_MEDIA"))
+        return download(ref)
+    }
+
+    fun downloadAsync(photo: Photo, thumbSize: String = ""): Deferred<RpcResponse<ByteArray>> =
+        client.apiAsync { download(photo, thumbSize) }
+
+    suspend fun download(photo: Photo, thumbSize: String = ""): RpcResponse<ByteArray> {
+        val ref = fileRefFromPhoto(photo, thumbSize)
+            ?: return RpcResponse(null, RpcError(400, "NO_MEDIA"))
+        return download(ref)
+    }
+
+    fun downloadAsync(location: InputFileLocation, dcId: Int = 0, size: Long = 0L): Deferred<RpcResponse<ByteArray>> =
+        client.apiAsync { download(location, dcId, size) }
+
+    suspend fun download(location: InputFileLocation, dcId: Int = 0, size: Long = 0L): RpcResponse<ByteArray> =
+        Upload.getFile(client, location, dcId, size)
+
+    private suspend fun download(ref: FileRef): RpcResponse<ByteArray> {
+        val cached = ref.cached
+        if (cached != null) return RpcResponse(cached, null)
+        return Upload.getFile(client, ref.location, ref.dcId, ref.size)
+    }
+
+    fun searchAsync(
+        peer: InputPeer,
+        q: String = "",
+        limit: Int = 100,
+        filter: MessagesFilter = InputMessagesFilterEmpty,
+        fromId: Long = 0,
+        minDate: Int = 0,
+        maxDate: Int = 0,
+        offsetId: Int = 0,
+        addOffset: Int = 0,
+        maxId: Int = 0,
+        minId: Int = 0,
+        topMsgId: Int = 0,
+    ): Deferred<RpcResponse<List<Message>>> =
+        client.apiAsync { search(peer, q, limit, filter, fromId, minDate, maxDate, offsetId, addOffset, maxId, minId, topMsgId) }
+
+    fun searchAsync(
+        peerId: Long,
+        q: String = "",
+        limit: Int = 100,
+        filter: MessagesFilter = InputMessagesFilterEmpty,
+        fromId: Long = 0,
+        minDate: Int = 0,
+        maxDate: Int = 0,
+        offsetId: Int = 0,
+        addOffset: Int = 0,
+        maxId: Int = 0,
+        minId: Int = 0,
+        topMsgId: Int = 0,
+    ): Deferred<RpcResponse<List<Message>>> =
+        client.apiAsync { search(client.inputPeerFromId(peerId), q, limit, filter, fromId, minDate, maxDate, offsetId, addOffset, maxId, minId, topMsgId) }
+
+    suspend fun search(
+        peerId: Long,
+        q: String = "",
+        limit: Int = 100,
+        filter: MessagesFilter = InputMessagesFilterEmpty,
+        fromId: Long = 0,
+        minDate: Int = 0,
+        maxDate: Int = 0,
+        offsetId: Int = 0,
+        addOffset: Int = 0,
+        maxId: Int = 0,
+        minId: Int = 0,
+        topMsgId: Int = 0,
+    ): RpcResponse<List<Message>> =
+        search(client.inputPeerFromId(peerId), q, limit, filter, fromId, minDate, maxDate, offsetId, addOffset, maxId, minId, topMsgId)
+
+    suspend fun search(
+        peer: InputPeer,
+        q: String = "",
+        limit: Int = 100,
+        filter: MessagesFilter = InputMessagesFilterEmpty,
+        fromId: Long = 0,
+        minDate: Int = 0,
+        maxDate: Int = 0,
+        offsetId: Int = 0,
+        addOffset: Int = 0,
+        maxId: Int = 0,
+        minId: Int = 0,
+        topMsgId: Int = 0,
+    ): RpcResponse<List<Message>> {
+        val want = minOf(limit.coerceAtLeast(0), HISTORY_CAP)
+        if (want == 0) return RpcResponse(emptyList(), null)
+        val from = fromId.takeIf { it != 0L }?.let { client.inputPeerFromId(it) }
+        val out = ArrayList<Message>(minOf(want, HISTORY_PAGE))
+        var nextOffset = offsetId
+        var first = true
+        while (out.size < want) {
+            val batch = minOf(HISTORY_PAGE, want - out.size)
+            val raw = client.invoke(
+                MessagesSearch(
+                    peer = peer,
+                    q = q,
+                    filter = filter,
+                    minDate = minDate,
+                    maxDate = maxDate,
+                    offsetId = nextOffset,
+                    addOffset = if (first) addOffset else 0,
+                    limit = batch,
+                    maxId = maxId,
+                    minId = minId,
+                    hash = 0L,
+                    fromId = from,
+                    topMsgId = topMsgId,
+                ),
+            )
+            val err = raw.error
+            if (err != null) return if (out.isEmpty()) RpcResponse(null, err) else RpcResponse(out, null)
+            val pack = raw.result!!.unpack()
+            client.rememberUsers(pack.users)
+            client.rememberChats(pack.chats)
+            if (pack.messages.isEmpty()) break
+            out += pack.messages
+            val lastId = pack.messages.last().id
+            if (lastId == 0 || lastId == nextOffset) break
+            nextOffset = lastId
+            first = false
+            if (pack.messages.size < batch) break
+        }
+        return RpcResponse(if (out.size > want) out.subList(0, want) else out, null)
+    }
+
+    fun searchGlobalAsync(
+        q: String,
+        limit: Int = 100,
+        filter: MessagesFilter = InputMessagesFilterEmpty,
+        minDate: Int = 0,
+        maxDate: Int = 0,
+        offsetRate: Int = 0,
+        offsetPeer: InputPeer = InputPeerEmpty,
+        offsetId: Int = 0,
+        broadcastsOnly: Boolean = false,
+        groupsOnly: Boolean = false,
+        usersOnly: Boolean = false,
+        folderId: Int = 0,
+    ): Deferred<RpcResponse<List<Message>>> =
+        client.apiAsync { searchGlobal(q, limit, filter, minDate, maxDate, offsetRate, offsetPeer, offsetId, broadcastsOnly, groupsOnly, usersOnly, folderId) }
+
+    suspend fun searchGlobal(
+        q: String,
+        limit: Int = 100,
+        filter: MessagesFilter = InputMessagesFilterEmpty,
+        minDate: Int = 0,
+        maxDate: Int = 0,
+        offsetRate: Int = 0,
+        offsetPeer: InputPeer = InputPeerEmpty,
+        offsetId: Int = 0,
+        broadcastsOnly: Boolean = false,
+        groupsOnly: Boolean = false,
+        usersOnly: Boolean = false,
+        folderId: Int = 0,
+    ): RpcResponse<List<Message>> {
+        val want = minOf(limit.coerceAtLeast(0), HISTORY_CAP)
+        if (want == 0) return RpcResponse(emptyList(), null)
+        val out = ArrayList<Message>(minOf(want, HISTORY_PAGE))
+        var rate = offsetRate
+        var peer = offsetPeer
+        var id = offsetId
+        while (out.size < want) {
+            val batch = minOf(HISTORY_PAGE, want - out.size)
+            val raw = client.invoke(
+                MessagesSearchGlobal(
+                    q = q,
+                    filter = filter,
+                    minDate = minDate,
+                    maxDate = maxDate,
+                    offsetRate = rate,
+                    offsetPeer = peer,
+                    offsetId = id,
+                    limit = batch,
+                    broadcastsOnly = broadcastsOnly,
+                    groupsOnly = groupsOnly,
+                    usersOnly = usersOnly,
+                    folderId = folderId,
+                ),
+            )
+            val err = raw.error
+            if (err != null) return if (out.isEmpty()) RpcResponse(null, err) else RpcResponse(out, null)
+            val pack = raw.result!!.unpack()
+            client.rememberUsers(pack.users)
+            client.rememberChats(pack.chats)
+            if (pack.messages.isEmpty()) break
+            out += pack.messages
+            val last = pack.messages.last()
+            val lastId = last.id
+            if (lastId == 0 || lastId == id) break
+            id = lastId
+            peer = offsetPeerOf(last)
+            rate = (raw.result as? MessagesMessagesSlice)?.nextRate ?: 0
+            if (pack.messages.size < batch) break
+        }
+        return RpcResponse(if (out.size > want) out.subList(0, want) else out, null)
+    }
+
+    private fun offsetPeerOf(message: Message): InputPeer {
+        val peer = when (message) {
+            is MessageCtor -> message.peerId
+            is MessageService -> message.peerId
+            else -> return InputPeerEmpty
+        }
+        return inputPeerFrom(peer, client.accessHash(peer.botApiChatId()))
     }
 
     private suspend fun sendMedia(peer: InputPeer, media: InputMedia, caption: String, randomId: Long, silent: Boolean, background: Boolean, clearDraft: Boolean, noforwards: Boolean, updateStickersetsOrder: Boolean, invertMedia: Boolean, allowPaidFloodskip: Boolean, replyTo: InputReplyTo?, replyMarkup: ReplyMarkup?, entities: List<MessageEntity>?, scheduleDate: Int, scheduleRepeatPeriod: Int, sendAs: InputPeer?, sendAsId: Long, quickReplyShortcut: InputQuickReplyShortcut?, effect: Long, allowPaidStars: Long, suggestedPost: SuggestedPost?): RpcResponse<SentMessage> {

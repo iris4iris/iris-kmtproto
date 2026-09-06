@@ -1,9 +1,11 @@
 package iris.kmtproto
 
+import iris.kmtproto.api.user.stripInviteHash
 import iris.kmtproto.api.user.stripNftSlug
 import iris.kmtproto.api.user.stripUsername
 import iris.kmtproto.client.asInputChannel
 import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.client.fileMigrateDc
 import iris.kmtproto.client.id
 import iris.kmtproto.client.inputPeerFrom
 import iris.kmtproto.client.inputPeerFromBotApiId
@@ -126,6 +128,23 @@ class ApiTlTest {
         assertEquals("durov", stripUsername("https://t.me/durov"))
         assertEquals("durov", stripUsername("t.me/durov/123"))
         assertEquals("durov", stripUsername("https://telegram.me/durov?start=1"))
+    }
+
+    @Test
+    fun stripInviteHashAcceptsLinks() {
+        assertEquals("AbCdEf", stripInviteHash("https://t.me/+AbCdEf"))
+        assertEquals("AbCdEf", stripInviteHash("t.me/joinchat/AbCdEf"))
+        assertEquals("AbCdEf", stripInviteHash("+AbCdEf"))
+        assertEquals("AbCdEf", stripInviteHash("tg://join?invite=AbCdEf"))
+        assertEquals("", stripInviteHash("@durov"))
+        assertEquals("", stripInviteHash("+79991234567"))
+    }
+
+    @Test
+    fun fileMigrateDcParses() {
+        assertEquals(4, fileMigrateDc("FILE_MIGRATE_4"))
+        assertEquals(0, fileMigrateDc("PHONE_MIGRATE_2"))
+        assertEquals(0, fileMigrateDc("FLOOD_WAIT_3"))
     }
 
     @Test
