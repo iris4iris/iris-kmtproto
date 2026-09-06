@@ -40,7 +40,7 @@ import kotlinx.coroutines.flow.map
 data class BotMessage(
     val messageId: Int,
     val chatId: Long,
-    val fromId: Long?,
+    val fromId: Long,
     val text: String,
     val date: Int,
     val out: Boolean,
@@ -206,13 +206,7 @@ class BotApi(val client: TelegramClient) {
 fun MessageCtor.toBotMessage(): BotMessage = BotMessage(
     messageId = id,
     chatId = peerId.botApiChatId(),
-    fromId = when (val from = fromId) {
-        is PeerUser -> from.userId
-        is PeerChat -> from.chatId
-        is PeerChannel -> from.channelId
-        null -> null
-        else -> null
-    },
+    fromId = fromId?.botApiChatId() ?: 0,
     text = message,
     date = date,
     out = out,
