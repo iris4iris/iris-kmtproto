@@ -50,7 +50,7 @@ private suspend fun runUserApiExample() {
             loginPhone(api, phone)
         }
         client.session()?.let { saveSession(sessionFile, it) }
-        val me = client.user
+        val me = api.getMe().result
         val name = (me as? UserCtor)?.username ?: me?.id?.toString() ?: "?"
         println("UserApi as $name")
 

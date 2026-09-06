@@ -2,7 +2,9 @@ package iris.kmtproto
 
 import iris.kmtproto.api.user.stripNftSlug
 import iris.kmtproto.api.user.stripUsername
+import iris.kmtproto.client.asInputChannel
 import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.client.id
 import iris.kmtproto.client.inputPeerFrom
 import iris.kmtproto.client.inputPeerFromBotApiId
 import iris.kmtproto.tl.API_LAYER
@@ -12,9 +14,13 @@ import iris.kmtproto.tl.InvokeWithoutUpdates
 import iris.kmtproto.tl.TlIds
 import iris.kmtproto.tl.TlReader
 import iris.kmtproto.tl.gen.HelpGetNearestDc
+import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
+import iris.kmtproto.tl.gen.Message
+import iris.kmtproto.tl.gen.MessageCtor
+import iris.kmtproto.tl.gen.MessageEmpty
 import iris.kmtproto.tl.gen.NearestDc
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
@@ -23,6 +29,7 @@ import iris.kmtproto.tl.toBytes
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ApiTlTest {
@@ -30,7 +37,7 @@ class ApiTlTest {
     fun vendoredApiTlLayerMatchesDefault() {
         val file = findVendoredApiTl() ?: error("schema/api.tl not found")
         val text = file.readText()
-        val layer = Regex("""// LAYER (\\d+)""").findAll(text).lastOrNull()?.groupValues?.get(1)?.toInt()
+        val layer = Regex("""// LAYER (\d+)""").findAll(text).lastOrNull()?.groupValues?.get(1)?.toInt()
             ?: error("no // LAYER in ${file.absolutePath}")
         assertEquals(API_LAYER, layer, "${file.absolutePath} LAYER=$layer, API_LAYER=$API_LAYER")
     }
@@ -98,6 +105,19 @@ class ApiTlTest {
         assertEquals(1001L, PeerUser(1001L).botApiChatId())
         assertEquals(-42L, PeerChat(42L).botApiChatId())
         assertEquals(-1001234567890L, PeerChannel(1234567890L).botApiChatId())
+    }
+
+    @Test
+    fun messageIdAndAsInputChannel() {
+        val empty: Message = MessageEmpty(42)
+        assertEquals(42, empty.id)
+        val ctor: Message = MessageCtor(id = 7, peerId = PeerUser(1L), date = 0, message = "hi")
+        assertEquals(7, ctor.id)
+        val ch = InputPeerChannel(9L, 11L).asInputChannel() as InputChannelCtor
+        assertEquals(9L, ch.channelId)
+        assertEquals(11L, ch.accessHash)
+        assertNull(InputPeerUser(1L, 2L).asInputChannel())
+        assertNull(InputPeerChat(3L).asInputChannel())
     }
 
     @Test

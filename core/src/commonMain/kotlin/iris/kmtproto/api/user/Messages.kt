@@ -3,10 +3,18 @@ package iris.kmtproto.api.user
 import iris.kmtproto.client.RpcResponse
 import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.TelegramClient
+import iris.kmtproto.client.asInputChannel
+import iris.kmtproto.client.id
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
 import iris.kmtproto.readLongLe
+import iris.kmtproto.tl.gen.BoolTrue
+import iris.kmtproto.tl.gen.ChannelsDeleteMessages
+import iris.kmtproto.tl.gen.ChannelsGetMessages
+import iris.kmtproto.tl.gen.ChannelsReadHistory
+import iris.kmtproto.tl.gen.Chat
+import iris.kmtproto.tl.gen.Dialog
 import iris.kmtproto.tl.gen.DocumentAttribute
 import iris.kmtproto.tl.gen.DocumentAttributeAnimated
 import iris.kmtproto.tl.gen.DocumentAttributeAudio
@@ -15,16 +23,42 @@ import iris.kmtproto.tl.gen.DocumentAttributeVideo
 import iris.kmtproto.tl.gen.InputMedia
 import iris.kmtproto.tl.gen.InputMediaUploadedDocument
 import iris.kmtproto.tl.gen.InputMediaUploadedPhoto
+import iris.kmtproto.tl.gen.InputMessage
+import iris.kmtproto.tl.gen.InputMessageID
 import iris.kmtproto.tl.gen.InputPeer
+import iris.kmtproto.tl.gen.InputPeerEmpty
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
 import iris.kmtproto.tl.gen.InputReplyTo
 import iris.kmtproto.tl.gen.InputRichMessage
+import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageEntity
+import iris.kmtproto.tl.gen.MessagesAffectedMessages
+import iris.kmtproto.tl.gen.MessagesChannelMessages
+import iris.kmtproto.tl.gen.MessagesDeleteMessages
+import iris.kmtproto.tl.gen.MessagesDialogs
+import iris.kmtproto.tl.gen.MessagesDialogsCtor
+import iris.kmtproto.tl.gen.MessagesDialogsNotModified
+import iris.kmtproto.tl.gen.MessagesDialogsSlice
+import iris.kmtproto.tl.gen.MessagesEditMessage
+import iris.kmtproto.tl.gen.MessagesForwardMessages
+import iris.kmtproto.tl.gen.MessagesGetDialogs
+import iris.kmtproto.tl.gen.MessagesGetHistory
+import iris.kmtproto.tl.gen.MessagesGetMessages
+import iris.kmtproto.tl.gen.MessagesMessages
+import iris.kmtproto.tl.gen.MessagesMessagesCtor
+import iris.kmtproto.tl.gen.MessagesMessagesNotModified
+import iris.kmtproto.tl.gen.MessagesMessagesSlice
+import iris.kmtproto.tl.gen.MessagesReadHistory
 import iris.kmtproto.tl.gen.MessagesSendMedia
 import iris.kmtproto.tl.gen.MessagesSendMessage
 import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
+import iris.kmtproto.tl.gen.Updates
+import iris.kmtproto.tl.gen.User
 import kotlinx.coroutines.Deferred
+
+private const val HISTORY_PAGE = 100
+private const val HISTORY_CAP = 10_000
 
 class Messages(
     private val client: TelegramClient,
@@ -120,6 +154,228 @@ class Messages(
     suspend fun sendGif(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, thumb: ByteSource? = null, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): RpcResponse<SentMessage> =
         sendUploadedDocument(peer = peer, source = source, fileName = fileName, mimeType = if (fileName.endsWith(".gif", ignoreCase = true)) "image/gif" else "video/mp4", attributes = listOf(DocumentAttributeAnimated, DocumentAttributeVideo(duration = duration, w = width, h = height, supportsStreaming = true), DocumentAttributeFilename(fileName)), caption = caption, thumb = thumb, forceFile = false, spoiler = spoiler, ttlSeconds = 0, randomId = 0, silent = silent, background = false, clearDraft = false, noforwards = false, updateStickersetsOrder = false, invertMedia = false, allowPaidFloodskip = false, replyTo = replyTo, replyMarkup = replyMarkup, entities = null, scheduleDate = 0, scheduleRepeatPeriod = 0, sendAs = null, sendAsId = 0, quickReplyShortcut = null, effect = 0, allowPaidStars = 0, suggestedPost = null)
 
+    fun historyAsync(peer: InputPeer, limit: Int = 100, offsetId: Int = 0, offsetDate: Int = 0, addOffset: Int = 0, maxId: Int = 0, minId: Int = 0): Deferred<RpcResponse<List<Message>>> =
+        client.apiAsync { history(peer, limit, offsetId, offsetDate, addOffset, maxId, minId) }
+
+    fun historyAsync(peerId: Long, limit: Int = 100, offsetId: Int = 0, offsetDate: Int = 0, addOffset: Int = 0, maxId: Int = 0, minId: Int = 0): Deferred<RpcResponse<List<Message>>> =
+        client.apiAsync { history(client.inputPeerFromId(peerId), limit, offsetId, offsetDate, addOffset, maxId, minId) }
+
+    suspend fun history(peerId: Long, limit: Int = 100, offsetId: Int = 0, offsetDate: Int = 0, addOffset: Int = 0, maxId: Int = 0, minId: Int = 0): RpcResponse<List<Message>> =
+        history(client.inputPeerFromId(peerId), limit, offsetId, offsetDate, addOffset, maxId, minId)
+
+    suspend fun history(peer: InputPeer, limit: Int = 100, offsetId: Int = 0, offsetDate: Int = 0, addOffset: Int = 0, maxId: Int = 0, minId: Int = 0): RpcResponse<List<Message>> {
+        val want = minOf(limit.coerceAtLeast(0), HISTORY_CAP)
+        if (want == 0) return RpcResponse(emptyList(), null)
+        val out = ArrayList<Message>(minOf(want, HISTORY_PAGE))
+        var nextOffset = offsetId
+        var first = true
+        while (out.size < want) {
+            val batch = minOf(HISTORY_PAGE, want - out.size)
+            val raw = client.invoke(
+                MessagesGetHistory(
+                    peer = peer,
+                    offsetId = nextOffset,
+                    offsetDate = if (first) offsetDate else 0,
+                    addOffset = if (first) addOffset else 0,
+                    limit = batch,
+                    maxId = maxId,
+                    minId = minId,
+                    hash = 0L,
+                ),
+            )
+            val err = raw.error
+            if (err != null) return if (out.isEmpty()) RpcResponse(null, err) else RpcResponse(out, null)
+            val pack = raw.result!!.unpack()
+            client.rememberUsers(pack.users)
+            client.rememberChats(pack.chats)
+            if (pack.messages.isEmpty()) break
+            out += pack.messages
+            val lastId = pack.messages.last().id
+            if (lastId == 0 || lastId == nextOffset) break
+            nextOffset = lastId
+            first = false
+            if (pack.messages.size < batch) break
+        }
+        return RpcResponse(if (out.size > want) out.subList(0, want) else out, null)
+    }
+
+    fun getAsync(peer: InputPeer, vararg ids: Int): Deferred<RpcResponse<List<Message>>> = client.apiAsync { get(peer, *ids) }
+
+    fun getAsync(peerId: Long, vararg ids: Int): Deferred<RpcResponse<List<Message>>> = client.apiAsync { get(client.inputPeerFromId(peerId), *ids) }
+
+    suspend fun get(peerId: Long, vararg ids: Int): RpcResponse<List<Message>> = get(client.inputPeerFromId(peerId), *ids)
+
+    suspend fun get(peer: InputPeer, vararg ids: Int): RpcResponse<List<Message>> {
+        if (ids.isEmpty()) return RpcResponse(emptyList(), null)
+        val input = ids.map { InputMessageID(it) as InputMessage }
+        val channel = peer.asInputChannel()
+        val raw = if (channel != null) {
+            client.invoke(ChannelsGetMessages(channel, input))
+        } else {
+            client.invoke(MessagesGetMessages(input))
+        }
+        raw.result?.let {
+            val pack = it.unpack()
+            client.rememberUsers(pack.users)
+            client.rememberChats(pack.chats)
+        }
+        return raw.map { it.unpack().messages }
+    }
+
+    fun editAsync(peer: InputPeer, id: Int, text: String, noWebpage: Boolean = false, invertMedia: Boolean = false, entities: List<MessageEntity>? = null, replyMarkup: ReplyMarkup? = null, scheduleDate: Int = 0): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { edit(peer, id, text, noWebpage, invertMedia, entities, replyMarkup, scheduleDate) }
+
+    fun editAsync(peerId: Long, id: Int, text: String, noWebpage: Boolean = false, invertMedia: Boolean = false, entities: List<MessageEntity>? = null, replyMarkup: ReplyMarkup? = null, scheduleDate: Int = 0): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { edit(client.inputPeerFromId(peerId), id, text, noWebpage, invertMedia, entities, replyMarkup, scheduleDate) }
+
+    suspend fun edit(peerId: Long, id: Int, text: String, noWebpage: Boolean = false, invertMedia: Boolean = false, entities: List<MessageEntity>? = null, replyMarkup: ReplyMarkup? = null, scheduleDate: Int = 0): RpcResponse<Updates> =
+        edit(client.inputPeerFromId(peerId), id, text, noWebpage, invertMedia, entities, replyMarkup, scheduleDate)
+
+    suspend fun edit(peer: InputPeer, id: Int, text: String, noWebpage: Boolean = false, invertMedia: Boolean = false, entities: List<MessageEntity>? = null, replyMarkup: ReplyMarkup? = null, scheduleDate: Int = 0): RpcResponse<Updates> {
+        require(text.isNotEmpty()) { "empty message" }
+        return client.invoke(
+            MessagesEditMessage(
+                peer = peer,
+                id = id,
+                noWebpage = noWebpage,
+                invertMedia = invertMedia,
+                message = text,
+                entities = entities,
+                replyMarkup = replyMarkup,
+                scheduleDate = scheduleDate,
+            ),
+        )
+    }
+
+    fun deleteAsync(peer: InputPeer, ids: IntArray, revoke: Boolean = true): Deferred<RpcResponse<MessagesAffectedMessages>> =
+        client.apiAsync { delete(peer, ids, revoke) }
+
+    fun deleteAsync(peerId: Long, ids: IntArray, revoke: Boolean = true): Deferred<RpcResponse<MessagesAffectedMessages>> =
+        client.apiAsync { delete(client.inputPeerFromId(peerId), ids, revoke) }
+
+    suspend fun delete(peerId: Long, ids: IntArray, revoke: Boolean = true): RpcResponse<MessagesAffectedMessages> =
+        delete(client.inputPeerFromId(peerId), ids, revoke)
+
+    suspend fun delete(peer: InputPeer, ids: IntArray, revoke: Boolean = true): RpcResponse<MessagesAffectedMessages> {
+        require(ids.isNotEmpty()) { "empty ids" }
+        val channel = peer.asInputChannel()
+        return if (channel != null) {
+            client.invoke(ChannelsDeleteMessages(channel, ids))
+        } else {
+            client.invoke(MessagesDeleteMessages(ids, revoke))
+        }
+    }
+
+    fun forwardAsync(
+        to: InputPeer,
+        from: InputPeer,
+        ids: IntArray,
+        silent: Boolean = false,
+        dropAuthor: Boolean = false,
+        dropMediaCaptions: Boolean = false,
+        noforwards: Boolean = false,
+        topMsgId: Int = 0,
+        scheduleDate: Int = 0,
+        sendAs: InputPeer? = null,
+    ): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { forward(to, from, ids, silent, dropAuthor, dropMediaCaptions, noforwards, topMsgId, scheduleDate, sendAs) }
+
+    fun forwardAsync(
+        toId: Long,
+        fromId: Long,
+        ids: IntArray,
+        silent: Boolean = false,
+        dropAuthor: Boolean = false,
+        dropMediaCaptions: Boolean = false,
+        noforwards: Boolean = false,
+        topMsgId: Int = 0,
+        scheduleDate: Int = 0,
+        sendAs: InputPeer? = null,
+    ): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { forward(client.inputPeerFromId(toId), client.inputPeerFromId(fromId), ids, silent, dropAuthor, dropMediaCaptions, noforwards, topMsgId, scheduleDate, sendAs) }
+
+    suspend fun forward(
+        toId: Long,
+        fromId: Long,
+        ids: IntArray,
+        silent: Boolean = false,
+        dropAuthor: Boolean = false,
+        dropMediaCaptions: Boolean = false,
+        noforwards: Boolean = false,
+        topMsgId: Int = 0,
+        scheduleDate: Int = 0,
+        sendAs: InputPeer? = null,
+    ): RpcResponse<Updates> =
+        forward(client.inputPeerFromId(toId), client.inputPeerFromId(fromId), ids, silent, dropAuthor, dropMediaCaptions, noforwards, topMsgId, scheduleDate, sendAs)
+
+    suspend fun forward(
+        to: InputPeer,
+        from: InputPeer,
+        ids: IntArray,
+        silent: Boolean = false,
+        dropAuthor: Boolean = false,
+        dropMediaCaptions: Boolean = false,
+        noforwards: Boolean = false,
+        topMsgId: Int = 0,
+        scheduleDate: Int = 0,
+        sendAs: InputPeer? = null,
+    ): RpcResponse<Updates> {
+        require(ids.isNotEmpty()) { "empty ids" }
+        return client.invoke(
+            MessagesForwardMessages(
+                fromPeer = from,
+                id = ids,
+                randomId = nextRandomIds(ids.size),
+                toPeer = to,
+                silent = silent,
+                dropAuthor = dropAuthor,
+                dropMediaCaptions = dropMediaCaptions,
+                noforwards = noforwards,
+                topMsgId = topMsgId,
+                scheduleDate = scheduleDate,
+                sendAs = sendAs,
+            ),
+        )
+    }
+
+    fun dialogsAsync(limit: Int = 100, offsetDate: Int = 0, offsetId: Int = 0, offsetPeer: InputPeer = InputPeerEmpty, excludePinned: Boolean = false, folderId: Int = 0): Deferred<RpcResponse<List<Dialog>>> =
+        client.apiAsync { dialogs(limit, offsetDate, offsetId, offsetPeer, excludePinned, folderId) }
+
+    suspend fun dialogs(limit: Int = 100, offsetDate: Int = 0, offsetId: Int = 0, offsetPeer: InputPeer = InputPeerEmpty, excludePinned: Boolean = false, folderId: Int = 0): RpcResponse<List<Dialog>> {
+        val page = limit.coerceIn(1, HISTORY_PAGE)
+        val raw = client.invoke(
+            MessagesGetDialogs(
+                offsetDate = offsetDate,
+                offsetId = offsetId,
+                offsetPeer = offsetPeer,
+                limit = page,
+                hash = 0L,
+                excludePinned = excludePinned,
+                folderId = folderId,
+            ),
+        )
+        raw.result?.let {
+            client.rememberUsers(it.users())
+            client.rememberChats(it.chats())
+        }
+        return raw.map { it.dialogs() }
+    }
+
+    fun readAsync(peer: InputPeer, maxId: Int = 0): Deferred<RpcResponse<Boolean>> = client.apiAsync { read(peer, maxId) }
+
+    fun readAsync(peerId: Long, maxId: Int = 0): Deferred<RpcResponse<Boolean>> = client.apiAsync { read(client.inputPeerFromId(peerId), maxId) }
+
+    suspend fun read(peerId: Long, maxId: Int = 0): RpcResponse<Boolean> = read(client.inputPeerFromId(peerId), maxId)
+
+    suspend fun read(peer: InputPeer, maxId: Int = 0): RpcResponse<Boolean> {
+        val channel = peer.asInputChannel()
+        return if (channel != null) {
+            client.invoke(ChannelsReadHistory(channel, maxId)).map { it === BoolTrue }
+        } else {
+            client.invoke(MessagesReadHistory(peer, maxId)).map { true }
+        }
+    }
+
     private suspend fun sendMedia(peer: InputPeer, media: InputMedia, caption: String, randomId: Long, silent: Boolean, background: Boolean, clearDraft: Boolean, noforwards: Boolean, updateStickersetsOrder: Boolean, invertMedia: Boolean, allowPaidFloodskip: Boolean, replyTo: InputReplyTo?, replyMarkup: ReplyMarkup?, entities: List<MessageEntity>?, scheduleDate: Int, scheduleRepeatPeriod: Int, sendAs: InputPeer?, sendAsId: Long, quickReplyShortcut: InputQuickReplyShortcut?, effect: Long, allowPaidStars: Long, suggestedPost: SuggestedPost?): RpcResponse<SentMessage> {
         val raw = client.invoke(MessagesSendMedia(peer = peer, media = media, message = caption, randomId = nextRandomId(randomId), silent = silent, background = background, clearDraft = clearDraft, noforwards = noforwards, updateStickersetsOrder = updateStickersetsOrder, invertMedia = invertMedia, allowPaidFloodskip = allowPaidFloodskip, replyTo = replyTo, replyMarkup = replyMarkup, entities = entities, scheduleDate = scheduleDate, scheduleRepeatPeriod = scheduleRepeatPeriod, sendAs = sendAs ?: sendAsId.takeIf { it != 0L }?.let { client.inputPeerFromId(it) }, quickReplyShortcut = quickReplyShortcut, effect = effect, allowPaidStars = allowPaidStars, suggestedPost = suggestedPost))
         return raw.map { SentMessage.from(it, caption) }
@@ -160,4 +416,33 @@ class Messages(
         if (id == 0L) id = 1L
         return id
     }
+
+    private fun nextRandomIds(n: Int): LongArray = LongArray(n) { nextRandomId(0) }
+}
+
+private class MsgPack(val messages: List<Message>, val users: List<User>, val chats: List<Chat>)
+
+private fun MessagesMessages.unpack(): MsgPack = when (this) {
+    is MessagesMessagesCtor -> MsgPack(messages, users, chats)
+    is MessagesMessagesSlice -> MsgPack(messages, users, chats)
+    is MessagesChannelMessages -> MsgPack(messages, users, chats)
+    is MessagesMessagesNotModified -> MsgPack(emptyList(), emptyList(), emptyList())
+}
+
+private fun MessagesDialogs.dialogs(): List<Dialog> = when (this) {
+    is MessagesDialogsCtor -> dialogs
+    is MessagesDialogsSlice -> dialogs
+    is MessagesDialogsNotModified -> emptyList()
+}
+
+private fun MessagesDialogs.users(): List<User> = when (this) {
+    is MessagesDialogsCtor -> users
+    is MessagesDialogsSlice -> users
+    is MessagesDialogsNotModified -> emptyList()
+}
+
+private fun MessagesDialogs.chats(): List<Chat> = when (this) {
+    is MessagesDialogsCtor -> chats
+    is MessagesDialogsSlice -> chats
+    is MessagesDialogsNotModified -> emptyList()
 }

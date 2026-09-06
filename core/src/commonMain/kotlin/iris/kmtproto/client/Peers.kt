@@ -1,11 +1,15 @@
 package iris.kmtproto.client
 
+import iris.kmtproto.tl.gen.InputChannel
+import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
 import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
+import iris.kmtproto.tl.gen.MessageEmpty
+import iris.kmtproto.tl.gen.MessageService
 import iris.kmtproto.tl.gen.Peer
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
@@ -31,6 +35,18 @@ val User.id: Long
 
 val User.accessHash: Long
     get() = (this as? UserCtor)?.accessHash ?: 0L
+
+val Message.id: Int
+    get() = when (this) {
+        is MessageEmpty -> id
+        is MessageCtor -> id
+        is MessageService -> id
+    }
+
+fun InputPeer.asInputChannel(): InputChannel? = when (this) {
+    is InputPeerChannel -> InputChannelCtor(channelId, accessHash)
+    else -> null
+}
 
 fun inputPeerFromBotApiId(chatId: Long, accessHash: Long = 0L): InputPeer = when {
     chatId > 0L -> InputPeerUser(chatId, accessHash)

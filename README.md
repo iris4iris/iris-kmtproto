@@ -78,6 +78,15 @@ user.messages.sendGif(peerId, mp4Bytes, fileName = "loop.mp4")
 FileByteSource("clip.mp4").use { src ->
     user.messages.sendVideo(client.inputPeerFromId(peerId), src, fileName = "clip.mp4")
 }
+
+user.getMe()
+user.messages.history(peerId, limit = 50)
+user.messages.get(peerId, 1, 2, 3)
+user.messages.edit(peerId, id, "edited")
+user.messages.delete(peerId, intArrayOf(id))
+user.messages.forward(toId = chatId, fromId = peerId, ids = intArrayOf(id))
+user.messages.dialogs()
+user.messages.read(peerId)
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.
