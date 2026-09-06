@@ -40,6 +40,7 @@ import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntity
 import iris.kmtproto.tl.gen.MessageService
+import iris.kmtproto.tl.gen.MessagesAffectedHistory
 import iris.kmtproto.tl.gen.MessagesAffectedMessages
 import iris.kmtproto.tl.gen.MessagesChannelMessages
 import iris.kmtproto.tl.gen.MessagesDeleteMessages
@@ -62,8 +63,16 @@ import iris.kmtproto.tl.gen.MessagesSearch
 import iris.kmtproto.tl.gen.MessagesSearchGlobal
 import iris.kmtproto.tl.gen.MessagesSendMedia
 import iris.kmtproto.tl.gen.MessagesSendMessage
+import iris.kmtproto.tl.gen.MessagesSendReaction
+import iris.kmtproto.tl.gen.MessagesSetTyping
+import iris.kmtproto.tl.gen.MessagesUnpinAllMessages
+import iris.kmtproto.tl.gen.MessagesUpdatePinnedMessage
 import iris.kmtproto.tl.gen.Photo
+import iris.kmtproto.tl.gen.Reaction
+import iris.kmtproto.tl.gen.ReactionEmoji
 import iris.kmtproto.tl.gen.ReplyMarkup
+import iris.kmtproto.tl.gen.SendMessageAction
+import iris.kmtproto.tl.gen.SendMessageTypingAction
 import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.Updates
 import iris.kmtproto.tl.gen.User
@@ -617,6 +626,87 @@ class Messages(
             if (pack.messages.size < batch) break
         }
         return RpcResponse(if (out.size > want) out.subList(0, want) else out, null)
+    }
+
+    fun typingAsync(peer: InputPeer, action: SendMessageAction = SendMessageTypingAction, topMsgId: Int = 0): Deferred<RpcResponse<Boolean>> =
+        client.apiAsync { typing(peer, action, topMsgId) }
+
+    fun typingAsync(peerId: Long, action: SendMessageAction = SendMessageTypingAction, topMsgId: Int = 0): Deferred<RpcResponse<Boolean>> =
+        client.apiAsync { typing(client.inputPeerFromId(peerId), action, topMsgId) }
+
+    suspend fun typing(peerId: Long, action: SendMessageAction = SendMessageTypingAction, topMsgId: Int = 0): RpcResponse<Boolean> =
+        typing(client.inputPeerFromId(peerId), action, topMsgId)
+
+    suspend fun typing(peer: InputPeer, action: SendMessageAction = SendMessageTypingAction, topMsgId: Int = 0): RpcResponse<Boolean> =
+        client.invoke(MessagesSetTyping(peer, action, topMsgId)).map { it === BoolTrue }
+
+    fun pinAsync(peer: InputPeer, id: Int, silent: Boolean = false, pmOneside: Boolean = false): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { pin(peer, id, silent, pmOneside) }
+
+    fun pinAsync(peerId: Long, id: Int, silent: Boolean = false, pmOneside: Boolean = false): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { pin(client.inputPeerFromId(peerId), id, silent, pmOneside) }
+
+    suspend fun pin(peerId: Long, id: Int, silent: Boolean = false, pmOneside: Boolean = false): RpcResponse<Updates> =
+        pin(client.inputPeerFromId(peerId), id, silent, pmOneside)
+
+    suspend fun pin(peer: InputPeer, id: Int, silent: Boolean = false, pmOneside: Boolean = false): RpcResponse<Updates> {
+        val raw = client.invoke(MessagesUpdatePinnedMessage(peer, id, silent = silent, unpin = false, pmOneside = pmOneside))
+        raw.result?.let { client.rememberUpdates(it) }
+        return raw
+    }
+
+    fun unpinAsync(peer: InputPeer, id: Int, silent: Boolean = false, pmOneside: Boolean = false): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { unpin(peer, id, silent, pmOneside) }
+
+    fun unpinAsync(peerId: Long, id: Int, silent: Boolean = false, pmOneside: Boolean = false): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { unpin(client.inputPeerFromId(peerId), id, silent, pmOneside) }
+
+    suspend fun unpin(peerId: Long, id: Int, silent: Boolean = false, pmOneside: Boolean = false): RpcResponse<Updates> =
+        unpin(client.inputPeerFromId(peerId), id, silent, pmOneside)
+
+    suspend fun unpin(peer: InputPeer, id: Int, silent: Boolean = false, pmOneside: Boolean = false): RpcResponse<Updates> {
+        val raw = client.invoke(MessagesUpdatePinnedMessage(peer, id, silent = silent, unpin = true, pmOneside = pmOneside))
+        raw.result?.let { client.rememberUpdates(it) }
+        return raw
+    }
+
+    fun unpinAllAsync(peer: InputPeer, topMsgId: Int = 0): Deferred<RpcResponse<MessagesAffectedHistory>> =
+        client.apiAsync { unpinAll(peer, topMsgId) }
+
+    fun unpinAllAsync(peerId: Long, topMsgId: Int = 0): Deferred<RpcResponse<MessagesAffectedHistory>> =
+        client.apiAsync { unpinAll(client.inputPeerFromId(peerId), topMsgId) }
+
+    suspend fun unpinAll(peerId: Long, topMsgId: Int = 0): RpcResponse<MessagesAffectedHistory> =
+        unpinAll(client.inputPeerFromId(peerId), topMsgId)
+
+    suspend fun unpinAll(peer: InputPeer, topMsgId: Int = 0): RpcResponse<MessagesAffectedHistory> =
+        client.invoke(MessagesUnpinAllMessages(peer, topMsgId))
+
+    fun reactAsync(peer: InputPeer, msgId: Int, emoticon: String, big: Boolean = false, addToRecent: Boolean = true): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { react(peer, msgId, emoticon, big, addToRecent) }
+
+    fun reactAsync(peerId: Long, msgId: Int, emoticon: String, big: Boolean = false, addToRecent: Boolean = true): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { react(client.inputPeerFromId(peerId), msgId, emoticon, big, addToRecent) }
+
+    suspend fun react(peerId: Long, msgId: Int, emoticon: String, big: Boolean = false, addToRecent: Boolean = true): RpcResponse<Updates> =
+        react(client.inputPeerFromId(peerId), msgId, emoticon, big, addToRecent)
+
+    suspend fun react(peer: InputPeer, msgId: Int, emoticon: String, big: Boolean = false, addToRecent: Boolean = true): RpcResponse<Updates> =
+        react(peer, msgId, if (emoticon.isEmpty()) emptyList() else listOf(ReactionEmoji(emoticon)), big, addToRecent)
+
+    fun reactAsync(peer: InputPeer, msgId: Int, reaction: List<Reaction>? = null, big: Boolean = false, addToRecent: Boolean = true): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { react(peer, msgId, reaction, big, addToRecent) }
+
+    fun reactAsync(peerId: Long, msgId: Int, reaction: List<Reaction>? = null, big: Boolean = false, addToRecent: Boolean = true): Deferred<RpcResponse<Updates>> =
+        client.apiAsync { react(client.inputPeerFromId(peerId), msgId, reaction, big, addToRecent) }
+
+    suspend fun react(peerId: Long, msgId: Int, reaction: List<Reaction>? = null, big: Boolean = false, addToRecent: Boolean = true): RpcResponse<Updates> =
+        react(client.inputPeerFromId(peerId), msgId, reaction, big, addToRecent)
+
+    suspend fun react(peer: InputPeer, msgId: Int, reaction: List<Reaction>? = null, big: Boolean = false, addToRecent: Boolean = true): RpcResponse<Updates> {
+        val raw = client.invoke(MessagesSendReaction(peer, msgId, big, addToRecent, reaction))
+        raw.result?.let { client.rememberUpdates(it) }
+        return raw
     }
 
     private fun offsetPeerOf(message: Message): InputPeer {

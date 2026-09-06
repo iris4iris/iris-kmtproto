@@ -4,6 +4,7 @@ import iris.kmtproto.api.user.stripInviteHash
 import iris.kmtproto.api.user.stripNftSlug
 import iris.kmtproto.api.user.stripUsername
 import iris.kmtproto.client.asInputChannel
+import iris.kmtproto.client.asInputUser
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.fileMigrateDc
 import iris.kmtproto.client.id
@@ -20,6 +21,7 @@ import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
+import iris.kmtproto.tl.gen.InputUserCtor
 import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEmpty
@@ -120,6 +122,11 @@ class ApiTlTest {
         assertEquals(11L, ch.accessHash)
         assertNull(InputPeerUser(1L, 2L).asInputChannel())
         assertNull(InputPeerChat(3L).asInputChannel())
+        val u = InputPeerUser(1L, 2L).asInputUser() as InputUserCtor
+        assertEquals(1L, u.userId)
+        assertEquals(2L, u.accessHash)
+        assertNull(InputPeerChat(3L).asInputUser())
+        assertNull(InputPeerChannel(9L, 11L).asInputUser())
     }
 
     @Test

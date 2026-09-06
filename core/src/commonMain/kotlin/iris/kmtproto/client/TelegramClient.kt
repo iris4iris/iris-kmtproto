@@ -721,6 +721,20 @@ class TelegramClient(
         for (obj in list) rememberUser(obj)
     }
 
+    internal fun rememberUpdates(updates: Updates) {
+        when (updates) {
+            is UpdatesCtor -> {
+                rememberUsers(updates.users)
+                rememberChats(updates.chats)
+            }
+            is UpdatesCombined -> {
+                rememberUsers(updates.users)
+                rememberChats(updates.chats)
+            }
+            else -> Unit
+        }
+    }
+
     internal fun rememberUser(user: User) {
         val hash = user.accessHash
         if (hash != 0L) storage.putAccessHash(user.id, hash)

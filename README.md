@@ -94,6 +94,16 @@ user.join("durov")
 user.join("https://t.me/+invitehash")
 user.join(channelId)
 user.leave(channelId)
+user.messages.typing(peerId)
+user.messages.pin(peerId, id)
+user.messages.unpin(peerId, id)
+user.messages.unpinAll(peerId)
+user.messages.react(peerId, id, "👍")
+user.participants(channelId)
+user.ban(channelId, userId)
+user.kick(channelId, userId)
+user.unban(channelId, userId)
+user.restrict(channelId, userId, ChatBannedRights(untilDate = 0, sendMessages = true))
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.

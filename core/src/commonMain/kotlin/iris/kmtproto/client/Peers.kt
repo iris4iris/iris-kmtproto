@@ -6,6 +6,8 @@ import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
+import iris.kmtproto.tl.gen.InputUser
+import iris.kmtproto.tl.gen.InputUserCtor
 import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEmpty
@@ -45,6 +47,11 @@ val Message.id: Int
 
 fun InputPeer.asInputChannel(): InputChannel? = when (this) {
     is InputPeerChannel -> InputChannelCtor(channelId, accessHash)
+    else -> null
+}
+
+fun InputPeer.asInputUser(): InputUser? = when (this) {
+    is InputPeerUser -> InputUserCtor(userId, accessHash)
     else -> null
 }
 
