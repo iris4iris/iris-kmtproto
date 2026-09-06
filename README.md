@@ -177,6 +177,7 @@ tl.prebuilt=true
 
 ```
 ./gradlew :core:jvmTest --tests iris.kmtproto.InboundThroughputTest
+./gradlew :core:runIgeBench
 ```
 
 Замер: Xeon Platinum 8481C, 2 vCPU, HotSpot AES-NI. Прогрев 20 000 кадров не входит.
@@ -188,7 +189,19 @@ tl.prebuilt=true
 | Fake DC → клиент | 1×, 168 B | 240k | 240k | 38 |
 | Fake DC → клиент | 32 packed, 2248 B | 48k | 1.5M | 103 |
 
-Файлы в `core/src/jvmTest/kotlin/iris/kmtproto/`: [`InboundThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/InboundThroughputTest.kt) (`unwrap*` / `fakeDc*`), [`FakeDcMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcMain.kt) + [`FakeDcClient.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcClient.kt) + [`DcBenchMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/DcBenchMain.kt) (сокет), [`FakeDcCache.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcCache.kt) (лента кадров).
+Сырой AES-256-IGE decrypt (`IgeCtx`, без SHA-256 и TL). 256 B / 4 KiB / 64 KiB — те же размеры, что у tgcrypto. 144 / 2224 B — encrypted inner наших кадров (кадр − 24 B заголовок).
+
+| путь | размер | ops/s | MiB/s |
+|---|---|---|---|
+| IGE decrypt | 144 B (inner 1-update) | 2.3M | 316 |
+| IGE decrypt | 256 B | 1.15M | 281 |
+| IGE decrypt | 2224 B (inner packed) | 180k | 382 |
+| IGE decrypt | 4 KiB | 95k | 370 |
+| IGE decrypt | 64 KiB | 5.9k | 367 |
+
+unwrap 56 MiB/s на 168 B против IGE 316 на inner 144 B: AES не узкое место.
+
+Файлы в `core/src/jvmTest/kotlin/iris/kmtproto/`: [`InboundThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/InboundThroughputTest.kt) (`unwrap*` / `fakeDc*`), [`IgeThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/IgeThroughputTest.kt) (сырой IGE), [`FakeDcMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcMain.kt) + [`FakeDcClient.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcClient.kt) + [`DcBenchMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/DcBenchMain.kt) (сокет), [`FakeDcCache.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcCache.kt) (лента кадров).
 
 `unwrap*` — только IGE+TL в том же процессе. `fakeDc*` — отдельная JVM с Fake DC (`FakeDcMain`) + клиент в тесте; так encrypt/GC сервера не делят кучу с unwrap. Packed = 32 `UpdateNewMessage` в одном `UpdatesCtor`.
 
@@ -211,6 +224,7 @@ Fake DC не шифрует на горячем пути: IGE-кадры оди�
 KMTPROTO_BENCH_N=1000000
 KMTPROTO_BENCH_DC_N=100000
 KMTPROTO_BENCH_DC_N_FAT=20000
+KMTPROTO_BENCH_IGE_N=1000000
 ```
 
 Mains:

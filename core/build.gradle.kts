@@ -98,3 +98,7 @@ tasks.register<JavaExec>("runFakeDc") {
 tasks.register<JavaExec>("runDcBench") {
     testMain("iris.kmtproto.DcBenchMainKt", "Fake DC bench client (spawns FakeDc JVM)")
 }
+
+tasks.register<JavaExec>("runIgeBench") {
+    testMain("iris.kmtproto.IgeThroughputTestKt", "Raw AES-256-IGE decrypt bench")
+}
