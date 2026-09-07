@@ -1,6 +1,8 @@
 package iris.kmtproto
 
 import iris.kmtproto.crypto.AesIge
+import iris.kmtproto.crypto.AesEcb
+import iris.kmtproto.crypto.IgeCtx
 import iris.kmtproto.crypto.Factorize
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.crypto.ServerKeys
@@ -185,6 +187,39 @@ class TlAndCryptoTest {
     }
 
     @Test
+    fun aesCtrMatchesEcbKeystream() {
+        val key = PlatformCrypto.randomBytes(32)
+        val iv = PlatformCrypto.randomBytes(16)
+        val plain = PlatformCrypto.randomBytes(100)
+        val got = iris.kmtproto.crypto.AesCtr(key, iv.copyOf()).process(plain)
+        assertContentEquals(ecbCtr(key, iv, plain), got)
+    }
+
+    @Test
+    fun aesIgeUnalignedOffset() {
+        val key = PlatformCrypto.randomBytes(32)
+        val iv = PlatformCrypto.randomBytes(32)
+        val plain = PlatformCrypto.randomBytes(48)
+        val cipher = AesIge.encrypt(key, iv, plain)
+        val framed = ByteArray(4 + cipher.size)
+        cipher.copyInto(framed, 4)
+        val back = AesIge.decrypt(key, iv, framed, 4, framed.size)
+        assertContentEquals(plain, back)
+    }
+
+    @Test
+    fun aesIgeInPlace() {
+        val key = PlatformCrypto.randomBytes(32)
+        val iv = PlatformCrypto.randomBytes(32)
+        val plain = PlatformCrypto.randomBytes(64)
+        val cipher = AesIge.encrypt(key, iv, plain)
+        val buf = cipher.copyOf()
+        val back = IgeCtx(encrypt = false).crypt(key, iv, buf, 0, buf.size, buf, 0)
+        assertContentEquals(plain, back)
+        assertContentEquals(plain, buf)
+    }
+
+    @Test
     fun aesCtrInPlaceMatchesCopy() {
         val key = PlatformCrypto.randomBytes(32)
         val iv = PlatformCrypto.randomBytes(16)
@@ -197,4 +232,44 @@ class TlAndCryptoTest {
         iris.kmtproto.crypto.AesCtr(key, iv.copyOf()).processInto(inplace, 0, back, 0, inplace.size)
         assertContentEquals(plain, back)
     }
+}
+
+private fun ecbCtr(key: ByteArray, iv: ByteArray, data: ByteArray): ByteArray {
+    val aes = AesEcb(key, encrypt = true)
+    val counter = iv.copyOf()
+    val ks = ByteArray(16)
+    val out = ByteArray(data.size)
+    var i = 0
+    while (i < data.size) {
+        aes.block(counter, 0, ks, 0)
+        var c = counter.lastIndex
+        while (c >= 0) {
+            val next = (counter[c].toInt() and 0xff) + 1
+            counter[c] = next.toByte()
+            if (next < 256) break
+            c--
+        }
+        val n = minOf(16, data.size - i)
+        var b = 0
+        while (b < n) {
+            out[i + b] = (data[i + b].toInt() xor ks[b].toInt()).toByte()
+            b++
+        }
+        i += n
+    }
+    return out
+}
+
+fun main() {
+    TlAndCryptoTest().run {
+        aesCryptHotSpotIsOpen()
+        aesIgeInverts()
+        aesIgeDecryptsSlice()
+        aesIgeUnalignedOffset()
+        aesIgeInPlace()
+        aesCtrHandlesPartialBlocks()
+        aesCtrInPlaceMatchesCopy()
+        aesCtrMatchesEcbKeystream()
+    }
+    println("TlAndCryptoTest crypto ok")
 }
