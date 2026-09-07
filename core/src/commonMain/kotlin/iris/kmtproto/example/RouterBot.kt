@@ -4,6 +4,7 @@ import iris.kmtproto.api.bot.BotApi
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.floodWaitSeconds
 import iris.kmtproto.client.id
+import iris.kmtproto.events.EventFilter
 import iris.kmtproto.events.SingleEventRouter
 import iris.kmtproto.tl.gen.MessageCtor
 
@@ -16,11 +17,17 @@ suspend fun runRouterBot(
 ) {
     val me = bot.client.user?.id ?: error("login() first")
     log("router on, me=$me pts=${bot.client.updatesState?.pts}")
+
     val router = SingleEventRouter()
-    router.onMessage({ !it.out && it.message.startsWith("/start") }) { m ->
+    router.onMessage(EventFilter { !it.out && it.message.startsWith("/start") }) { m ->
         reply(bot, m, "Echo is on.", log)
     }
-    router.onMessage({ !it.out && it.message.isNotEmpty() }) { m ->
+
+    router.onMessage(EventFilter { !it.out && it.message == "ping" }) { m ->
+        reply(bot, m, "PONG!", log)
+    }
+
+    router.onMessage(EventFilter { !it.out && it.message.isNotEmpty() }) { m ->
         reply(bot, m, m.message.trim().take(4096), log)
     }
     router.start(bot.client)
