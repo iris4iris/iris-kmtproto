@@ -185,13 +185,15 @@ Windows: `.\gradlew.bat generateTl`
 
 `:core` зависит от `:tl` как от проекта — Gradle обязан проверить, актуален ли jar. Это доли секунды (`UP-TO-DATE`), не 19 с.
 
-JVM IGE: HotSpot AES-NI через внутренний `AESCrypt` (без JNI на каждый 16-байтный блок). Нужен флаг; без него — `Cipher` ECB.
+JVM IGE: HotSpot AES-NI через внутренний `AESCrypt` (без JNI на каждый 16-байтный блок). Нужен флаг; без него — `Cipher` ECB. Петля IGE — 2×`Long` XOR (`VarHandle`), без `tmpOut`.
+
+JVM CTR (обфускация транспорта): `Cipher(AES/CTR/NoPadding)` — интринсик HotSpot CounterMode, в том числе на невыровненных 4-байтовых префиксах. In-place.
 
 ```
 --add-opens java.base/com.sun.crypto.provider=ALL-UNNAMED
 ```
 
-`./gradlew :core:jvmTest` и `runEcho` / `runBotApi` / `runUserApi` уже передают его. IDEA Run: VM options → та же строка. В логе: `kmtproto [aes] AESCrypt (HotSpot AES-NI)` или `Cipher ECB fallback`.
+`./gradlew :core:jvmTest` и `runEcho` / `runBotApi` / `runUserApi` уже передают его. IDEA Run: VM options → та же строка. В логе: `kmtproto [aes] AESCrypt (HotSpot AES-NI)` и `kmtproto [ctr] Cipher AES/CTR/NoPadding (HotSpot)`.
 
 Чтобы `:core:jvmTest` вообще не ставил в граф `:tl:*`, в `gradle.properties`:
 
@@ -204,6 +206,9 @@ tl.prebuilt=true
 ```
 ./gradlew :core:jvmTest --tests iris.kmtproto.InboundThroughputTest
 ./gradlew :core:runIgeBench
+./gradlew :core:runCtrBench
+./gradlew :core:runCompareBench
+./gradlew :core:runCryptoTest
 ```
 
 Замер: Xeon Platinum 8481C, 2 vCPU, HotSpot AES-NI. Прогрев 20 000 кадров не входит.
@@ -219,15 +224,43 @@ tl.prebuilt=true
 
 | путь | размер | ops/s | MiB/s |
 |---|---|---|---|
-| IGE decrypt | 144 B (inner 1-update) | 2.3M | 316 |
-| IGE decrypt | 256 B | 1.15M | 281 |
-| IGE decrypt | 2224 B (inner packed) | 180k | 382 |
-| IGE decrypt | 4 KiB | 95k | 370 |
-| IGE decrypt | 64 KiB | 5.9k | 367 |
+| IGE decrypt | 144 B (inner 1-update) | 3.6M | 488 |
+| IGE decrypt | 256 B | 2.2M | 540 |
+| IGE decrypt | 2224 B (inner packed) | 286k | 607 |
+| IGE decrypt | 4 KiB | 155k | 604 |
+| IGE decrypt | 64 KiB | 9.8k | 612 |
 
-unwrap 56 MiB/s на 168 B против IGE 316 на inner 144 B: AES не узкое место.
+AES-256-CTR (`AesCtr.processInto`, тот же процесс, ключ один раз). 16 B — оверхед вызова; с 512 B работает интринсик CounterMode.
 
-Файлы в `core/src/jvmTest/kotlin/iris/kmtproto/`: [`InboundThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/InboundThroughputTest.kt) (`unwrap*` / `fakeDc*`), [`IgeThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/IgeThroughputTest.kt) (сырой IGE), [`FakeDcMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcMain.kt) + [`FakeDcClient.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcClient.kt) + [`DcBenchMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/DcBenchMain.kt) (сокет), [`FakeDcCache.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcCache.kt) (лента кадров).
+| путь | размер | ops/s | MiB/s |
+|---|---|---|---|
+| CTR stream | 16 B | 38M | 577 |
+| CTR stream | 512 B | 18M | 8700 |
+| CTR stream | 4 KiB | 3.1M | 12100 |
+| CTR stream | 64 KiB | 188k | 11800 |
+| CTR stream | 1 MiB | 11k | 11300 |
+
+unwrap 56 MiB/s на 168 B против IGE 488 на inner 144 B: AES не узкое место.
+
+Сравнение с tgcrypto 1.2.5 и nccrypto. Метод как у nccrypto: min-of-N, **MB/s SI** (не MiB/s). tgcrypto и kmtproto — этот Xeon; nccrypto — их CPU (T-tables там ~1.29× быстрее: 247 vs 192 MB/s на IGE 64KB). Ускорение — vs tgcrypto **на том же железе**.
+
+| сценарий | tgcrypto здесь | kmtproto | vs tg | nccrypto у них | vs tg |
+|---|---:|---:|---:|---:|---:|
+| IGE 16B | 25 | **163** | 6.5× | 80 | 3.0× |
+| IGE 512B | 159 | **589** | 3.7× | 865 | 4.4× |
+| IGE 4KB | 188 | **642** | 3.4× | 1156 | 4.8× |
+| IGE 64KB | 192 | **647** | 3.4× | 1220 | 4.9× |
+| IGE 64KB new ctx | 193 | 264 | 1.4× | 1217 | 4.9× |
+| CTR 16B | 25 | **225** | 9.0× | 95 | 3.8× |
+| CTR 512B | 132 | **5224** | 40× | 1191 | 7.7× |
+| CTR 4KB | 150 | **11409** | 76× | 1666 | 9.3× |
+| CTR 16MB | 95 | **12473** | 131× | 1739 | 10× |
+
+IGE: nccrypto всё ещё впереди на блоке (C `aesenc` + XOR в xmm; плюс выше частота). CTR: HotSpot CounterMode/VAES обгоняет их batch-8. `new ctx each` у нас дорогой (`IgeCtx()` + `AESCrypt`); прод держит контекст и делает только `init` — строка 64KB, не new ctx.
+
+`./gradlew :core:runCompareBench` — тот же формат. tgcrypto на этой машине: `python bench` как `bench_nccrypto.py`.
+
+Файлы в `core/src/jvmTest/kotlin/iris/kmtproto/`: [`InboundThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/InboundThroughputTest.kt) (`unwrap*` / `fakeDc*`), [`IgeThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/IgeThroughputTest.kt) (сырой IGE), [`CtrThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/CtrThroughputTest.kt) (CTR), [`CompareThroughputTest.kt`](core/src/jvmTest/kotlin/iris/kmtproto/CompareThroughputTest.kt) (формат nccrypto), [`FakeDcMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcMain.kt) + [`FakeDcClient.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcClient.kt) + [`DcBenchMain.kt`](core/src/jvmTest/kotlin/iris/kmtproto/DcBenchMain.kt) (сокет), [`FakeDcCache.kt`](core/src/jvmTest/kotlin/iris/kmtproto/FakeDcCache.kt) (лента кадров).
 
 `unwrap*` — только IGE+TL в том же процессе. `fakeDc*` — отдельная JVM с Fake DC (`FakeDcMain`) + клиент в тесте; так encrypt/GC сервера не делят кучу с unwrap. Packed = 32 `UpdateNewMessage` в одном `UpdatesCtor`.
 
@@ -251,6 +284,8 @@ KMTPROTO_BENCH_N=1000000
 KMTPROTO_BENCH_DC_N=100000
 KMTPROTO_BENCH_DC_N_FAT=20000
 KMTPROTO_BENCH_IGE_N=1000000
+KMTPROTO_BENCH_CTR_N=1000000
+KMTPROTO_BENCH_CTR_HUGE=16777216
 ```
 
 Mains:

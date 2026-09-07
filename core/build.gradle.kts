@@ -99,8 +99,22 @@ tasks.register<JavaExec>("runDcBench") {
     testMain("iris.kmtproto.DcBenchMainKt", "Fake DC bench client (spawns FakeDc JVM)")
 }
 
+tasks.register<JavaExec>("runInboundBench") {
+    testMain("iris.kmtproto.InboundThroughputTestKt", "Unwrap + Fake DC inbound bench")
+    jvmArgs("-Xmx2g")
+}
+
 tasks.register<JavaExec>("runIgeBench") {
     testMain("iris.kmtproto.IgeThroughputTestKt", "Raw AES-256-IGE decrypt bench")
+}
+
+tasks.register<JavaExec>("runCtrBench") {
+    testMain("iris.kmtproto.CtrThroughputTestKt", "AES-256-CTR stream bench")
+}
+
+tasks.register<JavaExec>("runCompareBench") {
+    testMain("iris.kmtproto.CompareThroughputTestKt", "IGE/CTR vs nccrypto-format bench")
+    jvmArgs("-Xmx512m")
 }
 
 tasks.register<JavaExec>("runEventProcessorTest") {
