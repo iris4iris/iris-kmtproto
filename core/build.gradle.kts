@@ -79,6 +79,10 @@ tasks.register<JavaExec>("runEcho") {
     exampleMain("iris.kmtproto.example.EchoBotMainKt", "Echo bot (BotApi)")
 }
 
+tasks.register<JavaExec>("runRouter") {
+    exampleMain("iris.kmtproto.example.RouterBotMainKt", "SingleEventRouter echo bot (BotApi)")
+}
+
 tasks.register<JavaExec>("runBotApi") {
     exampleMain("iris.kmtproto.example.BotApiExampleMainKt", "BotApi example: login, send, listen")
 }

@@ -46,6 +46,15 @@ bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } 
 client.incomingUpdates().collect { upd -> /* UpdateNewMessage, UpdateUserStatus, … */ }
 client.incomingMessages() // sugar: UpdateNewMessage / UpdateNewChannelMessage → MessageCtor
 
+val router = SingleEventRouter()
+router.onMessage({ !it.out && it.message.startsWith("/start") }) { m ->
+    bot.sendMessage(m.peerId.botApiChatId(), "Echo is on.")
+}
+router.onMessage({ !it.out && it.message.isNotEmpty() }) { m ->
+    bot.sendMessage(m.peerId.botApiChatId(), m.message)
+}
+router.start(scope, client)
+
 user.payments.getStarGifts()
 user.payments.getUniqueStarGift("PlushPepe-42")
 user.payments.getUniqueStarGiftValueInfo("https://t.me/nft/PlushPepe-42")
@@ -179,6 +188,7 @@ Windows: `.\gradlew.bat generateTl`
 ./gradlew :tl:jvmTest
 ./gradlew :core:jvmTest
 ./gradlew :core:runEcho       # echo bot (BotApi)
+./gradlew :core:runRouter     # SingleEventRouter: /start then echo
 ./gradlew :core:runBotApi     # BotApi: login + send + listen
 ./gradlew :core:runUserApi    # UserApi: SMS login + send + listen
 ```
@@ -193,7 +203,7 @@ JVM CTR (обфускация транспорта): `Cipher(AES/CTR/NoPadding)`
 --add-opens java.base/com.sun.crypto.provider=ALL-UNNAMED
 ```
 
-`./gradlew :core:jvmTest` и `runEcho` / `runBotApi` / `runUserApi` уже передают его. IDEA Run: VM options → та же строка. В логе: `kmtproto [aes] AESCrypt (HotSpot AES-NI)` и `kmtproto [ctr] Cipher AES/CTR/NoPadding (HotSpot)`.
+`./gradlew :core:jvmTest` и `runEcho` / `runRouter` / `runBotApi` / `runUserApi` уже передают его. IDEA Run: VM options → та же строка. В логе: `kmtproto [aes] AESCrypt (HotSpot AES-NI)` и `kmtproto [ctr] Cipher AES/CTR/NoPadding (HotSpot)`.
 
 Чтобы `:core:jvmTest` вообще не ставил в граф `:tl:*`, в `gradle.properties` включено:
 
@@ -291,6 +301,7 @@ KMTPROTO_BENCH_CTR_HUGE=16777216
 Mains:
 
 - `iris.kmtproto.example.EchoBotMainKt`
+- `iris.kmtproto.example.RouterBotMainKt`
 - `iris.kmtproto.example.BotApiExampleMainKt`
 - `iris.kmtproto.example.UserApiExampleMainKt`
 
