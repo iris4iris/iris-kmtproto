@@ -108,19 +108,29 @@ class TlReader(
     }
 
     fun readInt(): Int {
-        val b0 = readByte()
-        val b1 = readByte()
-        val b2 = readByte()
-        val b3 = readByte()
-        return b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24)
+        val p = pos
+        check(p + 4 <= end) { "eof" }
+        pos = p + 4
+        val d = data
+        return (d[p].toInt() and 0xff) or
+            ((d[p + 1].toInt() and 0xff) shl 8) or
+            ((d[p + 2].toInt() and 0xff) shl 16) or
+            ((d[p + 3].toInt() and 0xff) shl 24)
     }
 
     fun readLong(): Long {
-        var v = 0L
-        for (i in 0 until 8) {
-            v = v or ((readByte().toLong()) shl (8 * i))
-        }
-        return v
+        val p = pos
+        check(p + 8 <= end) { "eof" }
+        pos = p + 8
+        val d = data
+        return (d[p].toLong() and 0xff) or
+            ((d[p + 1].toLong() and 0xff) shl 8) or
+            ((d[p + 2].toLong() and 0xff) shl 16) or
+            ((d[p + 3].toLong() and 0xff) shl 24) or
+            ((d[p + 4].toLong() and 0xff) shl 32) or
+            ((d[p + 5].toLong() and 0xff) shl 40) or
+            ((d[p + 6].toLong() and 0xff) shl 48) or
+            ((d[p + 7].toLong() and 0xff) shl 56)
     }
 
     fun readDouble(): Double = Double.fromBits(readLong())

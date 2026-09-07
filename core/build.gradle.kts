@@ -14,15 +14,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            if (!tlPrebuilt.get()) {
+            if (tlPrebuilt.get()) {
+                api(files(tlJarFile))
+            } else {
                 api(project(":tl"))
             }
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-        }
-        jvmMain.dependencies {
-            if (tlPrebuilt.get()) {
-                api(files(tlJarFile))
-            }
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

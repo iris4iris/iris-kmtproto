@@ -195,13 +195,13 @@ JVM CTR (обфускация транспорта): `Cipher(AES/CTR/NoPadding)`
 
 `./gradlew :core:jvmTest` и `runEcho` / `runBotApi` / `runUserApi` уже передают его. IDEA Run: VM options → та же строка. В логе: `kmtproto [aes] AESCrypt (HotSpot AES-NI)` и `kmtproto [ctr] Cipher AES/CTR/NoPadding (HotSpot)`.
 
-Чтобы `:core:jvmTest` вообще не ставил в граф `:tl:*`, в `gradle.properties`:
+Чтобы `:core:jvmTest` вообще не ставил в граф `:tl:*`, в `gradle.properties` включено:
 
 ```
 tl.prebuilt=true
 ```
 
-Сначала один раз `./gradlew :tl:jvmJar` (или `generateTl` + `:tl:jvmJar`). Дальше core берёт `tl/build/libs/tl-jvm-*.jar`. Схема/генератор поменялись — снова `:tl:jvmJar`. Снять флаг или `-Ptl.prebuilt=false`, если нужна живая связь модулей.
+`:core` берёт `tl/build/libs/tl-jvm-*.jar`. Схема, генератор или `TlIo` поменялись — явно `./gradlew :tl:jvmJar`. Живая связь модулей: `-Ptl.prebuilt=false`.
 
 ```
 ./gradlew :core:jvmTest --tests iris.kmtproto.InboundThroughputTest
