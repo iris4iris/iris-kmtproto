@@ -3,19 +3,23 @@ package iris.kmtproto
 import iris.kmtproto.events.ArrayPackEventHandler
 import iris.kmtproto.events.ArraySingleEventHandler
 import iris.kmtproto.events.ChatMemberEvent
+import iris.kmtproto.events.EventFilter
 import iris.kmtproto.events.ListSingleEventHandler
 import iris.kmtproto.events.OneSingleEventHandler
 import iris.kmtproto.events.PackEventFilter
 import iris.kmtproto.events.PackEventHandler
+import iris.kmtproto.events.PackEventRouter
+import iris.kmtproto.events.PackFilter
 import iris.kmtproto.events.PackUpdateProcessor
 import iris.kmtproto.events.SingleEventFilter
 import iris.kmtproto.events.SingleEventHandler
+import iris.kmtproto.events.SingleEventRouter
 import iris.kmtproto.events.SingleUpdateProcessor
+import iris.kmtproto.events.and
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.UpdateChatParticipantAdd
-import iris.kmtproto.tl.gen.UpdateDeleteMessages
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
 import iris.kmtproto.tl.gen.UserStatusOffline
@@ -60,18 +64,13 @@ class EventProcessorTest {
 
     @Test
     fun singleFilterStopsHandler() = eventsTest { scope ->
-        val seen = mutableListOf<String>()
-        val done = CompletableDeferred<Unit>()
+        val got = CompletableDeferred<String>()
         val filter = object : SingleEventFilter {
             override suspend fun filterMessage(message: MessageCtor) = message.message.isNotEmpty()
         }
         val handler = object : SingleEventHandler {
             override suspend fun handleMessage(message: MessageCtor) {
-                seen += message.message
-            }
-
-            override suspend fun handleUnknown(update: Update) {
-                done.complete(Unit)
+                got.complete(message.message)
             }
         }
         val src = newSrc()
@@ -80,16 +79,14 @@ class EventProcessorTest {
         src.awaitSubscriber()
         src.emit(newMsg(""))
         src.emit(newMsg("ok"))
-        src.emit(UpdateDeleteMessages(intArrayOf(1), pts = 1, ptsCount = 1))
-        done.await()
+        val text = got.await()
         p.close()
-        assertEquals(listOf("ok"), seen)
+        assertEquals("ok", text)
     }
 
     @Test
     fun listFiltersAreAnd() = eventsTest { scope ->
-        val seen = mutableListOf<String>()
-        val done = CompletableDeferred<Unit>()
+        val got = CompletableDeferred<String>()
         val notEmpty = object : SingleEventFilter {
             override suspend fun filterMessage(message: MessageCtor) = message.message.isNotEmpty()
         }
@@ -98,11 +95,7 @@ class EventProcessorTest {
         }
         val handler = object : SingleEventHandler {
             override suspend fun handleMessage(message: MessageCtor) {
-                seen += message.message
-            }
-
-            override suspend fun handleUnknown(update: Update) {
-                done.complete(Unit)
+                got.complete(message.message)
             }
         }
         val src = newSrc()
@@ -115,10 +108,9 @@ class EventProcessorTest {
         src.emit(newMsg(""))
         src.emit(newMsg("hi"))
         src.emit(newMsg("yo"))
-        src.emit(UpdateDeleteMessages(intArrayOf(1), pts = 1, ptsCount = 1))
-        done.await()
+        val text = got.await()
         p.close()
-        assertEquals(listOf("yo"), seen)
+        assertEquals("yo", text)
     }
 
     @Test
@@ -228,6 +220,94 @@ class EventProcessorTest {
         assertEquals(2, msgCount)
         assertEquals(2, stCount)
     }
+
+    @Test
+    fun singleRouterFirstMatchWins() = eventsTest { scope ->
+        val seen = mutableListOf<String>()
+        val cmdDone = CompletableDeferred<Unit>()
+        val echoDone = CompletableDeferred<Unit>()
+        val router = SingleEventRouter()
+        router.onMessage({ it.message.startsWith("/") }) { m ->
+            seen += "cmd:${m.message}"
+            cmdDone.complete(Unit)
+        }
+        router.onMessage { m ->
+            seen += "echo:${m.message}"
+            echoDone.complete(Unit)
+        }
+        val src = newSrc()
+        router.start(scope, src)
+        src.awaitSubscriber()
+        src.emit(newMsg("/start"))
+        cmdDone.await()
+        assertEquals(listOf("cmd:/start"), seen)
+        src.emit(newMsg("hi"))
+        echoDone.await()
+        router.close()
+        assertEquals(listOf("cmd:/start", "echo:hi"), seen)
+    }
+
+    @Test
+    fun singleRouterAndFilter() = eventsTest { scope ->
+        val got = CompletableDeferred<String>()
+        val hasText = EventFilter<MessageCtor> { it.message.isNotEmpty() }
+        val notHi = EventFilter<MessageCtor> { it.message != "hi" }
+        val router = SingleEventRouter()
+        router.onMessage(hasText and notHi) { m -> got.complete(m.message) }
+        val src = newSrc()
+        router.start(scope, src)
+        src.awaitSubscriber()
+        src.emit(newMsg(""))
+        src.emit(newMsg("hi"))
+        src.emit(newMsg("yo"))
+        val text = got.await()
+        router.close()
+        assertEquals("yo", text)
+    }
+
+    @Test
+    fun packRouterFirstNonEmptyWins() = eventsTest { scope ->
+        val seen = mutableListOf<String>()
+        val cmdDone = CompletableDeferred<Unit>()
+        val echoDone = CompletableDeferred<Unit>()
+        val router = PackEventRouter()
+        router.onMessages(PackFilter { batch -> batch.filter { it.message.startsWith("/") } }) { batch ->
+            seen += "cmd:${batch.joinToString { it.message }}"
+            cmdDone.complete(Unit)
+        }
+        router.onMessages { batch ->
+            seen += "echo:${batch.joinToString { it.message }}"
+            echoDone.complete(Unit)
+        }
+        val src = newSrc()
+        router.start(scope, src)
+        src.awaitSubscriber()
+        src.emit(newMsg("/start"))
+        cmdDone.await()
+        assertEquals(listOf("cmd:/start"), seen)
+        src.emit(newMsg("hi"))
+        echoDone.await()
+        router.close()
+        assertEquals(listOf("cmd:/start", "echo:hi"), seen)
+    }
+
+    @Test
+    fun packRouterLeftoversGoNext() = runBlocking {
+        val cmd = mutableListOf<String>()
+        val echo = mutableListOf<String>()
+        val router = PackEventRouter()
+        router.onMessages(PackFilter { it.filter { m -> m.message.startsWith("/") } }) { batch ->
+            cmd += batch.map { it.message }
+        }
+        router.onMessages { batch ->
+            echo += batch.map { it.message }
+        }
+        router.handleMessage(
+            listOf(textMsg("/a"), textMsg("hi"), textMsg("/b"), textMsg("yo")),
+        )
+        assertEquals(listOf("/a", "/b"), cmd)
+        assertEquals(listOf("hi", "yo"), echo)
+    }
 }
 
 fun main() {
@@ -239,6 +319,10 @@ fun main() {
         packGroupsByTypeAndWaitsBeforeNextBatch()
         packFilterShrinksList()
         packSplitsMessageAndStatus()
+        singleRouterFirstMatchWins()
+        singleRouterAndFilter()
+        packRouterFirstNonEmptyWins()
+        packRouterLeftoversGoNext()
     }
     println("EventProcessorTest ok")
 }
@@ -268,14 +352,16 @@ private fun eventsTest(test: suspend (CoroutineScope) -> Unit) {
     }
 }
 
+private fun textMsg(text: String, id: Int = text.hashCode()) = MessageCtor(
+    id = id,
+    peerId = PeerUser(42),
+    date = 1,
+    message = text,
+    fromId = PeerUser(42),
+)
+
 private fun newMsg(text: String, id: Int = text.hashCode()) = UpdateNewMessage(
-    message = MessageCtor(
-        id = id,
-        peerId = PeerUser(42),
-        date = 1,
-        message = text,
-        fromId = PeerUser(42),
-    ),
+    message = textMsg(text, id),
     pts = 1,
     ptsCount = 1,
 )
