@@ -6,7 +6,6 @@ import iris.kmtproto.client.floodWaitSeconds
 import iris.kmtproto.client.id
 import iris.kmtproto.events.SingleEventRouter
 import iris.kmtproto.tl.gen.MessageCtor
-import kotlinx.coroutines.coroutineScope
 
 /**
  * [SingleEventRouter]: `/start` first, then echo. Own messages (`out`) are dropped in the filters.
@@ -24,9 +23,7 @@ suspend fun runRouterBot(
     router.onMessage({ !it.out && it.message.isNotEmpty() }) { m ->
         reply(bot, m, m.message.trim().take(4096), log)
     }
-    coroutineScope {
-        router.start(this, bot.client)
-    }
+    router.start(bot.client)
 }
 
 private fun reply(bot: BotApi, m: MessageCtor, text: String, log: (String) -> Unit) {

@@ -7,6 +7,7 @@ import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateUserStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 
 fun interface PackFilter<T> {
@@ -75,6 +76,14 @@ class PackEventRouter : PackEventHandler {
     override suspend fun handleCallback(queries: List<UpdateBotCallbackQuery>) = dispatch(callbacks, queries)
     override suspend fun handleUserStatus(updates: List<UpdateUserStatus>) = dispatch(statuses, updates)
     override suspend fun handleUnknown(updates: List<Update>) = dispatch(unknown, updates)
+
+    suspend fun start(client: TelegramClient) {
+        coroutineScope { start(this, client) }
+    }
+
+    suspend fun start(updates: Flow<Update>) {
+        coroutineScope { start(this, updates) }
+    }
 
     fun start(scope: CoroutineScope, client: TelegramClient): Job =
         start(scope, client.incomingUpdates())

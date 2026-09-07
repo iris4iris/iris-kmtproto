@@ -7,6 +7,7 @@ import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateUserStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -70,6 +71,14 @@ class SingleEventRouter : SingleEventHandler {
     override suspend fun handleCallback(query: UpdateBotCallbackQuery) = dispatch(callbacks, query)
     override suspend fun handleUserStatus(update: UpdateUserStatus) = dispatch(statuses, update)
     override suspend fun handleUnknown(update: Update) = dispatch(unknown, update)
+
+    suspend fun start(client: TelegramClient) {
+        coroutineScope { start(this, client) }
+    }
+
+    suspend fun start(updates: Flow<Update>) {
+        coroutineScope { start(this, updates) }
+    }
 
     fun start(scope: CoroutineScope, client: TelegramClient): Job =
         start(scope, client.incomingUpdates())

@@ -53,7 +53,7 @@ router.onMessage({ !it.out && it.message.startsWith("/start") }) { m ->
 router.onMessage({ !it.out && it.message.isNotEmpty() }) { m ->
     bot.sendMessage(m.peerId.botApiChatId(), m.message)
 }
-router.start(scope, client)
+router.start(client)
 
 user.payments.getStarGifts()
 user.payments.getUniqueStarGift("PlushPepe-42")
