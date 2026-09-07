@@ -5,7 +5,8 @@ package iris.kmtproto.transport
  * not from [kotlinx.coroutines.Dispatchers.Default].
  */
 interface MtprotoTransport {
-    suspend fun send(payload: ByteArray)
+    suspend fun send(payload: ByteArray) = send(payload, 0, payload.size)
+    suspend fun send(buf: ByteArray, off: Int, len: Int)
     suspend fun receive(): ByteArray
     suspend fun close()
     fun setReadTimeoutMs(ms: Int) {}

@@ -21,21 +21,20 @@ private class ObfuscatedIntermediate(
     private val encryptor: AesCtr,
     private val decryptor: AesCtr,
 ) : MtprotoTransport {
-    private val sendLen = ByteArray(4)
     private var sendBuf = ByteArray(2048)
     private val lenBuf = ByteArray(4)
     private var payloadBuf = ByteArray(2048)
 
-    override suspend fun send(payload: ByteArray) {
-        val n = 4 + payload.size
+    override suspend fun send(payload: ByteArray) = send(payload, 0, payload.size)
+
+    override suspend fun send(buf: ByteArray, off: Int, len: Int) {
+        val n = 4 + len
         if (sendBuf.size < n) sendBuf = ByteArray(n.coerceAtLeast(sendBuf.size * 2))
-        val size = payload.size
-        sendLen[0] = size.toByte()
-        sendLen[1] = (size shr 8).toByte()
-        sendLen[2] = (size shr 16).toByte()
-        sendLen[3] = (size shr 24).toByte()
-        sendLen.copyInto(sendBuf, 0)
-        payload.copyInto(sendBuf, 4)
+        sendBuf[0] = len.toByte()
+        sendBuf[1] = (len shr 8).toByte()
+        sendBuf[2] = (len shr 16).toByte()
+        sendBuf[3] = (len shr 24).toByte()
+        buf.copyInto(sendBuf, 4, off, off + len)
         encryptor.processInto(sendBuf, 0, sendBuf, 0, n)
         output.write(sendBuf, 0, n)
         output.flush()
@@ -74,14 +73,16 @@ private class PlainIntermediate(
     private val lenBuf = ByteArray(4)
     private var payloadBuf = ByteArray(2048)
 
-    override suspend fun send(payload: ByteArray) {
-        val size = payload.size
+    override suspend fun send(payload: ByteArray) = send(payload, 0, payload.size)
+
+    override suspend fun send(buf: ByteArray, off: Int, len: Int) {
+        val size = len
         lenBuf[0] = size.toByte()
         lenBuf[1] = (size shr 8).toByte()
         lenBuf[2] = (size shr 16).toByte()
         lenBuf[3] = (size shr 24).toByte()
         output.write(lenBuf)
-        output.write(payload)
+        output.write(buf, off, len)
         output.flush()
     }
 

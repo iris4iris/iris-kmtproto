@@ -108,7 +108,16 @@ class InboundThroughputTest {
 }
 
 private object NoopTransport : MtprotoTransport {
-    override suspend fun send(payload: ByteArray) = Unit
+    override suspend fun send(buf: ByteArray, off: Int, len: Int) = Unit
     override suspend fun receive(): ByteArray = error("no socket")
     override suspend fun close() = Unit
+}
+
+fun main() {
+    InboundThroughputTest().run {
+        unwrapSingleUpdate()
+        unwrapFatUpdates()
+        fakeDcSingleUpdate()
+        fakeDcPackedUpdates()
+    }
 }

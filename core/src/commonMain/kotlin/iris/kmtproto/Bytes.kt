@@ -48,6 +48,24 @@ internal fun Long.toLeBytes(): ByteArray = byteArrayOf(
     (this shr 56).toByte(),
 )
 
+internal fun ByteArray.writeIntLe(offset: Int, value: Int) {
+    this[offset] = value.toByte()
+    this[offset + 1] = (value shr 8).toByte()
+    this[offset + 2] = (value shr 16).toByte()
+    this[offset + 3] = (value shr 24).toByte()
+}
+
+internal fun ByteArray.writeLongLe(offset: Int, value: Long) {
+    this[offset] = value.toByte()
+    this[offset + 1] = (value shr 8).toByte()
+    this[offset + 2] = (value shr 16).toByte()
+    this[offset + 3] = (value shr 24).toByte()
+    this[offset + 4] = (value shr 32).toByte()
+    this[offset + 5] = (value shr 40).toByte()
+    this[offset + 6] = (value shr 48).toByte()
+    this[offset + 7] = (value shr 56).toByte()
+}
+
 internal fun ByteArray.readIntLe(offset: Int = 0): Int =
     (this[offset].toInt() and 0xff) or
         ((this[offset + 1].toInt() and 0xff) shl 8) or

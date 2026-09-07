@@ -1,13 +1,14 @@
 package iris.kmtproto.mtproto
 
 import iris.kmtproto.logCaught
-import iris.kmtproto.concat
 import iris.kmtproto.crypto.AuthKey
 import iris.kmtproto.crypto.IgeCtx
 import iris.kmtproto.crypto.MsgKeys
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.readIntLe
 import iris.kmtproto.readLongLe
+import iris.kmtproto.writeIntLe
+import iris.kmtproto.writeLongLe
 import iris.kmtproto.tl.BadMsgNotification
 import iris.kmtproto.tl.BadServerSalt
 import iris.kmtproto.tl.GzipPacked
@@ -23,7 +24,6 @@ import iris.kmtproto.tl.TlReader
 import iris.kmtproto.tl.TlWriter
 import iris.kmtproto.tl.gen.Updates
 import iris.kmtproto.tl.toBytes
-import iris.kmtproto.toLeBytes
 import iris.kmtproto.transport.MtprotoTransport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -135,7 +135,8 @@ internal class EncryptedConnection(
                     batch += next
                     size += next.innerSize
                 }
-                transport.send(seal(batch))
+                val n = seal(batch)
+                transport.send(writeCrypto.packet, 0, n)
             }
         } catch (e: CancellationException) {
             failPending(e)
@@ -147,7 +148,7 @@ internal class EncryptedConnection(
         }
     }
 
-    private suspend fun seal(batch: List<PreparedMsg>): ByteArray {
+    private suspend fun seal(batch: List<PreparedMsg>): Int {
         if (batch.size == 1) {
             val m = batch[0]
             return encryptPacket(m.msgId, m.seqNo, m.body)
@@ -265,13 +266,19 @@ internal class EncryptedConnection(
         return PreparedMsg(msgIds.next(), nextSeq(contentRelated), body)
     }
 
-    private fun encryptPacket(msgId: Long, seqNo: Int, body: ByteArray): ByteArray {
-        val inner = buildInner(msgId, seqNo, body)
+    private fun encryptPacket(msgId: Long, seqNo: Int, body: ByteArray): Int {
+        val innerN = innerLen(body.size)
         val c = writeCrypto
-        MsgKeys.msgKeyInto(authKey.key, inner, inner.size, 0, c.msgKey, 0, c.shaA)
+        val inner = c.innerBuf(innerN)
+        packInner(inner, msgId, seqNo, body, innerN)
+        MsgKeys.msgKeyInto(authKey.key, inner, innerN, 0, c.msgKey, 0, c.shaA)
         MsgKeys.deriveAesInto(authKey.key, c.msgKey, 0, 0, c.aesKey, c.aesIv, c.shaA, c.shaB)
-        val encrypted = c.igeEnc.crypt(c.aesKey, c.aesIv, inner, 0, inner.size, c.encOut(inner.size), 0)
-        return concat(authKey.keyId.toLeBytes(), c.msgKey, encrypted.copyOf(inner.size))
+        val frameN = 24 + innerN
+        val frame = c.packetBuf(frameN)
+        frame.writeLongLe(0, authKey.keyId)
+        c.msgKey.copyInto(frame, 8)
+        c.igeEnc.crypt(c.aesKey, c.aesIv, inner, 0, innerN, frame, 24)
+        return frameN
     }
 
     private fun serializeContainer(msgs: List<PreparedMsg>): ByteArray {
@@ -287,18 +294,22 @@ internal class EncryptedConnection(
         return w.toByteArray()
     }
 
-    private fun buildInner(msgId: Long, seqNo: Int, body: ByteArray): ByteArray {
-        val headerAndBody = concat(
-            salt.toLeBytes(),
-            sessionId.toLeBytes(),
-            msgId.toLeBytes(),
-            seqNo.toLeBytes(),
-            body.size.toLeBytes(),
-            body,
-        )
+    private fun innerLen(bodySize: Int): Int {
+        val headerAndBody = 32 + bodySize
         var pad = 12
-        while ((headerAndBody.size + pad) % 16 != 0) pad++
-        return concat(headerAndBody, PlatformCrypto.randomBytes(pad))
+        while ((headerAndBody + pad) % 16 != 0) pad++
+        return headerAndBody + pad
+    }
+
+    private fun packInner(dest: ByteArray, msgId: Long, seqNo: Int, body: ByteArray, innerN: Int) {
+        dest.writeLongLe(0, salt)
+        dest.writeLongLe(8, sessionId)
+        dest.writeLongLe(16, msgId)
+        dest.writeIntLe(24, seqNo)
+        dest.writeIntLe(28, body.size)
+        body.copyInto(dest, 32)
+        val padAt = 32 + body.size
+        PlatformCrypto.randomBytes(innerN - padAt).copyInto(dest, padAt)
     }
 
     internal fun unwrapFrame(frame: ByteArray): Pair<List<Long>, List<TlObject>> {
@@ -375,15 +386,16 @@ private class FrameCrypto {
     val igeEnc = IgeCtx(encrypt = true)
     val igeDec = IgeCtx(encrypt = false)
     private var inner = ByteArray(512)
-    private var encOut = ByteArray(512)
+    var packet = ByteArray(512)
+        private set
 
     fun innerBuf(n: Int): ByteArray {
         if (inner.size < n) inner = ByteArray(n.coerceAtLeast(inner.size * 2).coerceAtLeast(512))
         return inner
     }
 
-    fun encOut(n: Int): ByteArray {
-        if (encOut.size < n) encOut = ByteArray(n.coerceAtLeast(encOut.size * 2).coerceAtLeast(512))
-        return encOut
+    fun packetBuf(n: Int): ByteArray {
+        if (packet.size < n) packet = ByteArray(n.coerceAtLeast(packet.size * 2).coerceAtLeast(512))
+        return packet
     }
 }
