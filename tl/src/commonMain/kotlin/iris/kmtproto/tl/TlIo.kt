@@ -109,28 +109,30 @@ class TlReader(
 
     fun readInt(): Int {
         val p = pos
-        check(p + 4 <= end) { "eof" }
+        check(pos + 4 <= end) { "eof" }
+        val data = data
+        val v = (data[p].toInt() and 0xff) or
+            ((data[p + 1].toInt() and 0xff) shl 8) or
+            ((data[p + 2].toInt() and 0xff) shl 16) or
+            ((data[p + 3].toInt() and 0xff) shl 24)
         pos = p + 4
-        val d = data
-        return (d[p].toInt() and 0xff) or
-            ((d[p + 1].toInt() and 0xff) shl 8) or
-            ((d[p + 2].toInt() and 0xff) shl 16) or
-            ((d[p + 3].toInt() and 0xff) shl 24)
+        return v
     }
 
     fun readLong(): Long {
         val p = pos
-        check(p + 8 <= end) { "eof" }
+        check(pos + 8 <= end) { "eof" }
+        val data = data
+        val v = (data[p].toLong() and 0xff) or
+            ((data[p + 1].toLong() and 0xff) shl 8) or
+            ((data[p + 2].toLong() and 0xff) shl 16) or
+            ((data[p + 3].toLong() and 0xff) shl 24) or
+            ((data[p + 4].toLong() and 0xff) shl 32) or
+            ((data[p + 5].toLong() and 0xff) shl 40) or
+            ((data[p + 6].toLong() and 0xff) shl 48) or
+            ((data[p + 7].toLong() and 0xff) shl 56)
         pos = p + 8
-        val d = data
-        return (d[p].toLong() and 0xff) or
-            ((d[p + 1].toLong() and 0xff) shl 8) or
-            ((d[p + 2].toLong() and 0xff) shl 16) or
-            ((d[p + 3].toLong() and 0xff) shl 24) or
-            ((d[p + 4].toLong() and 0xff) shl 32) or
-            ((d[p + 5].toLong() and 0xff) shl 40) or
-            ((d[p + 6].toLong() and 0xff) shl 48) or
-            ((d[p + 7].toLong() and 0xff) shl 56)
+        return v
     }
 
     fun readDouble(): Double = Double.fromBits(readLong())
