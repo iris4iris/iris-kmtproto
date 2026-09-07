@@ -28,15 +28,24 @@ internal actual class AesCtr actual constructor(key: ByteArray, iv: ByteArray) {
         require(srcOff >= 0 && dstOff >= 0 && len >= 0)
         require(srcOff + len <= src.size && dstOff + len <= dst.size)
         if (len == 0) return
-        val n = try {
-            cipher.update(src, srcOff, len, dst, dstOff)
-        } catch (e: ShortBufferException) {
-            throw IllegalStateException(e)
+        // CipherCore.update clones the whole input when src===dst. Fake DC CTRs
+        // a ~1 GiB tape in place; one clone OOMs a 2g heap. Chunked update keeps
+        // the CTR counter and only copies CHUNK bytes.
+        var i = 0
+        while (i < len) {
+            val n = minOf(CHUNK, len - i)
+            val wrote = try {
+                cipher.update(src, srcOff + i, n, dst, dstOff + i)
+            } catch (e: ShortBufferException) {
+                throw IllegalStateException(e)
+            }
+            check(wrote == n) { "AES/CTR buffered $wrote of $n" }
+            i += n
         }
-        check(n == len) { "AES/CTR buffered $n of $len" }
     }
 
     private companion object {
+        const val CHUNK = 64 * 1024
         val logged = AtomicBoolean(false)
     }
 }

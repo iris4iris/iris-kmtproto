@@ -112,6 +112,10 @@ tasks.register<JavaExec>("runCtrBench") {
     testMain("iris.kmtproto.CtrThroughputTestKt", "AES-256-CTR stream bench")
 }
 
+tasks.register<JavaExec>("runCryptoTest") {
+    testMain("iris.kmtproto.TlAndCryptoTestKt", "IGE/CTR correctness")
+}
+
 tasks.register<JavaExec>("runCompareBench") {
     testMain("iris.kmtproto.CompareThroughputTestKt", "IGE/CTR vs nccrypto-format bench")
     jvmArgs("-Xmx512m")
