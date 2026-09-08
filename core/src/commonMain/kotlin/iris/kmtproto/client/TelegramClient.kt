@@ -33,12 +33,24 @@ import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.UpdateChannelTooLong
+import iris.kmtproto.tl.gen.UpdateChannelWebPage
+import iris.kmtproto.tl.gen.UpdateDeleteChannelMessages
+import iris.kmtproto.tl.gen.UpdateDeleteMessages
+import iris.kmtproto.tl.gen.UpdateEditChannelMessage
+import iris.kmtproto.tl.gen.UpdateEditMessage
+import iris.kmtproto.tl.gen.UpdateFolderPeers
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
+import iris.kmtproto.tl.gen.UpdatePinnedChannelMessages
+import iris.kmtproto.tl.gen.UpdatePinnedMessages
+import iris.kmtproto.tl.gen.UpdateReadHistoryInbox
+import iris.kmtproto.tl.gen.UpdateReadHistoryOutbox
+import iris.kmtproto.tl.gen.UpdateReadMessagesContents
 import iris.kmtproto.tl.gen.UpdateShort
 import iris.kmtproto.tl.gen.UpdateShortChatMessage
 import iris.kmtproto.tl.gen.UpdateShortMessage
 import iris.kmtproto.tl.gen.UpdateShortSentMessage
+import iris.kmtproto.tl.gen.UpdateWebPage
 import iris.kmtproto.tl.gen.Updates
 import iris.kmtproto.tl.gen.UpdatesChannelDifferenceCtor
 import iris.kmtproto.tl.gen.UpdatesChannelDifferenceEmpty
@@ -503,21 +515,19 @@ class TelegramClient(
     }
 
     private fun dispatch(obj: TlObject) {
-        if (obj is Update) emitUpdate(obj)
         when (obj) {
             is Updates -> dispatchUpdates(obj)
-            is UpdateNewMessage -> onCommon(obj.pts, obj.ptsCount, obj.message.asText())
-            is UpdateNewChannelMessage -> onChannel(obj)
             is UpdateChannelTooLong -> scheduleCatchUpChannel(obj.channelId, obj.pts)
+            is Update -> if (shouldEmit(obj)) emitUpdate(obj)
             else -> Unit
         }
     }
 
     private fun dispatchUpdates(raw: Updates) {
         when (raw) {
-            is UpdateShortSentMessage -> applyCommonPts(raw.pts, raw.ptsCount)
+            is UpdateShortSentMessage -> acceptCommonPts(raw.pts, raw.ptsCount)
             is UpdateShortMessage -> {
-                applyCommonPts(raw.pts, raw.ptsCount)
+                if (!acceptCommonPts(raw.pts, raw.ptsCount)) return
                 emitUpdate(
                     UpdateNewMessage(
                         message = MessageCtor(
@@ -534,7 +544,7 @@ class TelegramClient(
                 )
             }
             is UpdateShortChatMessage -> {
-                applyCommonPts(raw.pts, raw.ptsCount)
+                if (!acceptCommonPts(raw.pts, raw.ptsCount)) return
                 emitUpdate(
                     UpdateNewMessage(
                         message = MessageCtor(
@@ -573,35 +583,77 @@ class TelegramClient(
         }
     }
 
-    private fun onCommon(pts: Int, count: Int, msg: MessageCtor?) {
+    /** False = duplicate (`pts <= last`) or a gap (catch-up scheduled). */
+    private fun shouldEmit(u: Update): Boolean {
+        commonPts(u)?.let { (pts, count) -> return acceptCommonPts(pts, count) }
+        channelPts(u)?.let { (id, pts, count) -> return acceptChannelPts(id, pts, count) }
+        return true
+    }
+
+    private fun acceptCommonPts(pts: Int, count: Int): Boolean {
         val st = updatesState
         if (st == null) {
             scheduleCatchUpCommon()
-            return
+            return false
         }
-        when {
-            pts <= st.pts -> Unit
+        return when {
+            pts <= st.pts -> false
             count > 0 && pts == st.pts + count -> {
                 updatesState = st.updated(pts = pts)
+                true
             }
-            else -> scheduleCatchUpCommon()
+            else -> {
+                scheduleCatchUpCommon()
+                false
+            }
         }
     }
 
-    private fun onChannel(u: UpdateNewChannelMessage) {
-        val msg = u.message.asText() ?: return
-        val id = (msg.peerId as? PeerChannel)?.channelId ?: return
-        val cur = channels.get(id)
-        when {
+    private fun acceptChannelPts(channelId: Long, pts: Int, count: Int): Boolean {
+        val cur = channels.get(channelId)
+        return when {
             cur == null || cur.pts == 0 -> {
-                channels.put(id, u.pts)
+                channels.put(channelId, pts)
+                true
             }
-            u.pts <= cur.pts -> Unit
-            u.ptsCount > 0 && u.pts == cur.pts + u.ptsCount -> {
-                channels.put(id, u.pts)
+            pts <= cur.pts -> false
+            count > 0 && pts == cur.pts + count -> {
+                channels.put(channelId, pts)
+                true
             }
-            else -> scheduleCatchUpChannel(id, cur.pts)
+            else -> {
+                scheduleCatchUpChannel(channelId, cur.pts)
+                false
+            }
         }
+    }
+
+    private fun commonPts(u: Update): Pair<Int, Int>? = when (u) {
+        is UpdateNewMessage -> u.pts to u.ptsCount
+        is UpdateDeleteMessages -> u.pts to u.ptsCount
+        is UpdateReadHistoryInbox -> u.pts to u.ptsCount
+        is UpdateReadHistoryOutbox -> u.pts to u.ptsCount
+        is UpdateWebPage -> u.pts to u.ptsCount
+        is UpdateReadMessagesContents -> u.pts to u.ptsCount
+        is UpdateEditMessage -> u.pts to u.ptsCount
+        is UpdateFolderPeers -> u.pts to u.ptsCount
+        is UpdatePinnedMessages -> u.pts to u.ptsCount
+        else -> null
+    }
+
+    private fun channelPts(u: Update): Triple<Long, Int, Int>? = when (u) {
+        is UpdateNewChannelMessage -> {
+            val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
+            Triple(id, u.pts, u.ptsCount)
+        }
+        is UpdateEditChannelMessage -> {
+            val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
+            Triple(id, u.pts, u.ptsCount)
+        }
+        is UpdateDeleteChannelMessages -> Triple(u.channelId, u.pts, u.ptsCount)
+        is UpdateChannelWebPage -> Triple(u.channelId, u.pts, u.ptsCount)
+        is UpdatePinnedChannelMessages -> Triple(u.channelId, u.pts, u.ptsCount)
+        else -> null
     }
 
     private fun scheduleCatchUpCommon() {
@@ -671,16 +723,10 @@ class TelegramClient(
                 rememberChats(diff.chats)
                 channels.put(channelId, diff.pts)
                 diff.newMessages.mapNotNull { it.asText() }.forEach { emitUpdate(UpdateNewChannelMessage(message = it, pts = diff.pts, ptsCount = 0)) }
-                diff.otherUpdates.forEach { dispatch(it) }
+                diff.otherUpdates.forEach { if (it is Update) emitUpdate(it) }
             }
             is UpdatesChannelDifferenceTooLong -> channels.remove(channelId)
         }
-    }
-
-    private fun applyCommonPts(pts: Int, count: Int) {
-        val st = updatesState ?: return
-        if (count <= 0) return
-        if (pts == st.pts + count) updatesState = st.updated(pts = pts)
     }
 
     private fun applyDifference(diff: UpdatesDifference) {
