@@ -4,7 +4,9 @@ import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.tl.gen.Update
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -46,8 +48,9 @@ class PackUpdateProcessor(
     }
 
     @Volatile private var job: Job? = null
+    private val defaultScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    fun start(scope: CoroutineScope): Job {
+    fun start(scope: CoroutineScope = defaultScope): Job {
         job?.cancel()
         val started = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             supervisorScope {

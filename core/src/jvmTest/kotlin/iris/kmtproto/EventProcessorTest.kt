@@ -322,6 +322,22 @@ class EventProcessorTest {
         assertEquals("ping", got.await())
         job.cancel()
     }
+
+    @Test
+    fun startWithoutScopeStillCollects() = eventsTest {
+        val got = CompletableDeferred<String>()
+        val src = newSrc()
+        val p = PackUpdateProcessor(src, object : PackEventHandler {
+            override suspend fun handleMessage(messages: List<MessageCtor>) {
+                got.complete(messages.first().message)
+            }
+        })
+        p.start()
+        src.awaitSubscriber()
+        src.emit(newMsg("pack"))
+        assertEquals("pack", got.await())
+        p.close()
+    }
 }
 
 fun main() {
@@ -338,6 +354,7 @@ fun main() {
         packRouterFirstNonEmptyWins()
         packRouterLeftoversGoNext()
         startPollingReturnsAndStillCollects()
+        startWithoutScopeStillCollects()
     }
     println("EventProcessorTest ok")
 }

@@ -151,6 +151,7 @@ val processor = SingleUpdateProcessor(
         ),
     ),
 )
+processor.start()
 processor.start(scope)
 ```
 
