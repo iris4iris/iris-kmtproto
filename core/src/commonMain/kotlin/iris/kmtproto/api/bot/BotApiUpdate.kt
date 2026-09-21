@@ -4,9 +4,22 @@ import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.tl.gen.BoolTrue
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelForbidden
+import iris.kmtproto.tl.gen.ChannelParticipant
+import iris.kmtproto.tl.gen.ChannelParticipantAdmin
+import iris.kmtproto.tl.gen.ChannelParticipantBanned
+import iris.kmtproto.tl.gen.ChannelParticipantCtor
+import iris.kmtproto.tl.gen.ChannelParticipantCreator
+import iris.kmtproto.tl.gen.ChannelParticipantLeft
+import iris.kmtproto.tl.gen.ChannelParticipantSelf
 import iris.kmtproto.tl.gen.Chat
+import iris.kmtproto.tl.gen.ChatAdminRights
+import iris.kmtproto.tl.gen.ChatBannedRights
 import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatForbidden
+import iris.kmtproto.tl.gen.ChatParticipant
+import iris.kmtproto.tl.gen.ChatParticipantAdmin
+import iris.kmtproto.tl.gen.ChatParticipantCtor
+import iris.kmtproto.tl.gen.ChatParticipantCreator
 import iris.kmtproto.tl.gen.DocumentAttributeAnimated
 import iris.kmtproto.tl.gen.DocumentAttributeAudio
 import iris.kmtproto.tl.gen.DocumentAttributeCustomEmoji
@@ -90,6 +103,11 @@ import iris.kmtproto.tl.gen.Poll
 import iris.kmtproto.tl.gen.PollAnswerCtor
 import iris.kmtproto.tl.gen.PollResults
 import iris.kmtproto.tl.gen.PostAddress
+import iris.kmtproto.tl.gen.Reaction
+import iris.kmtproto.tl.gen.ReactionCount
+import iris.kmtproto.tl.gen.ReactionCustomEmoji
+import iris.kmtproto.tl.gen.ReactionEmoji
+import iris.kmtproto.tl.gen.ReactionPaid
 import iris.kmtproto.tl.gen.ReplyInlineMarkup
 import iris.kmtproto.tl.gen.ReplyKeyboardForceReply
 import iris.kmtproto.tl.gen.ReplyKeyboardMarkup
@@ -103,11 +121,17 @@ import iris.kmtproto.tl.gen.UpdateBotDeleteBusinessMessage
 import iris.kmtproto.tl.gen.UpdateBotEditBusinessMessage
 import iris.kmtproto.tl.gen.UpdateBotInlineQuery
 import iris.kmtproto.tl.gen.UpdateBotInlineSend
+import iris.kmtproto.tl.gen.UpdateBotMessageReaction
+import iris.kmtproto.tl.gen.UpdateBotMessageReactions
 import iris.kmtproto.tl.gen.UpdateBotNewBusinessMessage
 import iris.kmtproto.tl.gen.UpdateBotPrecheckoutQuery
 import iris.kmtproto.tl.gen.UpdateBotPurchasedPaidMedia
 import iris.kmtproto.tl.gen.UpdateBotShippingQuery
 import iris.kmtproto.tl.gen.UpdateBotStopped
+import iris.kmtproto.tl.gen.UpdateChannelParticipant
+import iris.kmtproto.tl.gen.UpdateChatParticipant
+import iris.kmtproto.tl.gen.UpdateChatParticipantAdd
+import iris.kmtproto.tl.gen.UpdateChatParticipantDelete
 import iris.kmtproto.tl.gen.UpdateEditChannelMessage
 import iris.kmtproto.tl.gen.UpdateEditMessage
 import iris.kmtproto.tl.gen.UpdateInlineBotCallbackQuery
@@ -216,6 +240,45 @@ internal class BotApiWriter(
             }
 
             is UpdateBotStopped -> map().also { it["my_chat_member"] = botStopped(u) }
+            is UpdateChannelParticipant -> map().also {
+                it[memberKey(u.userId)] = chatMemberUpdated(
+                    chatPeer = PeerChannel(u.channelId),
+                    actorId = u.actorId,
+                    date = u.date,
+                    oldMember = channelMember(u.userId, u.prevParticipant),
+                    newMember = channelMember(u.userId, u.newParticipant),
+                    viaChatlist = u.viaChatlist,
+                )
+            }
+            is UpdateChatParticipant -> map().also {
+                it[memberKey(u.userId)] = chatMemberUpdated(
+                    chatPeer = PeerChat(u.chatId),
+                    actorId = u.actorId,
+                    date = u.date,
+                    oldMember = chatMember(u.userId, u.prevParticipant),
+                    newMember = chatMember(u.userId, u.newParticipant),
+                )
+            }
+            is UpdateChatParticipantAdd -> map().also {
+                it[memberKey(u.userId)] = chatMemberUpdated(
+                    chatPeer = PeerChat(u.chatId),
+                    actorId = u.inviterId,
+                    date = u.date,
+                    oldMember = memberStatus(user(u.userId), "left"),
+                    newMember = memberStatus(user(u.userId), "member"),
+                )
+            }
+            is UpdateChatParticipantDelete -> map().also {
+                it[memberKey(u.userId)] = chatMemberUpdated(
+                    chatPeer = PeerChat(u.chatId),
+                    actorId = u.userId,
+                    date = 0,
+                    oldMember = memberStatus(user(u.userId), "member"),
+                    newMember = memberStatus(user(u.userId), "left"),
+                )
+            }
+            is UpdateBotMessageReactions -> map().also { it["message_reaction_count"] = reactionCountUpdated(u) }
+            is UpdateBotMessageReaction -> map().also { it["message_reaction"] = reactionUpdated(u) }
             else -> null
         }
     }
@@ -875,6 +938,169 @@ internal class BotApiWriter(
                 },
             )
         }
+    }
+
+    private fun memberKey(userId: Long): String =
+        if (self != null && userId == self.id) "my_chat_member" else "chat_member"
+
+    private fun memberStatus(u: MutableMap<String, Any?>, status: String): MutableMap<String, Any?> = map().apply {
+        put("user", u)
+        put("status", status)
+    }
+
+    private fun chatMemberUpdated(
+        chatPeer: Peer,
+        actorId: Long,
+        date: Int,
+        oldMember: MutableMap<String, Any?>,
+        newMember: MutableMap<String, Any?>,
+        viaChatlist: Boolean = false,
+    ): MutableMap<String, Any?> = map().apply {
+        put("chat", chat(chatPeer))
+        put("from", user(actorId))
+        put("date", date)
+        put("old_chat_member", oldMember)
+        put("new_chat_member", newMember)
+        if (viaChatlist) put("via_chat_folder_invite_link", true)
+    }
+
+    private fun channelMember(userId: Long, p: ChannelParticipant?): MutableMap<String, Any?> {
+        val u = user(userId)
+        return when (p) {
+            null -> memberStatus(u, "left")
+            is ChannelParticipantCtor -> memberStatus(u, "member").also {
+                if (p.subscriptionUntilDate != 0) it["until_date"] = p.subscriptionUntilDate
+            }
+            is ChannelParticipantSelf -> memberStatus(u, "member").also {
+                if (p.subscriptionUntilDate != 0) it["until_date"] = p.subscriptionUntilDate
+            }
+            is ChannelParticipantCreator -> map().apply {
+                put("user", u)
+                put("status", "creator")
+                put("is_anonymous", p.adminRights.anonymous)
+                opt("custom_title", p.rank)
+            }
+            is ChannelParticipantAdmin -> map().apply {
+                put("user", u)
+                put("status", "administrator")
+                put("can_be_edited", p.canEdit)
+                putAdminRights(p.adminRights)
+                opt("custom_title", p.rank)
+            }
+            is ChannelParticipantBanned -> {
+                val r = p.bannedRights
+                map().apply {
+                    put("user", u)
+                    if (r.viewMessages) {
+                        put("status", "kicked")
+                        put("until_date", r.untilDate)
+                    } else {
+                        put("status", "restricted")
+                        put("is_member", !p.left)
+                        put("until_date", r.untilDate)
+                        putRestricted(r)
+                    }
+                }
+            }
+            is ChannelParticipantLeft -> memberStatus(u, "left")
+        }
+    }
+
+    private fun chatMember(userId: Long, p: ChatParticipant?): MutableMap<String, Any?> {
+        val u = user(userId)
+        return when (p) {
+            null -> memberStatus(u, "left")
+            is ChatParticipantCreator -> map().apply {
+                put("user", u)
+                put("status", "creator")
+                put("is_anonymous", false)
+                opt("custom_title", p.rank)
+            }
+            is ChatParticipantAdmin -> map().apply {
+                put("user", u)
+                put("status", "administrator")
+                put("can_be_edited", false)
+                opt("custom_title", p.rank)
+            }
+            is ChatParticipantCtor -> memberStatus(u, "member")
+        }
+    }
+
+    private fun MutableMap<String, Any?>.putAdminRights(r: ChatAdminRights) {
+        put("is_anonymous", r.anonymous)
+        put("can_manage_chat", r.other)
+        put("can_delete_messages", r.deleteMessages)
+        put("can_manage_video_chats", r.manageCall)
+        put("can_restrict_members", r.banUsers)
+        put("can_promote_members", r.addAdmins)
+        put("can_change_info", r.changeInfo)
+        put("can_invite_users", r.inviteUsers)
+        put("can_post_stories", r.postStories)
+        put("can_edit_stories", r.editStories)
+        put("can_delete_stories", r.deleteStories)
+        if (r.postMessages) put("can_post_messages", true)
+        if (r.editMessages) put("can_edit_messages", true)
+        if (r.pinMessages) put("can_pin_messages", true)
+        if (r.manageTopics) put("can_manage_topics", true)
+        if (r.manageDirectMessages) put("can_manage_direct_messages", true)
+    }
+
+    private fun MutableMap<String, Any?>.putRestricted(r: ChatBannedRights) {
+        put("can_send_messages", !r.sendMessages)
+        put("can_send_audios", !r.sendAudios && !r.sendMedia)
+        put("can_send_documents", !r.sendDocs && !r.sendMedia)
+        put("can_send_photos", !r.sendPhotos && !r.sendMedia)
+        put("can_send_videos", !r.sendVideos && !r.sendMedia)
+        put("can_send_video_notes", !r.sendRoundvideos && !r.sendMedia)
+        put("can_send_voice_notes", !r.sendVoices && !r.sendMedia)
+        put("can_send_polls", !r.sendPolls)
+        put("can_send_other_messages", !r.sendStickers && !r.sendGifs && !r.sendGames && !r.sendInline)
+        put("can_add_web_page_previews", !r.embedLinks)
+        put("can_change_info", !r.changeInfo)
+        put("can_invite_users", !r.inviteUsers)
+        put("can_pin_messages", !r.pinMessages)
+        put("can_manage_topics", !r.manageTopics)
+    }
+
+    private fun reactionType(r: Reaction): MutableMap<String, Any?>? = when (r) {
+        is ReactionEmoji -> map().apply {
+            put("type", "emoji")
+            put("emoji", r.emoticon)
+        }
+        is ReactionCustomEmoji -> map().apply {
+            put("type", "custom_emoji")
+            put("custom_emoji_id", r.documentId.toString())
+        }
+        is ReactionPaid -> map().apply { put("type", "paid") }
+        else -> null
+    }
+
+    private fun reactionCountUpdated(u: UpdateBotMessageReactions): MutableMap<String, Any?> = map().apply {
+        put("chat", chat(u.peer))
+        put("message_id", u.msgId)
+        put("date", u.date)
+        put(
+            "reactions",
+            u.reactions.mapNotNull { c ->
+                val t = reactionType(c.reaction) ?: return@mapNotNull null
+                map().apply {
+                    put("type", t)
+                    put("total_count", c.count)
+                }
+            },
+        )
+    }
+
+    private fun reactionUpdated(u: UpdateBotMessageReaction): MutableMap<String, Any?> = map().apply {
+        put("chat", chat(u.peer))
+        put("message_id", u.msgId)
+        put("date", u.date)
+        when (val a = u.actor) {
+            is PeerUser -> put("user", user(a.userId))
+            else -> put("actor_chat", chat(a))
+        }
+        put("old_reaction", u.oldReactions.mapNotNull { reactionType(it) })
+        put("new_reaction", u.newReactions.mapNotNull { reactionType(it) })
     }
 
     private fun replyMarkup(raw: ReplyMarkup?): MutableMap<String, Any?>? = when (raw) {

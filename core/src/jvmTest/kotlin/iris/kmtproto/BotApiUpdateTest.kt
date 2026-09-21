@@ -3,6 +3,7 @@ package iris.kmtproto
 import iris.kmtproto.api.bot.BotApiMapFactory
 import iris.kmtproto.api.bot.toBotApiMap
 import iris.kmtproto.tl.gen.Channel
+import iris.kmtproto.tl.gen.ChannelParticipantCtor
 import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatPhotoEmpty
 import iris.kmtproto.tl.gen.MessageCtor
@@ -10,7 +11,13 @@ import iris.kmtproto.tl.gen.MessageEntityBold
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
+import iris.kmtproto.tl.gen.ReactionCount
+import iris.kmtproto.tl.gen.ReactionEmoji
 import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
+import iris.kmtproto.tl.gen.UpdateBotMessageReaction
+import iris.kmtproto.tl.gen.UpdateBotMessageReactions
+import iris.kmtproto.tl.gen.UpdateChannel
+import iris.kmtproto.tl.gen.UpdateChannelParticipant
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
@@ -214,6 +221,87 @@ class BotApiUpdateTest {
         assertEquals("News", chat["title"])
         assertEquals("news", chat["username"])
     }
+
+    @Test
+    fun channelParticipantJoinIsChatMember() {
+        val raw = UpdateChannelParticipant(
+            channelId = 99,
+            date = 10,
+            actorId = 1,
+            userId = 7,
+            qts = 1,
+            prevParticipant = null,
+            newParticipant = ChannelParticipantCtor(userId = 7, date = 10),
+        )
+        val u = raw.toBotApiMap(maps, 3)!!
+        val ev = u["chat_member"] as Map<*, *>
+        assertEquals(10, ev["date"])
+        val old = ev["old_chat_member"] as Map<*, *>
+        val neu = ev["new_chat_member"] as Map<*, *>
+        assertEquals("left", old["status"])
+        assertEquals("member", neu["status"])
+        assertEquals(7L, (neu["user"] as Map<*, *>)["id"])
+        assertEquals(-1_000_000_000_000L - 99L, (ev["chat"] as Map<*, *>)["id"])
+    }
+
+    @Test
+    fun channelParticipantSelfIsMyChatMember() {
+        val me = UserCtor(id = 42, bot = true, firstName = "Bot")
+        val raw = UpdateChannelParticipant(
+            channelId = 5,
+            date = 1,
+            actorId = 9,
+            userId = 42,
+            qts = 1,
+            newParticipant = ChannelParticipantCtor(userId = 42, date = 1),
+        )
+        val u = raw.toBotApiMap(maps, 4, self = me)!!
+        assertTrue("my_chat_member" in u)
+        assertTrue("chat_member" !in u)
+    }
+
+    @Test
+    fun botMessageReactionsAreReactionCount() {
+        val raw = UpdateBotMessageReactions(
+            peer = PeerChannel(99),
+            msgId = 8,
+            date = 3,
+            reactions = listOf(ReactionCount(reaction = ReactionEmoji("👍"), count = 4)),
+            qts = 1,
+        )
+        val u = raw.toBotApiMap(maps, 5)!!
+        val body = u["message_reaction_count"] as Map<*, *>
+        assertEquals(8, body["message_id"])
+        val reactions = body["reactions"] as List<*>
+        val first = reactions[0] as Map<*, *>
+        assertEquals(4, first["total_count"])
+        assertEquals("emoji", (first["type"] as Map<*, *>)["type"])
+        assertEquals("👍", (first["type"] as Map<*, *>)["emoji"])
+    }
+
+    @Test
+    fun botMessageReactionIsMessageReaction() {
+        val raw = UpdateBotMessageReaction(
+            peer = PeerUser(7),
+            msgId = 2,
+            date = 4,
+            actor = PeerUser(7),
+            oldReactions = emptyList(),
+            newReactions = listOf(ReactionEmoji("❤")),
+            qts = 1,
+        )
+        val u = raw.toBotApiMap(maps, 6)!!
+        val body = u["message_reaction"] as Map<*, *>
+        assertEquals(2, body["message_id"])
+        assertEquals(7L, (body["user"] as Map<*, *>)["id"])
+        val neu = body["new_reaction"] as List<*>
+        assertEquals("❤", (neu[0] as Map<*, *>)["emoji"])
+    }
+
+    @Test
+    fun updateChannelHasNoBotApiShape() {
+        assertNull(UpdateChannel(channelId = 1).toBotApiMap(maps, 1))
+    }
 }
 
 fun main() {
@@ -226,6 +314,11 @@ fun main() {
         privateMessageWithoutFromIdUsesPeerAndCachedUser()
         groupChatGetsTitleFromCache()
         channelChatGetsTitleAndUsername()
+        channelParticipantJoinIsChatMember()
+        channelParticipantSelfIsMyChatMember()
+        botMessageReactionsAreReactionCount()
+        botMessageReactionIsMessageReaction()
+        updateChannelHasNoBotApiShape()
     }
     println("BotApiUpdateTest ok")
 }
