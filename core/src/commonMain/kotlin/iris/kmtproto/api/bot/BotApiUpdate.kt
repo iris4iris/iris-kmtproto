@@ -152,8 +152,9 @@ fun Update.toBotApiMap(
     users: (Long) -> UserCtor? = { null },
     chats: (Long) -> Chat? = { null },
     self: UserCtor? = null,
+    selfId: Long = 0L,
 ): MutableMap<String, Any?>? {
-    val w = BotApiWriter(maps, users, chats, self)
+    val w = BotApiWriter(maps, users, chats, self, selfId)
     val body = w.updateBody(this) ?: return null
     val out = maps.create()
     out["update_id"] = updateId
@@ -166,7 +167,9 @@ internal class BotApiWriter(
     val userOf: (Long) -> UserCtor? = { null },
     val chatOf: (Long) -> Chat? = { null },
     val self: UserCtor? = null,
+    selfId: Long = 0L,
 ) {
+    private val me: Long = if (selfId != 0L) selfId else self?.id ?: 0L
     fun map(): MutableMap<String, Any?> = maps.create()
 
     fun MutableMap<String, Any?>.opt(key: String, value: Any?) {
@@ -241,7 +244,7 @@ internal class BotApiWriter(
 
             is UpdateBotStopped -> map().also { it["my_chat_member"] = botStopped(u) }
             is UpdateChannelParticipant -> map().also {
-                it[memberKey(u.userId)] = chatMemberUpdated(
+                it[memberKey(u.userId, u.prevParticipant.isSelf() || u.newParticipant.isSelf())] = chatMemberUpdated(
                     chatPeer = PeerChannel(u.channelId),
                     actorId = u.actorId,
                     date = u.date,
@@ -940,8 +943,14 @@ internal class BotApiWriter(
         }
     }
 
-    private fun memberKey(userId: Long): String =
-        if (self != null && userId == self.id) "my_chat_member" else "chat_member"
+    private fun memberKey(userId: Long, selfParticipant: Boolean = false): String =
+        if (selfParticipant || (me != 0L && userId == me)) "my_chat_member" else "chat_member"
+
+    private fun ChannelParticipant?.isSelf(): Boolean = when (this) {
+        is ChannelParticipantSelf -> true
+        is ChannelParticipantAdmin -> self
+        else -> false
+    }
 
     private fun memberStatus(u: MutableMap<String, Any?>, status: String): MutableMap<String, Any?> = map().apply {
         put("user", u)

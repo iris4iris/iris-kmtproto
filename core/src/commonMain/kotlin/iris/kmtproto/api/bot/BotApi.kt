@@ -114,6 +114,7 @@ class BotApi(val client: TelegramClient) {
                 users = client::knownUser,
                 chats = client::knownChat,
                 self = client.user as? UserCtor,
+                selfId = client.selfUserId(),
             )
         }
 

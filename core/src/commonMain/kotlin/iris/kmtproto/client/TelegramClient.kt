@@ -181,6 +181,8 @@ class TelegramClient(
 
     fun knownChat(id: Long): Chat? = synchronized(entitiesLock) { knownChats[id] }
 
+    fun selfUserId(): Long = user?.id ?: loadedSession?.userId ?: 0L
+
     /** Bot-API chat id → [InputPeer], access_hash from [storage]. */
     fun inputPeerFromId(peerId: Long): InputPeer = inputPeerFromBotApiId(peerId, hashFor(peerId))
 

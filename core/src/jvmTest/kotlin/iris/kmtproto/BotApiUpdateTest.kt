@@ -4,6 +4,7 @@ import iris.kmtproto.api.bot.BotApiMapFactory
 import iris.kmtproto.api.bot.toBotApiMap
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelParticipantCtor
+import iris.kmtproto.tl.gen.ChannelParticipantSelf
 import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatPhotoEmpty
 import iris.kmtproto.tl.gen.MessageCtor
@@ -261,6 +262,35 @@ class BotApiUpdateTest {
     }
 
     @Test
+    fun channelParticipantSelfTypeIsMyChatMemberWithoutSelfId() {
+        val raw = UpdateChannelParticipant(
+            channelId = 5,
+            date = 1,
+            actorId = 9,
+            userId = 42,
+            qts = 1,
+            newParticipant = ChannelParticipantSelf(userId = 42, inviterId = 9, date = 1),
+        )
+        val u = raw.toBotApiMap(maps, 4)!!
+        assertTrue("my_chat_member" in u)
+        assertTrue("chat_member" !in u)
+    }
+
+    @Test
+    fun channelParticipantMatchesSelfId() {
+        val raw = UpdateChannelParticipant(
+            channelId = 5,
+            date = 1,
+            actorId = 9,
+            userId = 42,
+            qts = 1,
+            newParticipant = ChannelParticipantCtor(userId = 42, date = 1),
+        )
+        val u = raw.toBotApiMap(maps, 4, selfId = 42)!!
+        assertTrue("my_chat_member" in u)
+    }
+
+    @Test
     fun botMessageReactionsAreReactionCount() {
         val raw = UpdateBotMessageReactions(
             peer = PeerChannel(99),
@@ -316,6 +346,8 @@ fun main() {
         channelChatGetsTitleAndUsername()
         channelParticipantJoinIsChatMember()
         channelParticipantSelfIsMyChatMember()
+        channelParticipantSelfTypeIsMyChatMemberWithoutSelfId()
+        channelParticipantMatchesSelfId()
         botMessageReactionsAreReactionCount()
         botMessageReactionIsMessageReaction()
         updateChannelHasNoBotApiShape()
