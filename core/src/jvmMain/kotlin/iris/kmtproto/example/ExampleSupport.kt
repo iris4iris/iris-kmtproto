@@ -43,12 +43,12 @@ internal fun findLocalProperties(): File? {
     return null
 }
 
-internal fun sessionFile(name: String): File {
+fun sessionFile(name: String): File {
     val dir = findLocalProperties()?.parentFile ?: File(System.getProperty("user.dir"))
     return File(dir, name)
 }
 
-internal fun loadSession(file: File): ClientSession? {
+fun loadSession(file: File): ClientSession? {
     if (!file.isFile) return null
     val props = Properties()
     file.inputStream().use { props.load(it) }
@@ -64,7 +64,7 @@ internal fun loadSession(file: File): ClientSession? {
     )
 }
 
-internal fun saveSession(file: File, session: ClientSession) {
+fun saveSession(file: File, session: ClientSession) {
     val props = Properties()
     props["dc"] = session.dcId.toString()
     props["salt"] = session.salt.toString()

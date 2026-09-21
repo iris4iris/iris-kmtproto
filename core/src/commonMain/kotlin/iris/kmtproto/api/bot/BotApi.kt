@@ -98,25 +98,36 @@ class BotApi(val client: TelegramClient) {
      * Builds every nested Bot API object. Default [LinkedHashMap].
      * Assign a factory that returns your [MutableMap] implementation.
      */
-    var mapFactory: BotApiMapFactory = BotApiMapFactory { LinkedHashMap() }
+    private var mapFactory: BotApiMapFactory = BotApiMapFactory { LinkedHashMap() }
 
     private var updateIdSeq = 0
 
     @Synchronized
     private fun nextUpdateId(): Int = ++updateIdSeq
 
+    private var botApiWriter: BotApiWriter? = null
+
+    fun setMapFactory(mapFactory: BotApiMapFactory) {
+        botApiWriter = null
+        this.mapFactory = mapFactory
+    }
+
     /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
-    fun incomingBotUpdates(maps: BotApiMapFactory = mapFactory): Flow<Map<String, Any?>> =
-        client.incomingUpdates().mapNotNull {
+    fun incomingBotUpdates(): Flow<Map<String, Any?>> {
+        val botApiWriter = botApiWriter ?: BotApiWriter(
+            maps = mapFactory,
+            userOf = client::knownUser,
+            chatOf = client::knownChat,
+            self = client.user as? UserCtor,
+            selfId = client.selfUserId(),
+        )
+        return client.incomingUpdates().mapNotNull {
             it.toBotApiMap(
-                maps,
+                botApiWriter,
                 nextUpdateId(),
-                users = client::knownUser,
-                chats = client::knownChat,
-                self = client.user as? UserCtor,
-                selfId = client.selfUserId(),
             )
         }
+    }
 
     fun getStarGiftsAsync(hash: Int = 0): Deferred<RpcResponse<PaymentsStarGifts>> = user.payments.getStarGiftsAsync(hash)
 

@@ -155,14 +155,21 @@ fun Update.toBotApiMap(
     selfId: Long = 0L,
 ): MutableMap<String, Any?>? {
     val w = BotApiWriter(maps, users, chats, self, selfId)
+    return toBotApiMap(w, updateId)
+}
+
+fun Update.toBotApiMap(
+    w: BotApiWriter,
+    updateId: Int
+): MutableMap<String, Any?>? {
     val body = w.updateBody(this) ?: return null
-    val out = maps.create()
+    val out = w.maps.create()
     out["update_id"] = updateId
     out.putAll(body)
     return out
 }
 
-internal class BotApiWriter(
+class BotApiWriter(
     val maps: BotApiMapFactory,
     val userOf: (Long) -> UserCtor? = { null },
     val chatOf: (Long) -> Chat? = { null },
