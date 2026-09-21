@@ -643,19 +643,23 @@ class TelegramClient(
         else -> null
     }
 
-    private fun channelPts(u: Update): LongIntIntTriple? = when (u) {
-        is UpdateNewChannelMessage -> {
-            val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
-            LongIntIntTriple(id, u.pts, u.ptsCount)
+    private fun channelPts(u: Update): LongIntIntTriple? {
+        return when (u) {
+            is UpdateNewChannelMessage -> {
+                val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
+                LongIntIntTriple(id, u.pts, u.ptsCount)
+            }
+
+            is UpdateEditChannelMessage -> {
+                val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
+                LongIntIntTriple(id, u.pts, u.ptsCount)
+            }
+
+            is UpdateDeleteChannelMessages -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
+            is UpdateChannelWebPage -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
+            is UpdatePinnedChannelMessages -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
+            else -> null
         }
-        is UpdateEditChannelMessage -> {
-            val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
-            LongIntIntTriple(id, u.pts, u.ptsCount)
-        }
-        is UpdateDeleteChannelMessages -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
-        is UpdateChannelWebPage -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
-        is UpdatePinnedChannelMessages -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
-        else -> null
     }
 
     private fun scheduleCatchUpCommon() {
