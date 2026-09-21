@@ -12,17 +12,29 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
 /**
- * Producer only enqueues. The loop drains the whole queue, splits by type, calls the one
- * [PackEventHandler], waits for it, then takes whatever arrived during processing.
+ * Producer only enqueues. The loop drains the whole queue, then
+ * [PackEventDispatcher.dispatch] — default split-by-type is [BasicPackEventDispatcher].
  * Empty queue: [Channel.receive] suspends.
  *
  * [start] uses [CoroutineStart.UNDISPATCHED] so the collect is subscribed before it returns.
  */
 class PackUpdateProcessor(
     private val updates: Flow<Update>,
-    private val handler: PackEventHandler,
+    private val dispatcher: PackEventDispatcher,
     private val queueLimit: Int = 10_000,
 ) {
+    constructor(
+        client: TelegramClient,
+        dispatcher: PackEventDispatcher,
+        queueLimit: Int = 10_000,
+    ) : this(client.incomingUpdates(), dispatcher, queueLimit)
+
+    constructor(
+        updates: Flow<Update>,
+        handler: PackEventHandler,
+        queueLimit: Int = 10_000,
+    ) : this(updates, BasicPackEventDispatcher(handler), queueLimit)
+
     constructor(
         client: TelegramClient,
         handler: PackEventHandler,
@@ -46,7 +58,7 @@ class PackUpdateProcessor(
                 launch {
                     while (true) {
                         val batch = drain(queue)
-                        dispatchPack(batch, handler)
+                        dispatcher.dispatch(batch)
                     }
                 }
             }

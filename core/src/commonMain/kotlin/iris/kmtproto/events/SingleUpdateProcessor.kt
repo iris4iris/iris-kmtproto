@@ -10,16 +10,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
 /**
- * One collect on [TelegramClient.incomingUpdates]: classify, then `launch` so the collector
- * never waits on user code. Handlers of one event run sequentially inside that coroutine.
+ * One collect on [TelegramClient.incomingUpdates]: then `launch` so the collector
+ * never waits on user code. [SingleEventDispatcher] decides what the update is.
  *
  * [start] uses [CoroutineStart.UNDISPATCHED] so the collect is subscribed before it returns.
  */
 class SingleUpdateProcessor(
     private val updates: Flow<Update>,
-    private val handler: SingleEventHandler,
+    private val dispatcher: SingleEventDispatcher,
 ) {
-    constructor(client: TelegramClient, handler: SingleEventHandler) : this(client.incomingUpdates(), handler)
+    constructor(client: TelegramClient, dispatcher: SingleEventDispatcher) :
+        this(client.incomingUpdates(), dispatcher)
+
+    constructor(updates: Flow<Update>, handler: SingleEventHandler) :
+        this(updates, BasicSingleEventDispatcher(handler))
+
+    constructor(client: TelegramClient, handler: SingleEventHandler) :
+        this(client.incomingUpdates(), handler)
 
     @Volatile private var job: Job? = null
 
@@ -29,7 +36,7 @@ class SingleUpdateProcessor(
             supervisorScope {
                 updates.collect { update ->
                     launch {
-                        guard("single") { dispatchSingle(update, handler) }
+                        guard("single") { dispatcher.dispatch(update) }
                     }
                 }
             }
