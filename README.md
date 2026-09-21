@@ -53,7 +53,7 @@ bot.startPollingMessages { msg -> }
 bot.startPollingBotUpdates { map -> }
 job.cancel() // or client.close()
 
-bot.mapFactory = BotApiMapFactory { MyOwnHashMap() } // MutableMap<String, Any?>
+bot.setMapFactory(BotApiMapFactory { MyOwnHashMap() }) // MutableMap<String, Any?>
 bot.incomingBotUpdates().collect { upd ->
     val msg = upd["message"] as Map<String, Any?>?
     // update_id, message / channel_post / callback_query / …

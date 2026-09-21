@@ -114,18 +114,15 @@ class BotApi(val client: TelegramClient) {
 
     /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
     fun incomingBotUpdates(): Flow<Map<String, Any?>> {
-        val botApiWriter = botApiWriter ?: BotApiWriter(
+        val writer = botApiWriter ?: BotApiWriter(
             maps = mapFactory,
             userOf = client::knownUser,
             chatOf = client::knownChat,
             self = client.user as? UserCtor,
-            selfId = client.selfUserId(),
-        )
+            selfIdOf = client::selfUserId,
+        ).also { botApiWriter = it }
         return client.incomingUpdates().mapNotNull {
-            it.toBotApiMap(
-                botApiWriter,
-                nextUpdateId(),
-            )
+            it.toBotApiMap(writer, nextUpdateId())
         }
     }
 

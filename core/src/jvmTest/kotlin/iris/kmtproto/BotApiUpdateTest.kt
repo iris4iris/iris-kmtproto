@@ -19,6 +19,7 @@ import iris.kmtproto.tl.gen.UpdateBotMessageReaction
 import iris.kmtproto.tl.gen.UpdateBotMessageReactions
 import iris.kmtproto.tl.gen.UpdateChannel
 import iris.kmtproto.tl.gen.UpdateChannelParticipant
+import iris.kmtproto.tl.gen.UpdateMessageID
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
@@ -332,6 +333,11 @@ class BotApiUpdateTest {
     fun updateChannelHasNoBotApiShape() {
         assertNull(UpdateChannel(channelId = 1).toBotApiMap(maps, 1))
     }
+
+    @Test
+    fun updateMessageIdHasNoBotApiShape() {
+        assertNull(UpdateMessageID(id = 10, randomId = 99L).toBotApiMap(maps, 1))
+    }
 }
 
 fun main() {
@@ -351,6 +357,7 @@ fun main() {
         botMessageReactionsAreReactionCount()
         botMessageReactionIsMessageReaction()
         updateChannelHasNoBotApiShape()
+        updateMessageIdHasNoBotApiShape()
     }
     println("BotApiUpdateTest ok")
 }

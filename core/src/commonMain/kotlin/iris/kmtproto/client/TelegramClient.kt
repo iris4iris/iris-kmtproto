@@ -45,6 +45,7 @@ import iris.kmtproto.tl.gen.UpdateDeleteMessages
 import iris.kmtproto.tl.gen.UpdateEditChannelMessage
 import iris.kmtproto.tl.gen.UpdateEditMessage
 import iris.kmtproto.tl.gen.UpdateFolderPeers
+import iris.kmtproto.tl.gen.UpdateMessageID
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdatePinnedChannelMessages
@@ -542,6 +543,7 @@ class TelegramClient(
         when (obj) {
             is Updates -> dispatchUpdates(obj)
             is UpdateChannelTooLong -> scheduleCatchUpChannel(obj.channelId, obj.pts)
+            is UpdateMessageID -> Unit
             is Update -> if (shouldEmit(obj)) emitUpdate(obj)
             else -> Unit
         }

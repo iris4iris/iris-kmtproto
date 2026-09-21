@@ -135,6 +135,7 @@ import iris.kmtproto.tl.gen.UpdateChatParticipantDelete
 import iris.kmtproto.tl.gen.UpdateEditChannelMessage
 import iris.kmtproto.tl.gen.UpdateEditMessage
 import iris.kmtproto.tl.gen.UpdateInlineBotCallbackQuery
+import iris.kmtproto.tl.gen.UpdateMessageID
 import iris.kmtproto.tl.gen.UpdateMessagePoll
 import iris.kmtproto.tl.gen.UpdateMessagePollVote
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
@@ -175,8 +176,12 @@ class BotApiWriter(
     val chatOf: (Long) -> Chat? = { null },
     val self: UserCtor? = null,
     selfId: Long = 0L,
+    private val selfIdOf: () -> Long = { selfId },
 ) {
-    private val me: Long = if (selfId != 0L) selfId else self?.id ?: 0L
+    private fun me(): Long {
+        val id = selfIdOf()
+        return if (id != 0L) id else self?.id ?: 0L
+    }
     fun map(): MutableMap<String, Any?> = maps.create()
 
     fun MutableMap<String, Any?>.opt(key: String, value: Any?) {
@@ -289,6 +294,7 @@ class BotApiWriter(
             }
             is UpdateBotMessageReactions -> map().also { it["message_reaction_count"] = reactionCountUpdated(u) }
             is UpdateBotMessageReaction -> map().also { it["message_reaction"] = reactionUpdated(u) }
+            is UpdateMessageID -> null
             else -> null
         }
     }
@@ -951,7 +957,7 @@ class BotApiWriter(
     }
 
     private fun memberKey(userId: Long, selfParticipant: Boolean = false): String =
-        if (selfParticipant || (me != 0L && userId == me)) "my_chat_member" else "chat_member"
+        if (selfParticipant || (me() != 0L && userId == me())) "my_chat_member" else "chat_member"
 
     private fun ChannelParticipant?.isSelf(): Boolean = when (this) {
         is ChannelParticipantSelf -> true
