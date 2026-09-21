@@ -21,7 +21,7 @@ class SingleEventRouter : SingleEventHandler {
     private val callbacks = ArrayList<Route<UpdateBotCallbackQuery>>()
     private val statuses = ArrayList<Route<UpdateUserStatus>>()
     private val unknown = ArrayList<Route<Update>>()
-    private var processor: SingleUpdateProcessor? = null
+    private var processor: SingleUpdateProcessor<Update>? = null
 
     fun onMessage(handler: suspend (MessageCtor) -> Unit) =
         onMessage(always(), handler)
@@ -85,7 +85,7 @@ class SingleEventRouter : SingleEventHandler {
 
     fun start(scope: CoroutineScope, updates: Flow<Update>): Job {
         processor?.close()
-        val p = SingleUpdateProcessor(updates, this)
+        val p = DefaultSingleUpdateProcessor(updates, this)
         processor = p
         return p.start(scope)
     }

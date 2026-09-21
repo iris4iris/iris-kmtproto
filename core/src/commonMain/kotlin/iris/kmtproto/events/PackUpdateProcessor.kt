@@ -15,33 +15,16 @@ import kotlinx.coroutines.supervisorScope
 
 /**
  * Producer only enqueues. The loop drains the whole queue, then
- * [PackEventDispatcher.dispatch] — default split-by-type is [BasicPackEventDispatcher].
+ * [PackEventDispatcher.dispatch] — default split-by-type is [DefaultPackEventDispatcher].
  * Empty queue: [Channel.receive] suspends.
  *
  * [start] uses [CoroutineStart.UNDISPATCHED] so the collect is subscribed before it returns.
  */
-class PackUpdateProcessor(
-    private val updates: Flow<Update>,
-    private val dispatcher: PackEventDispatcher,
+open class PackUpdateProcessor<T>(
+    private val updates: Flow<T>,
+    private val dispatcher: PackEventDispatcher<T>,
     private val queueLimit: Int = 10_000,
 ) {
-    constructor(
-        client: TelegramClient,
-        dispatcher: PackEventDispatcher,
-        queueLimit: Int = 10_000,
-    ) : this(client.incomingUpdates(), dispatcher, queueLimit)
-
-    constructor(
-        updates: Flow<Update>,
-        handler: PackEventHandler,
-        queueLimit: Int = 10_000,
-    ) : this(updates, BasicPackEventDispatcher(handler), queueLimit)
-
-    constructor(
-        client: TelegramClient,
-        handler: PackEventHandler,
-        queueLimit: Int = 10_000,
-    ) : this(client.incomingUpdates(), handler, queueLimit)
 
     init {
         require(queueLimit >= 1) { "queueLimit >= 1" }
@@ -54,7 +37,7 @@ class PackUpdateProcessor(
         job?.cancel()
         val started = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             supervisorScope {
-                val queue = Channel<Update>(queueLimit, BufferOverflow.DROP_OLDEST)
+                val queue = Channel<T>(queueLimit, BufferOverflow.DROP_OLDEST)
                 launch(start = CoroutineStart.UNDISPATCHED) {
                     updates.collect { queue.send(it) }
                 }
@@ -74,17 +57,41 @@ class PackUpdateProcessor(
         job?.cancel()
         job = null
     }
+
+    private suspend fun drain(queue: Channel<T>): List<T> {
+        val first = queue.receive()
+        val extra = queue.tryReceive().getOrNull() ?: return listOf(first)
+        val out = ArrayList<T>()
+        out.add(first)
+        out.add(extra)
+        while (true) {
+            val next = queue.tryReceive().getOrNull() ?: break
+            out.add(next)
+        }
+        return out
+    }
 }
 
-private suspend fun drain(queue: Channel<Update>): List<Update> {
-    val first = queue.receive()
-    val extra = queue.tryReceive().getOrNull() ?: return listOf(first)
-    val out = ArrayList<Update>()
-    out.add(first)
-    out.add(extra)
-    while (true) {
-        val next = queue.tryReceive().getOrNull() ?: break
-        out.add(next)
-    }
-    return out
+class DefaultPackUpdateProcessor(
+    updates: Flow<Update>,
+    dispatcher: PackEventDispatcher<Update>,
+    queueLimit: Int = 10_000,
+) : PackUpdateProcessor<Update>(updates, dispatcher, queueLimit) {
+    constructor(
+        client: TelegramClient,
+        dispatcher: PackEventDispatcher<Update>,
+        queueLimit: Int = 10_000,
+    ) : this(client.incomingUpdates(), dispatcher, queueLimit)
+
+    constructor(
+        updates: Flow<Update>,
+        handler: PackEventHandler,
+        queueLimit: Int = 10_000,
+    ) : this(updates, DefaultPackEventDispatcher(handler), queueLimit)
+
+    constructor(
+        client: TelegramClient,
+        handler: PackEventHandler,
+        queueLimit: Int = 10_000,
+    ) : this(client.incomingUpdates(), handler, queueLimit)
 }

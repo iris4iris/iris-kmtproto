@@ -17,18 +17,10 @@ import kotlinx.coroutines.supervisorScope
  *
  * [start] uses [CoroutineStart.UNDISPATCHED] so the collect is subscribed before it returns.
  */
-class SingleUpdateProcessor(
-    private val updates: Flow<Update>,
-    private val dispatcher: SingleEventDispatcher,
+open class SingleUpdateProcessor<T>(
+    private val updates: Flow<T>,
+    private val dispatcher: SingleEventDispatcher<T>,
 ) {
-    constructor(client: TelegramClient, dispatcher: SingleEventDispatcher) :
-        this(client.incomingUpdates(), dispatcher)
-
-    constructor(updates: Flow<Update>, handler: SingleEventHandler) :
-        this(updates, BasicSingleEventDispatcher(handler))
-
-    constructor(client: TelegramClient, handler: SingleEventHandler) :
-        this(client.incomingUpdates(), handler)
 
     @Volatile private var job: Job? = null
     private val defaultScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -52,4 +44,18 @@ class SingleUpdateProcessor(
         job?.cancel()
         job = null
     }
+}
+
+class DefaultSingleUpdateProcessor(
+     updates: Flow<Update>,
+     dispatcher: SingleEventDispatcher<Update>,
+) : SingleUpdateProcessor<Update>(updates, dispatcher) {
+    constructor(client: TelegramClient, dispatcher: SingleEventDispatcher<Update>) :
+        this(client.incomingUpdates(), dispatcher)
+
+    constructor(updates: Flow<Update>, handler: SingleEventHandler) :
+        this(updates, DefaultSingleEventDispatcher(handler))
+
+    constructor(client: TelegramClient, handler: SingleEventHandler) :
+        this(client.incomingUpdates(), handler)
 }

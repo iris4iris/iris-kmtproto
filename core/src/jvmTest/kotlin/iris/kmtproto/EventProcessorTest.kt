@@ -10,11 +10,11 @@ import iris.kmtproto.events.PackEventFilter
 import iris.kmtproto.events.PackEventHandler
 import iris.kmtproto.events.PackEventRouter
 import iris.kmtproto.events.PackFilter
-import iris.kmtproto.events.PackUpdateProcessor
+import iris.kmtproto.events.DefaultPackUpdateProcessor
 import iris.kmtproto.events.SingleEventFilter
 import iris.kmtproto.events.SingleEventHandler
 import iris.kmtproto.events.SingleEventRouter
-import iris.kmtproto.events.SingleUpdateProcessor
+import iris.kmtproto.events.DefaultSingleUpdateProcessor
 import iris.kmtproto.events.and
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.PeerUser
@@ -53,7 +53,7 @@ class EventProcessorTest {
             }
         }
         val src = newSrc()
-        val p = SingleUpdateProcessor(src, ArraySingleEventHandler(handlers = arrayOf(h1, h2)))
+        val p = DefaultSingleUpdateProcessor(src, ArraySingleEventHandler(handlers = arrayOf(h1, h2)))
         p.start(scope)
         src.awaitSubscriber()
         src.emit(newMsg("hi"))
@@ -74,7 +74,7 @@ class EventProcessorTest {
             }
         }
         val src = newSrc()
-        val p = SingleUpdateProcessor(src, OneSingleEventHandler(filter, handler))
+        val p = DefaultSingleUpdateProcessor(src, OneSingleEventHandler(filter, handler))
         p.start(scope)
         src.awaitSubscriber()
         src.emit(newMsg(""))
@@ -99,7 +99,7 @@ class EventProcessorTest {
             }
         }
         val src = newSrc()
-        val p = SingleUpdateProcessor(
+        val p = DefaultSingleUpdateProcessor(
             src,
             ListSingleEventHandler(filters = listOf(notEmpty, notHi), handlers = listOf(handler)),
         )
@@ -122,7 +122,7 @@ class EventProcessorTest {
             }
         }
         val src = newSrc()
-        val p = SingleUpdateProcessor(src, handler)
+        val p = DefaultSingleUpdateProcessor(src, handler)
         p.start(scope)
         src.awaitSubscriber()
         src.emit(UpdateChatParticipantAdd(chatId = 10, userId = 20, inviterId = 30, date = 9, version = 1))
@@ -153,7 +153,7 @@ class EventProcessorTest {
             }
         }
         val src = newSrc()
-        val p = PackUpdateProcessor(src, handler)
+        val p = DefaultPackUpdateProcessor(src, handler)
         p.start(scope)
         src.awaitSubscriber()
         src.emit(newMsg("a"))
@@ -180,7 +180,7 @@ class EventProcessorTest {
             }
         }
         val src = newSrc()
-        val p = PackUpdateProcessor(src, ArrayPackEventHandler(filters = arrayOf(onlyYo), handlers = arrayOf(handler)))
+        val p = DefaultPackUpdateProcessor(src, ArrayPackEventHandler(filters = arrayOf(onlyYo), handlers = arrayOf(handler)))
         p.start(scope)
         src.awaitSubscriber()
         src.emit(newMsg("hi"))
@@ -208,7 +208,7 @@ class EventProcessorTest {
             }
         }
         val src = newSrc()
-        val p = PackUpdateProcessor(src, handler)
+        val p = DefaultPackUpdateProcessor(src, handler)
         p.start(scope)
         src.awaitSubscriber()
         src.emit(newMsg("a"))
@@ -327,7 +327,7 @@ class EventProcessorTest {
     fun startWithoutScopeStillCollects() = eventsTest {
         val got = CompletableDeferred<String>()
         val src = newSrc()
-        val p = PackUpdateProcessor(src, object : PackEventHandler {
+        val p = DefaultPackUpdateProcessor(src, object : PackEventHandler {
             override suspend fun handleMessage(messages: List<MessageCtor>) {
                 got.complete(messages.first().message)
             }

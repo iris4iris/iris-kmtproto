@@ -16,13 +16,13 @@ import iris.kmtproto.tl.gen.UpdateUserStatus
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
-fun interface PackEventDispatcher {
-    suspend fun dispatch(batch: List<Update>)
+fun interface PackEventDispatcher<T> {
+    suspend fun dispatch(batch: List<T>)
 }
 
-open class BasicPackEventDispatcher(
+open class DefaultPackEventDispatcher(
     private val handler: PackEventHandler,
-) : PackEventDispatcher {
+) : PackEventDispatcher<Update> {
     override suspend fun dispatch(batch: List<Update>) {
         var messages: ArrayList<MessageCtor>? = null
         var edits: ArrayList<MessageCtor>? = null

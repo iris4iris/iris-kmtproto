@@ -26,7 +26,7 @@ class PackEventRouter : PackEventHandler {
     private val callbacks = ArrayList<PackRoute<UpdateBotCallbackQuery>>()
     private val statuses = ArrayList<PackRoute<UpdateUserStatus>>()
     private val unknown = ArrayList<PackRoute<Update>>()
-    private var processor: PackUpdateProcessor? = null
+    private var processor: PackUpdateProcessor<Update>? = null
 
     fun onMessages(handler: suspend (List<MessageCtor>) -> Unit) =
         onMessages(keepAll(), handler)
@@ -90,7 +90,7 @@ class PackEventRouter : PackEventHandler {
 
     fun start(scope: CoroutineScope, updates: Flow<Update>): Job {
         processor?.close()
-        val p = PackUpdateProcessor(updates, this)
+        val p = DefaultPackUpdateProcessor(updates, this)
         processor = p
         return p.start(scope)
     }

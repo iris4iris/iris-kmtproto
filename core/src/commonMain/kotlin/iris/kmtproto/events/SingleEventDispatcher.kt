@@ -13,13 +13,13 @@ import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
 
-fun interface SingleEventDispatcher {
-    suspend fun dispatch(update: Update)
+fun interface SingleEventDispatcher<T> {
+    suspend fun dispatch(update: T)
 }
 
-open class BasicSingleEventDispatcher(
+open class DefaultSingleEventDispatcher(
     private val handler: SingleEventHandler,
-) : SingleEventDispatcher {
+) : SingleEventDispatcher<Update> {
     override suspend fun dispatch(update: Update) {
         when (update) {
             is UpdateNewMessage -> {
