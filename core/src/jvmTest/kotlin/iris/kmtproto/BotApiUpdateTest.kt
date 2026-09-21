@@ -556,7 +556,7 @@ class BotApiUpdateTest {
     }
 
     @Test
-    fun replyToMessageUsesCachedOriginal() {
+    fun replyToMessageUsesFetchedOriginal() {
         val original = MessageCtor(
             id = 113,
             peerId = PeerUser(661079614),
@@ -653,7 +653,7 @@ fun main() {
         servicePaymentAndWebApp()
         forumTopicAndWriteAccessAndInvoice()
         replyToMessageUsesReplyFromForFrom()
-        replyToMessageUsesCachedOriginal()
+        replyToMessageUsesFetchedOriginal()
         replyToMessageNestedWithoutFromIdInfersPeer()
     }
     println("BotApiUpdateTest ok")

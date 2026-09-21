@@ -199,6 +199,7 @@ import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.tl.gen.Username
+import kotlinx.coroutines.runBlocking
 
 /**
  * One [core.telegram.org/bots/api#update] object as a map, or null if this MTProto
@@ -213,11 +214,11 @@ fun Update.toBotApiMap(
     selfId: Long = 0L,
     messages: (Peer, Int) -> Message? = { _, _ -> null },
 ): MutableMap<String, Any?>? {
-    val w = BotApiWriter(maps, users, chats, self, selfId, messageOf = messages)
-    return toBotApiMap(w, updateId)
+    val w = BotApiWriter(maps, users, chats, self, selfId, messageOf = { p, i -> messages(p, i) })
+    return runBlocking { toBotApiMap(w, updateId) }
 }
 
-fun Update.toBotApiMap(
+suspend fun Update.toBotApiMap(
     w: BotApiWriter,
     updateId: Int
 ): MutableMap<String, Any?>? {
@@ -235,7 +236,7 @@ class BotApiWriter(
     val self: UserCtor? = null,
     selfId: Long = 0L,
     private val selfIdOf: () -> Long = { selfId },
-    val messageOf: (Peer, Int) -> Message? = { _, _ -> null },
+    val messageOf: suspend (Peer, Int) -> Message? = { _, _ -> null },
 ) {
     private fun me(): Long {
         val id = selfIdOf()
@@ -253,7 +254,7 @@ class BotApiWriter(
         }
     }
 
-    fun updateBody(u: Update): MutableMap<String, Any?>? {
+    suspend fun updateBody(u: Update): MutableMap<String, Any?>? {
         return when (u) {
             is UpdateNewMessage -> messageKey(u.message, edited = false)
             is UpdateNewChannelMessage -> messageKey(u.message, edited = false)
@@ -414,7 +415,7 @@ class BotApiWriter(
         }
     }
 
-    private fun messageKey(raw: Message, edited: Boolean): MutableMap<String, Any?>? {
+    private suspend fun messageKey(raw: Message, edited: Boolean): MutableMap<String, Any?>? {
         val m = message(raw) ?: return null
         val post = when (raw) {
             is MessageCtor -> raw.post
@@ -430,13 +431,13 @@ class BotApiWriter(
         return map().also { it[key] = m }
     }
 
-    fun message(raw: Message, replyTo: Message? = null, withReply: Boolean = true): MutableMap<String, Any?>? = when (raw) {
+    suspend fun message(raw: Message, replyTo: Message? = null, withReply: Boolean = true): MutableMap<String, Any?>? = when (raw) {
         is MessageCtor -> regularMessage(raw, replyTo, withReply)
         is MessageService -> serviceMessage(raw, replyTo, withReply)
         else -> null
     }
 
-    private fun regularMessage(m: MessageCtor, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
+    private suspend fun regularMessage(m: MessageCtor, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
         fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
@@ -459,7 +460,7 @@ class BotApiWriter(
         return out
     }
 
-    private fun serviceMessage(m: MessageService, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
+    private suspend fun serviceMessage(m: MessageService, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
         fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
@@ -793,7 +794,7 @@ class BotApiWriter(
         else -> map().apply { put("type", "other") }
     }
 
-    private fun fillHeader(
+    private suspend fun fillHeader(
         out: MutableMap<String, Any?>,
         peer: Peer,
         fromId: Peer?,
@@ -1663,7 +1664,7 @@ class BotApiWriter(
         }
     }
 
-    private fun businessCallback(u: UpdateBusinessBotCallbackQuery): MutableMap<String, Any?> = map().apply {
+    private suspend fun businessCallback(u: UpdateBusinessBotCallbackQuery): MutableMap<String, Any?> = map().apply {
         put("id", u.queryId.toString())
         put("from", user(u.userId))
         put("chat_instance", u.chatInstance.toString())

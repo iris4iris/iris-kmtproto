@@ -21,6 +21,7 @@ import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
 import iris.kmtproto.tl.gen.InputReplyTo
 import iris.kmtproto.tl.gen.InputRichMessage
+import iris.kmtproto.tl.gen.MessageEmpty
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntity
 import iris.kmtproto.tl.gen.PeerChannel
@@ -33,6 +34,7 @@ import iris.kmtproto.tl.gen.User
 import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -120,7 +122,17 @@ class BotApi(val client: TelegramClient) {
             chatOf = client::knownChat,
             self = client.user as? UserCtor,
             selfIdOf = client::selfUserId,
-            messageOf = client::knownMessage,
+            messageOf = { peer, messageId ->
+                try {
+                    user.messages.get(client.inputPeerFromId(peer.botApiChatId()), messageId)
+                        .result
+                        ?.firstOrNull { it !is MessageEmpty }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Throwable) {
+                    null
+                }
+            },
         ).also { botApiWriter = it }
         return client.incomingUpdates().mapNotNull {
             it.toBotApiMap(writer, nextUpdateId())
