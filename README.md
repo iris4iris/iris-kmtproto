@@ -130,11 +130,10 @@ user.restrict(channelId, userId, ChatBannedRights(untilDate = 0, sendMessages = 
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.
 
-Incoming dispatch sits **above** [TelegramClient] — the client stays a raw `incomingUpdates()` stream. Processor collects; [SingleEventDispatcher] / [PackEventDispatcher] decide what to do with an update or a pack. [BasicSingleEventDispatcher] / [BasicPackEventDispatcher] split by type onto a handler:
+Incoming dispatch sits **above** [TelegramClient] — the client stays a raw `incomingUpdates()` stream. [SingleUpdateProcessor] / [PackUpdateProcessor] collect; [SingleEventDispatcher] / [PackEventDispatcher] decide what to do with an item or a pack. [DefaultSingleEventDispatcher] / [DefaultPackEventDispatcher] split MTProto [Update] by type onto a handler.
 
 ```kotlin
 import iris.kmtproto.events.ArraySingleEventHandler
-import iris.kmtproto.events.BasicSingleEventDispatcher
 import iris.kmtproto.events.SingleEventHandler
 import iris.kmtproto.events.SingleUpdateProcessor
 
@@ -144,20 +143,26 @@ val handler = object : SingleEventHandler {
 }
 val processor = SingleUpdateProcessor(
     client,
-    BasicSingleEventDispatcher(
-        ArraySingleEventHandler(
-            filters = arrayOf(/* SingleEventFilter, AND */),
-            handlers = arrayOf(handler),
-        ),
+    ArraySingleEventHandler(
+        filters = arrayOf(/* SingleEventFilter, AND */),
+        handlers = arrayOf(handler),
     ),
 )
 processor.start()
 processor.start(scope)
 ```
 
-`PackUpdateProcessor` + `BasicPackEventDispatcher(PackEventHandler)` get `List<>` per type (drain queue → split → wait for the handler → next pack). Compose with `One*` / `Array*` / `List*` — the processor does not know about lists.
+`PackUpdateProcessor(client, handler)` gets `List<>` per type (drain queue → split → wait for the handler → next pack). Compose with `One*` / `Array*` / `List*` — the processor does not know about lists.
 
-Types wired today: message, edit, chatMember, callback, userStatus; everything else → `handleUnknown`.
+Same processors take any `Flow<T>` — e.g. Bot API maps:
+
+```kotlin
+SingleUpdateProcessor(bot.incomingBotUpdates()) { upd ->
+    // Map<String, Any?>
+}
+```
+
+Types wired today on the default MTProto dispatcher: message, edit, chatMember, callback, userStatus; everything else → `handleUnknown`.
 
 ## Layout
 

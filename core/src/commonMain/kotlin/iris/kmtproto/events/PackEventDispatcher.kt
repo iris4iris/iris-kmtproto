@@ -16,7 +16,7 @@ import iris.kmtproto.tl.gen.UpdateUserStatus
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
-fun interface PackEventDispatcher<T> {
+fun interface PackEventDispatcher<in T> {
     suspend fun dispatch(batch: List<T>)
 }
 

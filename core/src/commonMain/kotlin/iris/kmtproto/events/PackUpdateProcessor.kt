@@ -20,7 +20,7 @@ import kotlinx.coroutines.supervisorScope
  *
  * [start] uses [CoroutineStart.UNDISPATCHED] so the collect is subscribed before it returns.
  */
-open class PackUpdateProcessor<T>(
+class PackUpdateProcessor<T>(
     private val updates: Flow<T>,
     private val dispatcher: PackEventDispatcher<T>,
     private val queueLimit: Int = 10_000,
@@ -72,26 +72,20 @@ open class PackUpdateProcessor<T>(
     }
 }
 
-class DefaultPackUpdateProcessor(
-    updates: Flow<Update>,
+fun PackUpdateProcessor(
+    client: TelegramClient,
     dispatcher: PackEventDispatcher<Update>,
     queueLimit: Int = 10_000,
-) : PackUpdateProcessor<Update>(updates, dispatcher, queueLimit) {
-    constructor(
-        client: TelegramClient,
-        dispatcher: PackEventDispatcher<Update>,
-        queueLimit: Int = 10_000,
-    ) : this(client.incomingUpdates(), dispatcher, queueLimit)
+) = PackUpdateProcessor(client.incomingUpdates(), dispatcher, queueLimit)
 
-    constructor(
-        updates: Flow<Update>,
-        handler: PackEventHandler,
-        queueLimit: Int = 10_000,
-    ) : this(updates, DefaultPackEventDispatcher(handler), queueLimit)
+fun PackUpdateProcessor(
+    updates: Flow<Update>,
+    handler: PackEventHandler,
+    queueLimit: Int = 10_000,
+) = PackUpdateProcessor(updates, DefaultPackEventDispatcher(handler), queueLimit)
 
-    constructor(
-        client: TelegramClient,
-        handler: PackEventHandler,
-        queueLimit: Int = 10_000,
-    ) : this(client.incomingUpdates(), handler, queueLimit)
-}
+fun PackUpdateProcessor(
+    client: TelegramClient,
+    handler: PackEventHandler,
+    queueLimit: Int = 10_000,
+) = PackUpdateProcessor(client.incomingUpdates(), handler, queueLimit)

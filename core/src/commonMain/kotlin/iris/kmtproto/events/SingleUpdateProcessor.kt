@@ -12,12 +12,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
 /**
- * One collect on [TelegramClient.incomingUpdates]: then `launch` so the collector
- * never waits on user code. [SingleEventDispatcher] decides what the update is.
+ * One collect on [updates]: then `launch` so the collector never waits on user code.
+ * [SingleEventDispatcher] decides what the item is.
  *
  * [start] uses [CoroutineStart.UNDISPATCHED] so the collect is subscribed before it returns.
  */
-open class SingleUpdateProcessor<T>(
+class SingleUpdateProcessor<T>(
     private val updates: Flow<T>,
     private val dispatcher: SingleEventDispatcher<T>,
 ) {
@@ -46,16 +46,17 @@ open class SingleUpdateProcessor<T>(
     }
 }
 
-class DefaultSingleUpdateProcessor(
-     updates: Flow<Update>,
-     dispatcher: SingleEventDispatcher<Update>,
-) : SingleUpdateProcessor<Update>(updates, dispatcher) {
-    constructor(client: TelegramClient, dispatcher: SingleEventDispatcher<Update>) :
-        this(client.incomingUpdates(), dispatcher)
+fun SingleUpdateProcessor(
+    client: TelegramClient,
+    dispatcher: SingleEventDispatcher<Update>,
+) = SingleUpdateProcessor(client.incomingUpdates(), dispatcher)
 
-    constructor(updates: Flow<Update>, handler: SingleEventHandler) :
-        this(updates, DefaultSingleEventDispatcher(handler))
+fun SingleUpdateProcessor(
+    updates: Flow<Update>,
+    handler: SingleEventHandler,
+) = SingleUpdateProcessor(updates, DefaultSingleEventDispatcher(handler))
 
-    constructor(client: TelegramClient, handler: SingleEventHandler) :
-        this(client.incomingUpdates(), handler)
-}
+fun SingleUpdateProcessor(
+    client: TelegramClient,
+    handler: SingleEventHandler,
+) = SingleUpdateProcessor(client.incomingUpdates(), handler)

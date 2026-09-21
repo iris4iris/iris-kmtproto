@@ -13,7 +13,7 @@ import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
 
-fun interface SingleEventDispatcher<T> {
+fun interface SingleEventDispatcher<in T> {
     suspend fun dispatch(update: T)
 }
 

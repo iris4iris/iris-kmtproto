@@ -85,7 +85,7 @@ class SingleEventRouter : SingleEventHandler {
 
     fun start(scope: CoroutineScope, updates: Flow<Update>): Job {
         processor?.close()
-        val p = DefaultSingleUpdateProcessor(updates, this)
+        val p = SingleUpdateProcessor(updates, this)
         processor = p
         return p.start(scope)
     }

@@ -90,7 +90,7 @@ class PackEventRouter : PackEventHandler {
 
     fun start(scope: CoroutineScope, updates: Flow<Update>): Job {
         processor?.close()
-        val p = DefaultPackUpdateProcessor(updates, this)
+        val p = PackUpdateProcessor(updates, this)
         processor = p
         return p.start(scope)
     }
