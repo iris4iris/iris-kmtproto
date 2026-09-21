@@ -33,6 +33,7 @@ import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -82,6 +83,15 @@ class BotApi(val client: TelegramClient) {
         client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
 
     fun incomingUpdates(): Flow<Update> = client.incomingUpdates()
+
+    fun startPolling(collector: suspend (Update) -> Unit): Job =
+        client.startPolling(collector)
+
+    fun startPollingMessages(collector: suspend (BotMessage) -> Unit): Job =
+        client.startPolling(incomingMessages(), collector)
+
+    fun startPollingBotUpdates(collector: suspend (Map<String, Any?>) -> Unit): Job =
+        client.startPolling(incomingBotUpdates(), collector)
 
     /**
      * Builds every nested Bot API object. Default [LinkedHashMap].

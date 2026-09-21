@@ -4,6 +4,7 @@ import iris.kmtproto.IntIntPair
 import iris.kmtproto.LongIntIntTriple
 import iris.kmtproto.isDisconnect
 import iris.kmtproto.logCaught
+import iris.kmtproto.startPolling
 import iris.kmtproto.crypto.AuthKey
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.mtproto.Handshake
@@ -82,6 +83,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
@@ -158,6 +160,13 @@ class TelegramClient(
     fun incomingUpdates(): Flow<Update> = incomingUpdates.asSharedFlow()
 
     fun incomingMessages(): Flow<MessageCtor> = incomingUpdates().mapNotNull { textFromUpdate(it) }
+
+    /** Collect [incomingUpdates] on the client scope. Returns at once; cancel the [Job] or [close]. */
+    fun startPolling(collector: suspend (Update) -> Unit): Job =
+        startPolling(incomingUpdates(), collector)
+
+    fun <T> startPolling(flow: Flow<T>, collector: suspend (T) -> Unit): Job =
+        flow.startPolling(scope, collector)
 
     fun accessHash(id: Long): Long = storage.getAccessHash(id)
 

@@ -46,6 +46,11 @@ bot.incomingMessages().collect { launch { bot.sendMessage(it.chatId, it.text) } 
 client.incomingUpdates().collect { upd -> /* UpdateNewMessage, UpdateUserStatus, … */ }
 client.incomingMessages() // sugar: UpdateNewMessage / UpdateNewChannelMessage → MessageCtor
 
+bot.startPolling { upd -> /* Job, does not wait */ }
+bot.startPollingMessages { msg -> }
+bot.startPollingBotUpdates { map -> }
+job.cancel() // or client.close()
+
 bot.mapFactory = BotApiMapFactory { MyOwnHashMap() } // MutableMap<String, Any?>
 bot.incomingBotUpdates().collect { upd ->
     val msg = upd["message"] as Map<String, Any?>?

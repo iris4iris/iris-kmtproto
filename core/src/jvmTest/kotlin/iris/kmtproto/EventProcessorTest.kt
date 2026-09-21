@@ -308,6 +308,20 @@ class EventProcessorTest {
         assertEquals(listOf("/a", "/b"), cmd)
         assertEquals(listOf("hi", "yo"), echo)
     }
+
+    @Test
+    fun startPollingReturnsAndStillCollects() = eventsTest { scope ->
+        val got = CompletableDeferred<String>()
+        val src = newSrc()
+        val job = src.startPolling(scope) { u ->
+            val text = (u as? UpdateNewMessage)?.message as? MessageCtor
+            if (text != null) got.complete(text.message)
+        }
+        src.awaitSubscriber()
+        src.emit(newMsg("ping"))
+        assertEquals("ping", got.await())
+        job.cancel()
+    }
 }
 
 fun main() {
@@ -323,6 +337,7 @@ fun main() {
         singleRouterAndFilter()
         packRouterFirstNonEmptyWins()
         packRouterLeftoversGoNext()
+        startPollingReturnsAndStillCollects()
     }
     println("EventProcessorTest ok")
 }
