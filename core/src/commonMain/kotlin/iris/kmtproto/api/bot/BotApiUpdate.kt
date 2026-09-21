@@ -3,6 +3,7 @@ package iris.kmtproto.api.bot
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.tl.gen.BoolTrue
 import iris.kmtproto.tl.gen.Boost
+import iris.kmtproto.tl.gen.BotAppCtor
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelForbidden
 import iris.kmtproto.tl.gen.ChannelParticipant
@@ -49,17 +50,46 @@ import iris.kmtproto.tl.gen.InputBotInlineMessageID
 import iris.kmtproto.tl.gen.InputBotInlineMessageID64
 import iris.kmtproto.tl.gen.InputBotInlineMessageIDCtor
 import iris.kmtproto.tl.gen.Message
+import iris.kmtproto.tl.gen.MessageActionBoostApply
+import iris.kmtproto.tl.gen.MessageActionBotAllowed
+import iris.kmtproto.tl.gen.MessageActionChangeCommunity
+import iris.kmtproto.tl.gen.MessageActionChangeCreator
 import iris.kmtproto.tl.gen.MessageActionChannelCreate
 import iris.kmtproto.tl.gen.MessageActionChannelMigrateFrom
 import iris.kmtproto.tl.gen.MessageActionChatAddUser
 import iris.kmtproto.tl.gen.MessageActionChatCreate
 import iris.kmtproto.tl.gen.MessageActionChatDeletePhoto
 import iris.kmtproto.tl.gen.MessageActionChatDeleteUser
+import iris.kmtproto.tl.gen.MessageActionChatEditPhoto
 import iris.kmtproto.tl.gen.MessageActionChatEditTitle
 import iris.kmtproto.tl.gen.MessageActionChatJoinedByLink
 import iris.kmtproto.tl.gen.MessageActionChatJoinedByRequest
+import iris.kmtproto.tl.gen.MessageActionChatJoinedViaCommunity
 import iris.kmtproto.tl.gen.MessageActionChatMigrateTo
+import iris.kmtproto.tl.gen.MessageActionGeoProximityReached
+import iris.kmtproto.tl.gen.MessageActionGiveawayLaunch
+import iris.kmtproto.tl.gen.MessageActionGiveawayResults
+import iris.kmtproto.tl.gen.MessageActionGroupCall
+import iris.kmtproto.tl.gen.MessageActionGroupCallScheduled
+import iris.kmtproto.tl.gen.MessageActionInviteToGroupCall
+import iris.kmtproto.tl.gen.MessageActionManagedBotCreated
+import iris.kmtproto.tl.gen.MessageActionNewCreatorPending
+import iris.kmtproto.tl.gen.MessageActionPaidMessagesPrice
+import iris.kmtproto.tl.gen.MessageActionPaymentRefunded
+import iris.kmtproto.tl.gen.MessageActionPaymentSentMe
 import iris.kmtproto.tl.gen.MessageActionPinMessage
+import iris.kmtproto.tl.gen.MessageActionPollAppendAnswer
+import iris.kmtproto.tl.gen.MessageActionPollDeleteAnswer
+import iris.kmtproto.tl.gen.MessageActionRequestedPeerSentMe
+import iris.kmtproto.tl.gen.MessageActionSetMessagesTTL
+import iris.kmtproto.tl.gen.MessageActionSuggestedPostApproval
+import iris.kmtproto.tl.gen.MessageActionSuggestedPostRefund
+import iris.kmtproto.tl.gen.MessageActionSuggestedPostSuccess
+import iris.kmtproto.tl.gen.MessageActionTodoAppendTasks
+import iris.kmtproto.tl.gen.MessageActionTodoCompletions
+import iris.kmtproto.tl.gen.MessageActionTopicCreate
+import iris.kmtproto.tl.gen.MessageActionTopicEdit
+import iris.kmtproto.tl.gen.MessageActionWebViewDataSentMe
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntity
 import iris.kmtproto.tl.gen.MessageEntityBlockquote
@@ -80,14 +110,23 @@ import iris.kmtproto.tl.gen.MessageEntityStrike
 import iris.kmtproto.tl.gen.MessageEntityTextUrl
 import iris.kmtproto.tl.gen.MessageEntityUnderline
 import iris.kmtproto.tl.gen.MessageEntityUrl
+import iris.kmtproto.tl.gen.MessageExtendedMediaCtor
+import iris.kmtproto.tl.gen.MessageExtendedMediaPreview
 import iris.kmtproto.tl.gen.MessageFwdHeader
 import iris.kmtproto.tl.gen.MessageMediaContact
 import iris.kmtproto.tl.gen.MessageMediaDice
 import iris.kmtproto.tl.gen.MessageMediaDocument
+import iris.kmtproto.tl.gen.MessageMediaGame
 import iris.kmtproto.tl.gen.MessageMediaGeo
 import iris.kmtproto.tl.gen.MessageMediaGeoLive
+import iris.kmtproto.tl.gen.MessageMediaGiveaway
+import iris.kmtproto.tl.gen.MessageMediaGiveawayResults
+import iris.kmtproto.tl.gen.MessageMediaInvoice
+import iris.kmtproto.tl.gen.MessageMediaPaidMedia
 import iris.kmtproto.tl.gen.MessageMediaPhoto
 import iris.kmtproto.tl.gen.MessageMediaPoll
+import iris.kmtproto.tl.gen.MessageMediaStory
+import iris.kmtproto.tl.gen.MessageMediaToDo
 import iris.kmtproto.tl.gen.MessageMediaVenue
 import iris.kmtproto.tl.gen.MessageReplyHeaderCtor
 import iris.kmtproto.tl.gen.MessageService
@@ -113,7 +152,16 @@ import iris.kmtproto.tl.gen.ReplyInlineMarkup
 import iris.kmtproto.tl.gen.ReplyKeyboardForceReply
 import iris.kmtproto.tl.gen.ReplyKeyboardMarkup
 import iris.kmtproto.tl.gen.ReplyMarkup
+import iris.kmtproto.tl.gen.RequestedPeerChannel
+import iris.kmtproto.tl.gen.RequestedPeerChat
+import iris.kmtproto.tl.gen.RequestedPeerUser
+import iris.kmtproto.tl.gen.StarsAmount
+import iris.kmtproto.tl.gen.StarsAmountCtor
+import iris.kmtproto.tl.gen.StarsTonAmount
 import iris.kmtproto.tl.gen.TextWithEntities
+import iris.kmtproto.tl.gen.TodoCompletion
+import iris.kmtproto.tl.gen.TodoItem
+import iris.kmtproto.tl.gen.TodoList
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.UpdateBotBusinessConnect
 import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
@@ -132,6 +180,8 @@ import iris.kmtproto.tl.gen.UpdateBotPurchasedPaidMedia
 import iris.kmtproto.tl.gen.UpdateBotShippingQuery
 import iris.kmtproto.tl.gen.UpdateBotStarsSubscription
 import iris.kmtproto.tl.gen.UpdateBotStopped
+import iris.kmtproto.tl.gen.UpdateBotWebhookJSON
+import iris.kmtproto.tl.gen.UpdateBotWebhookJSONQuery
 import iris.kmtproto.tl.gen.UpdateBusinessBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateChannelParticipant
 import iris.kmtproto.tl.gen.UpdateChatParticipant
@@ -323,11 +373,28 @@ class BotApiWriter(
                 }
             }
             is UpdateBotGuestChatQuery -> {
-                val m = message(u.message) ?: return null
+                val replyId = ((u.message as? MessageCtor)?.replyTo ?: (u.message as? MessageService)?.replyTo)
+                    .let { it as? MessageReplyHeaderCtor }?.replyToMsgId ?: 0
+                val reply = u.referenceMessages?.firstOrNull { ref ->
+                    when (ref) {
+                        is MessageCtor -> ref.id == replyId
+                        is MessageService -> ref.id == replyId
+                        else -> false
+                    }
+                }
+                val m = message(u.message, reply) ?: return null
                 m["guest_query_id"] = u.queryId.toString()
                 map().also { it["guest_message"] = m }
             }
             is UpdateBusinessBotCallbackQuery -> map().also { it["callback_query"] = businessCallback(u) }
+            is UpdateBotWebhookJSON -> map().also { it["custom_event"] = u.data.data }
+            is UpdateBotWebhookJSONQuery -> map().also {
+                it["custom_query"] = map().apply {
+                    put("id", u.queryId.toString())
+                    put("data", u.data.data)
+                    put("timeout", u.timeout)
+                }
+            }
             is UpdateChatParticipantAdmin -> {
                 val admin = u.isAdmin is BoolTrue
                 map().also {
@@ -398,8 +465,16 @@ class BotApiWriter(
             is MessageActionChatAddUser -> out["new_chat_members"] = a.users.map { user(it) }
             is MessageActionChatJoinedByLink, is MessageActionChatJoinedByRequest ->
                 out["new_chat_members"] = listOf(user((m.fromId as? PeerUser)?.userId ?: 0L))
+            is MessageActionChatJoinedViaCommunity -> {
+                out["new_chat_members"] = listOf(user((m.fromId as? PeerUser)?.userId ?: 0L))
+                out["community_chat_joined"] = map().apply {
+                    put("community", map().apply { put("id", a.communityId) })
+                }
+            }
             is MessageActionChatDeleteUser -> out["left_chat_member"] = user(a.userId)
             is MessageActionChatEditTitle -> out["new_chat_title"] = a.title
+            is MessageActionChatEditPhoto ->
+                (a.photo as? PhotoCtor)?.let { out.opt("new_chat_photo", photoSizes(it)) }
             is MessageActionChatDeletePhoto -> out["delete_chat_photo"] = true
             is MessageActionChatCreate -> out["group_chat_created"] = true
             is MessageActionChannelCreate -> {
@@ -418,9 +493,302 @@ class BotApiWriter(
                     put("chat", chat(m.peerId, m.post))
                 }
             }
+            is MessageActionPaymentSentMe -> out["successful_payment"] = successfulPayment(a)
+            is MessageActionPaymentRefunded -> out["refunded_payment"] = map().apply {
+                put("currency", a.currency)
+                put("total_amount", a.totalAmount)
+                opt("invoice_payload", a.payload.utf8())
+                put("telegram_payment_charge_id", a.charge.id)
+                opt("provider_payment_charge_id", a.charge.providerChargeId)
+            }
+            is MessageActionWebViewDataSentMe -> out["web_app_data"] = map().apply {
+                put("button_text", a.text)
+                put("data", a.data)
+            }
+            is MessageActionBotAllowed -> {
+                if (!a.domain.isNullOrEmpty()) out["connected_website"] = a.domain
+                else out["write_access_allowed"] = map().apply {
+                    if (a.fromRequest) put("from_request", true)
+                    if (a.attachMenu) put("from_attachment_menu", true)
+                    (a.app as? BotAppCtor)?.let { opt("web_app_name", it.shortName) }
+                }
+            }
+            is MessageActionRequestedPeerSentMe -> requestedPeers(out, a)
+            is MessageActionTopicCreate -> out["forum_topic_created"] = map().apply {
+                put("name", a.title)
+                put("icon_color", a.iconColor)
+                if (a.iconEmojiId != 0L) put("icon_custom_emoji_id", a.iconEmojiId.toString())
+                if (a.titleMissing) put("is_name_implicit", true)
+            }
+            is MessageActionTopicEdit -> topicEdit(out, a)
+            is MessageActionGroupCallScheduled -> {
+                val scheduled = map().apply { put("start_date", a.scheduleDate) }
+                out["video_chat_scheduled"] = scheduled
+                out["voice_chat_scheduled"] = scheduled
+            }
+            is MessageActionGroupCall -> {
+                if (a.duration != 0) {
+                    val ended = map().apply { put("duration", a.duration) }
+                    out["video_chat_ended"] = ended
+                    out["voice_chat_ended"] = ended
+                } else {
+                    val started = map()
+                    out["video_chat_started"] = started
+                    out["voice_chat_started"] = started
+                }
+            }
+            is MessageActionInviteToGroupCall -> {
+                val invited = map().apply { put("users", a.users.map { user(it) }) }
+                out["video_chat_participants_invited"] = invited
+                out["voice_chat_participants_invited"] = invited
+            }
+            is MessageActionGeoProximityReached -> out["proximity_alert_triggered"] = map().apply {
+                put("traveler", senderMap(a.fromId))
+                put("watcher", senderMap(a.toId))
+                put("distance", a.distance)
+            }
+            is MessageActionSetMessagesTTL -> out["message_auto_delete_timer_changed"] = map().apply {
+                put("message_auto_delete_time", a.period)
+            }
+            is MessageActionGiveawayLaunch -> out["giveaway_created"] = map().apply {
+                if (a.stars != 0L) put("prize_star_count", a.stars.toInt())
+            }
+            is MessageActionGiveawayResults -> out["giveaway_completed"] = map().apply {
+                put("winner_count", a.winnersCount)
+                if (a.unclaimedCount != 0) put("unclaimed_prize_count", a.unclaimedCount)
+                if (a.stars) put("is_star_giveaway", true)
+            }
+            is MessageActionBoostApply -> out["boost_added"] = map().apply {
+                put("boost_count", a.boosts)
+            }
+            is MessageActionPaidMessagesPrice -> {
+                if (a.broadcastMessagesAllowed) {
+                    out["direct_message_price_changed"] = map().apply {
+                        put("are_direct_messages_enabled", true)
+                        if (a.stars != 0L) put("direct_message_star_count", a.stars.toInt())
+                    }
+                } else {
+                    out["paid_message_price_changed"] = map().apply {
+                        put("paid_message_star_count", a.stars.toInt())
+                    }
+                }
+            }
+            is MessageActionTodoCompletions -> out["checklist_tasks_done"] = map().apply {
+                if (a.completed.isNotEmpty()) put("marked_as_done_task_ids", a.completed.toList())
+                if (a.incompleted.isNotEmpty()) put("marked_as_not_done_task_ids", a.incompleted.toList())
+            }
+            is MessageActionTodoAppendTasks -> out["checklist_tasks_added"] = map().apply {
+                put("tasks", a.list.map { checklistTask(it) })
+            }
+            is MessageActionSuggestedPostApproval -> suggestedPostApproval(out, a)
+            is MessageActionSuggestedPostSuccess -> out["suggested_post_paid"] = starsPrice(a.price)
+            is MessageActionSuggestedPostRefund -> out["suggested_post_refunded"] = map().apply {
+                put("reason", if (a.payerInitiated) "payment_refunded" else "post_deleted")
+            }
+            is MessageActionNewCreatorPending -> out["chat_owner_left"] = map().apply {
+                put("new_owner", user(a.newCreatorId))
+            }
+            is MessageActionChangeCreator -> out["chat_owner_changed"] = map().apply {
+                put("new_owner", user(a.newCreatorId))
+            }
+            is MessageActionPollAppendAnswer -> out["poll_option_added"] = pollOptionChange(a.answer)
+            is MessageActionPollDeleteAnswer -> out["poll_option_deleted"] = pollOptionChange(a.answer)
+            is MessageActionManagedBotCreated -> out["managed_bot_created"] = map().apply {
+                put("bot", user(a.botId, isBot = true))
+            }
+            is MessageActionChangeCommunity -> {
+                if (a.communityId != 0L) {
+                    out["community_chat_added"] = map().apply {
+                        put("community", map().apply { put("id", a.communityId) })
+                    }
+                } else {
+                    out["community_chat_removed"] = map()
+                }
+            }
             else -> Unit
         }
         return out
+    }
+
+    private fun successfulPayment(a: MessageActionPaymentSentMe): MutableMap<String, Any?> = map().apply {
+        put("currency", a.currency)
+        put("total_amount", a.totalAmount)
+        put("invoice_payload", a.payload.utf8().orEmpty())
+        opt("shipping_option_id", a.shippingOptionId)
+        a.info?.let { info ->
+            put(
+                "order_info",
+                map().apply {
+                    opt("name", info.name)
+                    opt("phone_number", info.phone)
+                    opt("email", info.email)
+                    info.shippingAddress?.let { put("shipping_address", address(it)) }
+                },
+            )
+        }
+        put("telegram_payment_charge_id", a.charge.id)
+        put("provider_payment_charge_id", a.charge.providerChargeId)
+        if (a.recurringUsed) put("is_recurring", true)
+        if (a.recurringInit) put("is_first_recurring", true)
+        if (a.subscriptionUntilDate != 0) put("subscription_expiration_date", a.subscriptionUntilDate)
+    }
+
+    private fun requestedPeers(out: MutableMap<String, Any?>, a: MessageActionRequestedPeerSentMe) {
+        val users = a.peers.filterIsInstance<RequestedPeerUser>()
+        val chats = a.peers.mapNotNull { p ->
+            when (p) {
+                is RequestedPeerChat, is RequestedPeerChannel -> p
+                else -> null
+            }
+        }
+        if (users.size == 1 && chats.isEmpty()) {
+            out["user_shared"] = map().apply {
+                put("user_id", users[0].userId)
+                put("request_id", a.buttonId)
+            }
+        }
+        if (users.isNotEmpty()) {
+            out["users_shared"] = map().apply {
+                put("request_id", a.buttonId)
+                put("user_ids", users.map { it.userId })
+                put(
+                    "users",
+                    users.map { u ->
+                        map().apply {
+                            put("user_id", u.userId)
+                            opt("first_name", u.firstName)
+                            opt("last_name", u.lastName)
+                            opt("username", u.username)
+                        }
+                    },
+                )
+            }
+        }
+        val chat = chats.firstOrNull()
+        if (chat != null) {
+            out["chat_shared"] = map().apply {
+                put("request_id", a.buttonId)
+                when (chat) {
+                    is RequestedPeerChat -> {
+                        put("chat_id", PeerChat(chat.chatId).botApiChatId())
+                        opt("title", chat.title)
+                    }
+                    is RequestedPeerChannel -> {
+                        put("chat_id", PeerChannel(chat.channelId).botApiChatId())
+                        opt("title", chat.title)
+                        opt("username", chat.username)
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    private fun topicEdit(out: MutableMap<String, Any?>, a: MessageActionTopicEdit) {
+        when {
+            a.hidden != null -> {
+                val empty = map()
+                if (a.hidden is BoolTrue) out["general_forum_topic_hidden"] = empty
+                else out["general_forum_topic_unhidden"] = empty
+            }
+            a.closed != null && a.title == null && a.iconEmojiId == 0L -> {
+                val empty = map()
+                if (a.closed is BoolTrue) out["forum_topic_closed"] = empty
+                else out["forum_topic_reopened"] = empty
+            }
+            else -> out["forum_topic_edited"] = map().apply {
+                opt("name", a.title)
+                if (a.iconEmojiId != 0L) put("icon_custom_emoji_id", a.iconEmojiId.toString())
+            }
+        }
+    }
+
+    private fun suggestedPostApproval(out: MutableMap<String, Any?>, a: MessageActionSuggestedPostApproval) {
+        when {
+            a.rejected -> out["suggested_post_declined"] = map().apply {
+                opt("comment", a.rejectComment)
+            }
+            a.balanceTooLow -> out["suggested_post_approval_failed"] = map().apply {
+                a.price?.let { put("price", starsPrice(it)) }
+            }
+            else -> out["suggested_post_approved"] = map().apply {
+                a.price?.let { put("price", starsPrice(it)) }
+                if (a.scheduleDate != 0) put("send_date", a.scheduleDate)
+            }
+        }
+    }
+
+    private fun starsPrice(price: StarsAmount): MutableMap<String, Any?> = map().apply {
+        when (price) {
+            is StarsAmountCtor -> {
+                put("currency", "XTR")
+                put("amount", price.amount)
+            }
+            is StarsTonAmount -> {
+                put("currency", "TON")
+                put("amount", price.amount)
+            }
+        }
+    }
+
+    private fun pollOptionChange(answer: iris.kmtproto.tl.gen.PollAnswer): MutableMap<String, Any?> = map().apply {
+        val a = answer as? PollAnswerCtor ?: return@apply
+        put("option_persistent_id", a.option.decodeToString())
+        put("option_text", a.text.text)
+        opt("option_entities", entities(a.text.entities))
+    }
+
+    private fun MutableMap<String, Any?>.putSender(peer: Peer, userKey: String, chatKey: String) {
+        when (peer) {
+            is PeerUser -> put(userKey, user(peer.userId))
+            else -> put(chatKey, chat(peer))
+        }
+    }
+
+    private fun senderMap(peer: Peer): MutableMap<String, Any?> = when (peer) {
+        is PeerUser -> user(peer.userId)
+        else -> chat(peer)
+    }
+
+    private fun checklistTask(item: TodoItem, done: TodoCompletion? = null): MutableMap<String, Any?> = map().apply {
+        put("id", item.id)
+        put("text", item.title.text)
+        opt("text_entities", entities(item.title.entities))
+        if (done != null) {
+            putSender(done.completedBy, "completed_by_user", "completed_by_chat")
+            put("completion_date", done.date)
+        }
+    }
+
+    private fun checklist(todo: TodoList, completions: List<TodoCompletion>?): MutableMap<String, Any?> = map().apply {
+        put("title", todo.title.text)
+        opt("title_entities", entities(todo.title.entities))
+        put(
+            "tasks",
+            todo.list.map { item ->
+                checklistTask(item, completions?.firstOrNull { it.id == item.id })
+            },
+        )
+        if (todo.othersCanAppend) put("others_can_add_tasks", true)
+        if (todo.othersCanComplete) put("others_can_mark_tasks_as_done", true)
+    }
+
+    private fun paidMediaItem(m: iris.kmtproto.tl.gen.MessageExtendedMedia): MutableMap<String, Any?> = when (m) {
+        is MessageExtendedMediaPreview -> map().apply {
+            put("type", "preview")
+            if (m.w != 0) put("width", m.w)
+            if (m.h != 0) put("height", m.h)
+            if (m.videoDuration != 0) put("duration", m.videoDuration)
+        }
+        is MessageExtendedMediaCtor -> when (val inner = m.media) {
+            is MessageMediaPhoto -> map().apply {
+                put("type", "photo")
+                (inner.photo as? PhotoCtor)?.let { opt("photo", photoSizes(it)) }
+            }
+            is MessageMediaDocument -> map().apply { put("type", "video") }
+            else -> map().apply { put("type", "other") }
+        }
+        else -> map().apply { put("type", "other") }
     }
 
     private fun fillHeader(
@@ -524,6 +892,52 @@ class BotApiWriter(
                 put("value", media.value)
             }
             is MessageMediaPoll -> out["poll"] = poll(media.poll, media.results)
+            is MessageMediaInvoice -> out["invoice"] = map().apply {
+                put("title", media.title)
+                put("description", media.description)
+                put("start_parameter", media.startParam)
+                put("currency", media.currency)
+                put("total_amount", media.totalAmount)
+            }
+            is MessageMediaGame -> out["game"] = map().apply {
+                put("title", media.game.title)
+                put("description", media.game.description)
+                (media.game.photo as? PhotoCtor)?.let { opt("photo", photoSizes(it)) }
+            }
+            is MessageMediaPaidMedia -> out["paid_media"] = map().apply {
+                put("star_count", media.starsAmount.toInt())
+                put("paid_media", media.extendedMedia.map { paidMediaItem(it) })
+            }
+            is MessageMediaGiveaway -> out["giveaway"] = map().apply {
+                put("chats", media.channels.map { chat(PeerChannel(it), post = true) })
+                put("winners_selection_date", media.untilDate)
+                put("winner_count", media.quantity)
+                if (media.onlyNewSubscribers) put("only_new_members", true)
+                if (media.winnersAreVisible) put("has_public_winners", true)
+                media.countriesIso2?.takeIf { it.isNotEmpty() }?.let { put("country_codes", it) }
+                opt("prize_description", media.prizeDescription)
+                if (media.months != 0) put("premium_subscription_month_count", media.months)
+                if (media.stars != 0L) put("prize_star_count", media.stars.toInt())
+            }
+            is MessageMediaGiveawayResults -> out["giveaway_winners"] = map().apply {
+                put("chat", chat(PeerChannel(media.channelId), post = true))
+                put("giveaway_message_id", media.launchMsgId)
+                put("winners_selection_date", media.untilDate)
+                put("winner_count", media.winnersCount)
+                put("winners", media.winners.map { user(it) })
+                if (media.additionalPeersCount != 0) put("additional_chat_count", media.additionalPeersCount)
+                if (media.onlyNewSubscribers) put("only_new_members", true)
+                if (media.refunded) put("was_refunded", true)
+                if (media.months != 0) put("premium_subscription_month_count", media.months)
+                if (media.stars != 0L) put("prize_star_count", media.stars.toInt())
+                opt("prize_description", media.prizeDescription)
+                if (media.unclaimedCount != 0) put("unclaimed_prize_count", media.unclaimedCount)
+            }
+            is MessageMediaStory -> out["story"] = map().apply {
+                put("chat", chat(media.peer))
+                put("id", media.id)
+            }
+            is MessageMediaToDo -> out["checklist"] = checklist(media.todo, media.completions)
             else -> {
                 if (caption.isNotEmpty()) {
                     out["text"] = caption

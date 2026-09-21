@@ -21,6 +21,8 @@ import iris.kmtproto.tl.gen.UpdateBotGuestChatQuery
 import iris.kmtproto.tl.gen.UpdateBotMessageReaction
 import iris.kmtproto.tl.gen.UpdateBotMessageReactions
 import iris.kmtproto.tl.gen.UpdateBotStarsSubscription
+import iris.kmtproto.tl.gen.UpdateBotWebhookJSON
+import iris.kmtproto.tl.gen.UpdateBotWebhookJSONQuery
 import iris.kmtproto.tl.gen.UpdateBusinessBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateChannel
 import iris.kmtproto.tl.gen.UpdateChannelParticipant
@@ -31,6 +33,14 @@ import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
 import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.tl.gen.UserStatusOffline
+import iris.kmtproto.tl.gen.DataJSON
+import iris.kmtproto.tl.gen.MessageActionBotAllowed
+import iris.kmtproto.tl.gen.MessageActionPaymentSentMe
+import iris.kmtproto.tl.gen.MessageActionTopicCreate
+import iris.kmtproto.tl.gen.MessageActionWebViewDataSentMe
+import iris.kmtproto.tl.gen.MessageMediaInvoice
+import iris.kmtproto.tl.gen.MessageService
+import iris.kmtproto.tl.gen.PaymentCharge
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -403,6 +413,116 @@ class BotApiUpdateTest {
         assertEquals("c1", q["business_connection_id"])
         assertEquals("ok", q["data"])
     }
+
+    @Test
+    fun customEventAndQuery() {
+        val event = UpdateBotWebhookJSON(data = DataJSON("""{"foo":1}""")).toBotApiMap(maps, 1)!!
+        assertEquals("""{"foo":1}""", event["custom_event"])
+        val query = UpdateBotWebhookJSONQuery(
+            queryId = 9L,
+            data = DataJSON("""{"bar":2}"""),
+            timeout = 30,
+        ).toBotApiMap(maps, 2)!!
+        val body = query["custom_query"] as Map<*, *>
+        assertEquals("9", body["id"])
+        assertEquals("""{"bar":2}""", body["data"])
+        assertEquals(30, body["timeout"])
+    }
+
+    @Test
+    fun servicePaymentAndWebApp() {
+        val pay = UpdateNewMessage(
+            message = MessageService(
+                id = 1,
+                peerId = PeerUser(7),
+                date = 2,
+                action = MessageActionPaymentSentMe(
+                    currency = "USD",
+                    totalAmount = 199,
+                    payload = "sku".encodeToByteArray(),
+                    charge = PaymentCharge(id = "tg", providerChargeId = "stripe"),
+                    recurringInit = true,
+                ),
+                fromId = PeerUser(7),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        ).toBotApiMap(maps, 1)!!
+        val payment = (pay["message"] as Map<*, *>)["successful_payment"] as Map<*, *>
+        assertEquals("USD", payment["currency"])
+        assertEquals(199L, payment["total_amount"])
+        assertEquals("sku", payment["invoice_payload"])
+        assertEquals("tg", payment["telegram_payment_charge_id"])
+        assertEquals(true, payment["is_first_recurring"])
+        val web = UpdateNewMessage(
+            message = MessageService(
+                id = 2,
+                peerId = PeerUser(7),
+                date = 3,
+                action = MessageActionWebViewDataSentMe(text = "Open", data = "ok"),
+                fromId = PeerUser(7),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        ).toBotApiMap(maps, 2)!!
+        val wad = (web["message"] as Map<*, *>)["web_app_data"] as Map<*, *>
+        assertEquals("Open", wad["button_text"])
+        assertEquals("ok", wad["data"])
+    }
+
+    @Test
+    fun forumTopicAndWriteAccessAndInvoice() {
+        val topic = UpdateNewMessage(
+            message = MessageService(
+                id = 1,
+                peerId = PeerChannel(9),
+                date = 1,
+                action = MessageActionTopicCreate(title = "General", iconColor = 0x6FB9F0),
+                fromId = PeerUser(7),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        ).toBotApiMap(maps, 1)!!
+        val created = (topic["message"] as Map<*, *>)["forum_topic_created"] as Map<*, *>
+        assertEquals("General", created["name"])
+        assertEquals(0x6FB9F0, created["icon_color"])
+        val access = UpdateNewMessage(
+            message = MessageService(
+                id = 2,
+                peerId = PeerUser(7),
+                date = 1,
+                action = MessageActionBotAllowed(fromRequest = true),
+                fromId = PeerUser(7),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        ).toBotApiMap(maps, 2)!!
+        val allowed = (access["message"] as Map<*, *>)["write_access_allowed"] as Map<*, *>
+        assertEquals(true, allowed["from_request"])
+        val invoice = UpdateNewMessage(
+            message = MessageCtor(
+                id = 3,
+                peerId = PeerUser(7),
+                date = 1,
+                message = "",
+                fromId = PeerUser(7),
+                media = MessageMediaInvoice(
+                    title = "Item",
+                    description = "Desc",
+                    currency = "XTR",
+                    totalAmount = 50,
+                    startParam = "pay",
+                ),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        ).toBotApiMap(maps, 3)!!
+        val inv = (invoice["message"] as Map<*, *>)["invoice"] as Map<*, *>
+        assertEquals("Item", inv["title"])
+        assertEquals("XTR", inv["currency"])
+        assertEquals(50L, inv["total_amount"])
+        assertEquals("pay", inv["start_parameter"])
+    }
 }
 
 fun main() {
@@ -426,6 +546,9 @@ fun main() {
         chatBoostAndRemoved()
         managedBotAndSubscription()
         guestMessageAndBusinessCallback()
+        customEventAndQuery()
+        servicePaymentAndWebApp()
+        forumTopicAndWriteAccessAndInvoice()
     }
     println("BotApiUpdateTest ok")
 }
