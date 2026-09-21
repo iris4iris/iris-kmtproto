@@ -2,6 +2,8 @@
 
 Kotlin Multiplatform MTProto client (`iris.kmtproto`). First target: **JVM**. Session is in-memory only — no disk, no local message database. **0.x — API will break.**
 
+Jars (library + deps, not a fat jar): `./gradlew distJars` → `build/dist/lib/`.
+
 ```kotlin
 import iris.kmtproto.client.TelegramClient
 

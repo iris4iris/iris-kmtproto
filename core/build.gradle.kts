@@ -130,4 +130,23 @@ tasks.register<JavaExec>("runBotApiUpdateTest") {
     testMain("iris.kmtproto.BotApiUpdateTestKt", "Bot API map update conversion")
 }
 
+tasks.register<Copy>("distJars") {
+    group = "distribution"
+    description = "Copy the JVM jar and its dependency jars as separate files (not a fat jar)"
+    val compilation = kotlin.targets.getByName("jvm").compilations.getByName("main")
+    val jarTask = tasks.named("jvmJar")
+    dependsOn(jarTask, compilation.compileTaskProvider)
+    if (!tlPrebuilt.get()) dependsOn(":tl:jvmJar")
+    from(jarTask)
+    from(compilation.runtimeDependencyFiles)
+    into(rootProject.layout.buildDirectory.dir("dist/lib"))
+    include("*.jar")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    doLast {
+        val dir = destinationDir
+        println("jars → $dir")
+        dir.listFiles()?.sortedBy { it.name }?.forEach { println("  ${it.name}  ${it.length()} B") }
+    }
+}
+
 

@@ -21,3 +21,9 @@ tasks.register("jvmRun") {
     description = "Echo bot — delegates to :core:runEcho"
     dependsOn(":core:runEcho")
 }
+
+tasks.register("distJars") {
+    group = "distribution"
+    description = "Copy iris-kmtproto JVM jars and dependencies into build/dist/lib"
+    dependsOn(":core:distJars")
+}
