@@ -141,61 +141,69 @@ internal class BotApiWriter(val maps: BotApiMapFactory) {
         }
     }
 
-    fun updateBody(u: Update): MutableMap<String, Any?>? = when (u) {
-        is UpdateNewMessage -> messageKey(u.message, edited = false)
-        is UpdateNewChannelMessage -> messageKey(u.message, edited = false)
-        is UpdateEditMessage -> messageKey(u.message, edited = true)
-        is UpdateEditChannelMessage -> messageKey(u.message, edited = true)
-        is UpdateBotNewBusinessMessage -> {
-            val m = message(u.message, u.replyToMessage) ?: return null
-            m.opt("business_connection_id", u.connectionId)
-            map().also { it["business_message"] = m }
-        }
-        is UpdateBotEditBusinessMessage -> {
-            val m = message(u.message, u.replyToMessage) ?: return null
-            m.opt("business_connection_id", u.connectionId)
-            map().also { it["edited_business_message"] = m }
-        }
-        is UpdateBotDeleteBusinessMessage -> map().also {
-            it["deleted_business_messages"] = map().apply {
-                put("business_connection_id", u.connectionId)
-                put("chat", chat(u.peer))
-                put("message_ids", u.messages.toList())
+    fun updateBody(u: Update): MutableMap<String, Any?>? {
+        return when (u) {
+            is UpdateNewMessage -> messageKey(u.message, edited = false)
+            is UpdateNewChannelMessage -> messageKey(u.message, edited = false)
+            is UpdateEditMessage -> messageKey(u.message, edited = true)
+            is UpdateEditChannelMessage -> messageKey(u.message, edited = true)
+            is UpdateBotNewBusinessMessage -> {
+                val m = message(u.message, u.replyToMessage) ?: return null
+                m.opt("business_connection_id", u.connectionId)
+                map().also { it["business_message"] = m }
             }
-        }
-        is UpdateBotBusinessConnect -> {
-            val c = u.connection
-            map().also {
-                it["business_connection"] = map().apply {
-                    put("id", c.connectionId)
-                    put("user", user(c.userId))
-                    put("user_chat_id", c.userId)
-                    put("date", c.date)
-                    put("can_reply", !c.disabled)
-                    put("is_enabled", !c.disabled)
+
+            is UpdateBotEditBusinessMessage -> {
+                val m = message(u.message, u.replyToMessage) ?: return null
+                m.opt("business_connection_id", u.connectionId)
+                map().also { it["edited_business_message"] = m }
+            }
+
+            is UpdateBotDeleteBusinessMessage -> map().also {
+                it["deleted_business_messages"] = map().apply {
+                    put("business_connection_id", u.connectionId)
+                    put("chat", chat(u.peer))
+                    put("message_ids", u.messages.toList())
                 }
             }
-        }
-        is UpdateBotCallbackQuery -> map().also { it["callback_query"] = callback(u) }
-        is UpdateInlineBotCallbackQuery -> map().also { it["callback_query"] = inlineCallback(u) }
-        is UpdateBotInlineQuery -> map().also { it["inline_query"] = inlineQuery(u) }
-        is UpdateBotInlineSend -> map().also { it["chosen_inline_result"] = chosenInline(u) }
-        is UpdateBotShippingQuery -> map().also { it["shipping_query"] = shipping(u) }
-        is UpdateBotPrecheckoutQuery -> map().also { it["pre_checkout_query"] = preCheckout(u) }
-        is UpdateMessagePoll -> {
-            val poll = u.poll ?: return null
-            map().also { it["poll"] = poll(poll, u.results) }
-        }
-        is UpdateMessagePollVote -> map().also { it["poll_answer"] = pollAnswer(u) }
-        is UpdateBotChatInviteRequester -> map().also { it["chat_join_request"] = joinRequest(u) }
-        is UpdateBotPurchasedPaidMedia -> map().also {
-            it["purchased_paid_media"] = map().apply {
-                put("from", user(u.userId))
-                put("paid_media_payload", u.payload)
+
+            is UpdateBotBusinessConnect -> {
+                val c = u.connection
+                map().also {
+                    it["business_connection"] = map().apply {
+                        put("id", c.connectionId)
+                        put("user", user(c.userId))
+                        put("user_chat_id", c.userId)
+                        put("date", c.date)
+                        put("can_reply", !c.disabled)
+                        put("is_enabled", !c.disabled)
+                    }
+                }
             }
+
+            is UpdateBotCallbackQuery -> map().also { it["callback_query"] = callback(u) }
+            is UpdateInlineBotCallbackQuery -> map().also { it["callback_query"] = inlineCallback(u) }
+            is UpdateBotInlineQuery -> map().also { it["inline_query"] = inlineQuery(u) }
+            is UpdateBotInlineSend -> map().also { it["chosen_inline_result"] = chosenInline(u) }
+            is UpdateBotShippingQuery -> map().also { it["shipping_query"] = shipping(u) }
+            is UpdateBotPrecheckoutQuery -> map().also { it["pre_checkout_query"] = preCheckout(u) }
+            is UpdateMessagePoll -> {
+                val poll = u.poll ?: return null
+                map().also { it["poll"] = poll(poll, u.results) }
+            }
+
+            is UpdateMessagePollVote -> map().also { it["poll_answer"] = pollAnswer(u) }
+            is UpdateBotChatInviteRequester -> map().also { it["chat_join_request"] = joinRequest(u) }
+            is UpdateBotPurchasedPaidMedia -> map().also {
+                it["purchased_paid_media"] = map().apply {
+                    put("from", user(u.userId))
+                    put("paid_media_payload", u.payload)
+                }
+            }
+
+            is UpdateBotStopped -> map().also { it["my_chat_member"] = botStopped(u) }
+            else -> null
         }
-        is UpdateBotStopped -> map().also { it["my_chat_member"] = botStopped(u) }
-        else -> null
     }
 
     private fun messageKey(raw: Message, edited: Boolean): MutableMap<String, Any?>? {
