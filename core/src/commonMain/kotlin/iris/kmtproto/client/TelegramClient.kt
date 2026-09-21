@@ -1,5 +1,7 @@
 package iris.kmtproto.client
 
+import iris.kmtproto.IntIntPair
+import iris.kmtproto.LongIntIntTriple
 import iris.kmtproto.isDisconnect
 import iris.kmtproto.logCaught
 import iris.kmtproto.crypto.AuthKey
@@ -628,31 +630,31 @@ class TelegramClient(
         }
     }
 
-    private fun commonPts(u: Update): Pair<Int, Int>? = when (u) {
-        is UpdateNewMessage -> u.pts to u.ptsCount
-        is UpdateDeleteMessages -> u.pts to u.ptsCount
-        is UpdateReadHistoryInbox -> u.pts to u.ptsCount
-        is UpdateReadHistoryOutbox -> u.pts to u.ptsCount
-        is UpdateWebPage -> u.pts to u.ptsCount
-        is UpdateReadMessagesContents -> u.pts to u.ptsCount
-        is UpdateEditMessage -> u.pts to u.ptsCount
-        is UpdateFolderPeers -> u.pts to u.ptsCount
-        is UpdatePinnedMessages -> u.pts to u.ptsCount
+    private fun commonPts(u: Update): IntIntPair? = when (u) {
+        is UpdateNewMessage -> IntIntPair(u.pts, u.ptsCount)
+        is UpdateDeleteMessages -> IntIntPair(u.pts, u.ptsCount)
+        is UpdateReadHistoryInbox -> IntIntPair(u.pts, u.ptsCount)
+        is UpdateReadHistoryOutbox -> IntIntPair(u.pts, u.ptsCount)
+        is UpdateWebPage -> IntIntPair(u.pts, u.ptsCount)
+        is UpdateReadMessagesContents -> IntIntPair(u.pts, u.ptsCount)
+        is UpdateEditMessage -> IntIntPair(u.pts, u.ptsCount)
+        is UpdateFolderPeers -> IntIntPair(u.pts, u.ptsCount)
+        is UpdatePinnedMessages -> IntIntPair(u.pts, u.ptsCount)
         else -> null
     }
 
-    private fun channelPts(u: Update): Triple<Long, Int, Int>? = when (u) {
+    private fun channelPts(u: Update): LongIntIntTriple? = when (u) {
         is UpdateNewChannelMessage -> {
             val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
-            Triple(id, u.pts, u.ptsCount)
+            LongIntIntTriple(id, u.pts, u.ptsCount)
         }
         is UpdateEditChannelMessage -> {
             val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
-            Triple(id, u.pts, u.ptsCount)
+            LongIntIntTriple(id, u.pts, u.ptsCount)
         }
-        is UpdateDeleteChannelMessages -> Triple(u.channelId, u.pts, u.ptsCount)
-        is UpdateChannelWebPage -> Triple(u.channelId, u.pts, u.ptsCount)
-        is UpdatePinnedChannelMessages -> Triple(u.channelId, u.pts, u.ptsCount)
+        is UpdateDeleteChannelMessages -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
+        is UpdateChannelWebPage -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
+        is UpdatePinnedChannelMessages -> LongIntIntTriple(u.channelId, u.pts, u.ptsCount)
         else -> null
     }
 
