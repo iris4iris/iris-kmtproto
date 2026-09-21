@@ -126,4 +126,8 @@ tasks.register<JavaExec>("runEventProcessorTest") {
     testMain("iris.kmtproto.EventProcessorTestKt", "Incoming event processor unit tests")
 }
 
+tasks.register<JavaExec>("runBotApiUpdateTest") {
+    testMain("iris.kmtproto.BotApiUpdateTestKt", "Bot API map update conversion")
+}
+
 

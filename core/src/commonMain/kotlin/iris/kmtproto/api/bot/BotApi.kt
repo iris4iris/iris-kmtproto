@@ -36,6 +36,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 
 data class BotMessage(
     val messageId: Int,
@@ -81,6 +82,21 @@ class BotApi(val client: TelegramClient) {
         client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
 
     fun incomingUpdates(): Flow<Update> = client.incomingUpdates()
+
+    /**
+     * Builds every nested Bot API object. Default [LinkedHashMap].
+     * Assign a factory that returns your [MutableMap] implementation.
+     */
+    var mapFactory: BotApiMapFactory = BotApiMapFactory { LinkedHashMap() }
+
+    private var updateIdSeq = 0
+
+    @Synchronized
+    private fun nextUpdateId(): Int = ++updateIdSeq
+
+    /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
+    fun incomingBotUpdates(maps: BotApiMapFactory = mapFactory): Flow<Map<String, Any?>> =
+        client.incomingUpdates().mapNotNull { it.toBotApiMap(maps, nextUpdateId()) }
 
     fun getStarGiftsAsync(hash: Int = 0): Deferred<RpcResponse<PaymentsStarGifts>> = user.payments.getStarGiftsAsync(hash)
 
