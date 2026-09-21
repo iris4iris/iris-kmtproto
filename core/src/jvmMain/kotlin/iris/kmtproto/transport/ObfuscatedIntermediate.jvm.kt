@@ -112,39 +112,44 @@ actual suspend fun connectObfuscated(dc: Datacenter, proxy: Proxy?): MtprotoTran
 
 private fun connectObfuscatedAt(host: String, port: Int, proxy: Proxy?): MtprotoTransport {
     val socket = openTcp(host, port, proxy)
-    val input = DataInputStream(BufferedInputStream(socket.getInputStream(), STREAM_BUF))
-    val output = DataOutputStream(BufferedOutputStream(socket.getOutputStream(), STREAM_BUF))
+    try {
+        val input = DataInputStream(BufferedInputStream(socket.getInputStream(), STREAM_BUF))
+        val output = DataOutputStream(BufferedOutputStream(socket.getOutputStream(), STREAM_BUF))
 
-    val init = ByteArray(64)
-    while (true) {
-        PlatformCrypto.randomBytes(64).copyInto(init)
-        val b0 = init[0].toInt() and 0xff
-        val first4 = init.readIntLe(0)
-        val second4 = init.readIntLe(4)
-        val forbidden = first4 == 0x44414548 || first4 == 0x54534f50 ||
-            first4 == 0x20544547 || first4 == 0x4954504f ||
-            first4 == 0xeeeeeeee.toInt() || first4 == 0xdddddddd.toInt() ||
-            first4 == 0x00000000
-        if (b0 != 0xef && second4 != 0 && !forbidden) break
+        val init = ByteArray(64)
+        while (true) {
+            PlatformCrypto.randomBytes(64).copyInto(init)
+            val b0 = init[0].toInt() and 0xff
+            val first4 = init.readIntLe(0)
+            val second4 = init.readIntLe(4)
+            val forbidden = first4 == 0x44414548 || first4 == 0x54534f50 ||
+                first4 == 0x20544547 || first4 == 0x4954504f ||
+                first4 == 0xeeeeeeee.toInt() || first4 == 0xdddddddd.toInt() ||
+                first4 == 0x00000000
+            if (b0 != 0xef && second4 != 0 && !forbidden) break
+        }
+        init[56] = 0xee.toByte()
+        init[57] = 0xee.toByte()
+        init[58] = 0xee.toByte()
+        init[59] = 0xee.toByte()
+
+        val encryptKey = init.copyOfRange(8, 40)
+        val encryptIv = init.copyOfRange(40, 56)
+        val reversed = init.reversedArray()
+        val decryptKey = reversed.copyOfRange(8, 40)
+        val decryptIv = reversed.copyOfRange(40, 56)
+
+        val encryptor = AesCtr(encryptKey, encryptIv)
+        val decryptor = AesCtr(decryptKey, decryptIv)
+
+        val encryptedInit = encryptor.process(init)
+        encryptedInit.copyInto(init, 56, 56, 64)
+        output.write(init)
+        output.flush()
+
+        return ObfuscatedIntermediate(socket, input, output, encryptor, decryptor)
+    } catch (e: Throwable) {
+        runCatching { socket.close() }
+        throw e
     }
-    init[56] = 0xee.toByte()
-    init[57] = 0xee.toByte()
-    init[58] = 0xee.toByte()
-    init[59] = 0xee.toByte()
-
-    val encryptKey = init.copyOfRange(8, 40)
-    val encryptIv = init.copyOfRange(40, 56)
-    val reversed = init.reversedArray()
-    val decryptKey = reversed.copyOfRange(8, 40)
-    val decryptIv = reversed.copyOfRange(40, 56)
-
-    val encryptor = AesCtr(encryptKey, encryptIv)
-    val decryptor = AesCtr(decryptKey, decryptIv)
-
-    val encryptedInit = encryptor.process(init)
-    encryptedInit.copyInto(init, 56, 56, 64)
-    output.write(init)
-    output.flush()
-
-    return ObfuscatedIntermediate(socket, input, output, encryptor, decryptor)
 }

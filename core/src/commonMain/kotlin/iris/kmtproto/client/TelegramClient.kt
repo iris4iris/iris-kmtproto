@@ -90,6 +90,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
@@ -155,11 +156,12 @@ class TelegramClient(
     val datacenter: Datacenter get() = currentDc
 
     fun session(): ClientSession? {
-        val keyBytes = updatesLink?.connection?.authKey?.key ?: loadedSession?.authKey ?: return null
+        val conn = updatesLink?.connection ?: rpcLink?.connection
+        val keyBytes = conn?.authKey?.key ?: loadedSession?.authKey ?: return null
         return ClientSession(
             dcId = currentDc.id,
             authKey = keyBytes.copyOf(),
-            salt = updatesLink?.connection?.salt ?: loadedSession?.salt ?: 0L,
+            salt = conn?.salt ?: loadedSession?.salt ?: 0L,
             userId = user?.id ?: loadedSession?.userId ?: 0L,
             accessHash = user?.accessHash ?: loadedSession?.accessHash ?: 0L,
         )
@@ -217,7 +219,14 @@ class TelegramClient(
             updates.attach(t, opened.first, opened.second, opened.third)
             opened
         }
-        rpc.open(currentDc, proxy, key, salt, 0)
+        loadedSession = ClientSession(
+            dcId = currentDc.id,
+            authKey = key.key.copyOf(),
+            salt = salt,
+            userId = session?.userId ?: 0L,
+            accessHash = session?.accessHash ?: 0L,
+        )
+        rpc.open(currentDc, proxy, key, salt, timeOffset)
         startMux()
     }
 
@@ -259,20 +268,73 @@ class TelegramClient(
 
     private suspend fun pingOpen(link: SocketLink) {
         if (!link.isBound) return
-        val r = runCatching { invokeRaw(link, Ping(PlatformCrypto.randomBytes(8).readLongLe())) }.getOrElse {
-            if (it.message == "call connect() first") return
-            if (!isDisconnect(it) && it !is CancellationException) logCaught("${link.name}-ping", it)
+        val ping = Ping(PlatformCrypto.randomBytes(8).readLongLe())
+        val r = runCatching { invokeRaw(link, wrapFor(link, ping)) }
+        val e = r.exceptionOrNull()
+        if (e != null) {
+            if (e.message == "call connect() first") return
+            if (e is CancellationException && e !is TimeoutCancellationException) {
+                if (e.message == "reconnect" || e.message == "closed") return
+                throw e
+            }
+            if (e is TimeoutCancellationException || isDisconnect(e)) {
+                println("kmtproto [${link.name}] ping failed, reconnecting")
+            } else {
+                logCaught("${link.name}-ping", e)
+            }
+            link.forceCloseTransport()
             return
         }
-        val err = r.error ?: return
-        if (err.errorMessage.contains("FLOOD_WAIT")) logCaught("${link.name}-ping", RpcException(err.errorCode, err.errorMessage))
+        val err = r.getOrThrow().error
+        if (err != null) {
+            if (err.errorMessage.contains("FLOOD_WAIT")) {
+                logCaught("${link.name}-ping", RpcException(err.errorCode, err.errorMessage))
+            }
+            return
+        }
+        link.layerReady = true
     }
 
     private suspend fun rebindLink(link: SocketLink) {
         if (link.stop) return
-        val snap = session() ?: return
+        val snap = session()
+        if (snap == null) {
+            println("kmtproto [${link.name}] rebind skipped: no session")
+            return
+        }
         link.rebind(currentDc, proxy, AuthKey(snap.authKey), snap.salt)
         loadedSession = snap.copy(salt = link.connection?.salt ?: snap.salt)
+        if (link === updatesLink) scheduleUpdatesResubscribe()
+    }
+
+    /**
+     * New MTProto session after rebind does not receive API updates until
+     * `initConnection` + `updates.getDifference`. Must run on [apiScope] so
+     * [SocketLink.readerLoop] can start [EncryptedConnection.runReader] first.
+     */
+    private fun scheduleUpdatesResubscribe() {
+        apiScope.launch {
+            var backoff = 500L
+            repeat(8) {
+                if (!supervisor.isActive) return@launch
+                if (updatesLink?.isBound != true) {
+                    delay(backoff)
+                    backoff = (backoff * 2).coerceAtMost(5_000L)
+                    return@repeat
+                }
+                try {
+                    catchUpCommon()
+                    println("kmtproto [updates] resubscribed pts=${updatesState?.pts}")
+                    return@launch
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    if (!isDisconnect(e)) logCaught("updates-resubscribe", e)
+                    delay(backoff)
+                    backoff = (backoff * 2).coerceAtMost(5_000L)
+                }
+            }
+        }
     }
 
     private suspend fun mediaIdleLoop() {
@@ -299,7 +361,7 @@ class TelegramClient(
         open?.shutdown()
         val snap = session() ?: error("call connect() first")
         val link = SocketLink("media")
-        link.open(currentDc, proxy, AuthKey(snap.authKey), snap.salt, 0)
+        link.open(currentDc, proxy, AuthKey(snap.authKey), snap.salt, updatesLink?.timeOffset ?: 0)
         mediaLink = link
         mediaLastUse = PlatformCrypto.currentTimeMillis()
         scope.launch {

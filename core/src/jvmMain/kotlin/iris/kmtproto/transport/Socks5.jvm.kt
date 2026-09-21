@@ -8,25 +8,32 @@ import java.net.Socket
 internal fun openTcp(destHost: String, destPort: Int, proxy: Proxy?): Socket {
     val socket = Socket()
     socket.tcpNoDelay = true
-    when (proxy) {
-        null -> {
-            socket.connect(InetSocketAddress(destHost, destPort), 8_000)
+    try {
+        when (proxy) {
+            null -> {
+                socket.connect(InetSocketAddress(destHost, destPort), 8_000)
+            }
+            is Proxy.Socks5 -> {
+                socket.connect(InetSocketAddress(proxy.host, proxy.port), 8_000)
+                socket.soTimeout = 12_000
+                socks5Handshake(
+                    DataInputStream(socket.getInputStream()),
+                    DataOutputStream(socket.getOutputStream()),
+                    destHost,
+                    destPort,
+                    proxy.username,
+                    proxy.password,
+                )
+            }
         }
-        is Proxy.Socks5 -> {
-            socket.connect(InetSocketAddress(proxy.host, proxy.port), 8_000)
-            socket.soTimeout = 12_000
-            socks5Handshake(
-                DataInputStream(socket.getInputStream()),
-                DataOutputStream(socket.getOutputStream()),
-                destHost,
-                destPort,
-                proxy.username,
-                proxy.password,
-            )
-        }
+        // Infinite read: MTProto ping / readerLoop detect death. A leftover 12s
+        // soTimeout idle-kills the updates socket between messages.
+        socket.soTimeout = 0
+        return socket
+    } catch (e: Throwable) {
+        runCatching { socket.close() }
+        throw e
     }
-    socket.soTimeout = 12_000
-    return socket
 }
 
 internal fun socks5Handshake(

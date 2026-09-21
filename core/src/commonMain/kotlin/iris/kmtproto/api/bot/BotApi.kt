@@ -10,6 +10,7 @@ import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
+import iris.kmtproto.logCaught
 import iris.kmtproto.tl.API_LAYER
 import iris.kmtproto.tl.gen.ContactsResolvedPeer
 import iris.kmtproto.tl.gen.InputSavedStarGift
@@ -135,7 +136,14 @@ class BotApi(val client: TelegramClient) {
             },
         ).also { botApiWriter = it }
         return client.incomingUpdates().mapNotNull {
-            it.toBotApiMap(writer, nextUpdateId())
+            try {
+                it.toBotApiMap(writer, nextUpdateId())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                logCaught("bot-api-map", e)
+                null
+            }
         }
     }
 

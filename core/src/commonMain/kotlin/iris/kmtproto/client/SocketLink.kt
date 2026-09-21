@@ -27,6 +27,8 @@ internal class SocketLink(val name: String) {
     var connection: EncryptedConnection? = null
         private set
     var layerReady = false
+    var timeOffset: Int = 0
+        private set
     @Volatile var stop = false
 
     val isBound: Boolean get() = connection != null
@@ -40,6 +42,7 @@ internal class SocketLink(val name: String) {
         bindMutex.withLock {
             transport.setReadTimeoutMs(0)
             this.transport = transport
+            this.timeOffset = timeOffset
             connection = EncryptedConnection(
                 transport = transport,
                 authKey = key,
@@ -61,6 +64,7 @@ internal class SocketLink(val name: String) {
         bindMutex.withLock {
             val oldConn = connection
             val oldT = transport
+            val offset = timeOffset
             connection = null
             transport = null
             oldConn?.failPending(CancellationException("reconnect"))
@@ -73,7 +77,7 @@ internal class SocketLink(val name: String) {
                 authKey = key,
                 salt = salt,
                 sessionId = PlatformCrypto.randomBytes(8).readLongLe(),
-                msgIds = MsgIdFactory(0),
+                msgIds = MsgIdFactory(offset),
                 writeContext = threads.write,
             )
             layerReady = false
@@ -83,6 +87,11 @@ internal class SocketLink(val name: String) {
     suspend fun sendRpc(obj: TlObject): TlObject {
         val conn = connection ?: error("call connect() first")
         return conn.sendRpc(obj)
+    }
+
+    /** Close the TCP socket so a blocked read unblocks and [readerLoop] rebinds. */
+    suspend fun forceCloseTransport() {
+        runCatching { transport?.close() }.onFailure { logCaught("$name-force-close", it) }
     }
 
     suspend fun readerLoop(
@@ -97,6 +106,10 @@ internal class SocketLink(val name: String) {
                 if (stop || !alive()) break
                 runCatching { reconnect() }.onFailure { logRebind(it) }
                 if (connection == null) delay(backoff)
+                else {
+                    println("kmtproto [$name] reconnected")
+                    backoff = 500L
+                }
                 backoff = (backoff * 2).coerceAtMost(15_000L)
                 continue
             }
@@ -107,12 +120,14 @@ internal class SocketLink(val name: String) {
                 println("kmtproto [$name] disconnected, reconnecting")
                 runCatching { reconnect() }.onFailure { logRebind(it) }
                 if (connection == null) delay(backoff)
+                else println("kmtproto [$name] reconnected")
                 backoff = (backoff * 2).coerceAtMost(15_000L)
             } catch (e: CancellationException) {
                 if (stop || !alive()) break
                 logCaught("$name-cancel", e)
                 runCatching { reconnect() }.onFailure { logRebind(it) }
                 if (connection == null) delay(backoff)
+                else println("kmtproto [$name] reconnected")
                 backoff = (backoff * 2).coerceAtMost(15_000L)
             } catch (e: Throwable) {
                 if (stop || !alive()) break
@@ -120,6 +135,7 @@ internal class SocketLink(val name: String) {
                 else println("kmtproto [$name] disconnected, reconnecting")
                 runCatching { reconnect() }.onFailure { logRebind(it) }
                 if (connection == null) delay(backoff)
+                else println("kmtproto [$name] reconnected")
                 backoff = (backoff * 2).coerceAtMost(15_000L)
             }
         }
