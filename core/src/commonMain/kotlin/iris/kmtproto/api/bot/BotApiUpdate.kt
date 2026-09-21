@@ -2,6 +2,7 @@ package iris.kmtproto.api.bot
 
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.tl.gen.BoolTrue
+import iris.kmtproto.tl.gen.Boost
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelForbidden
 import iris.kmtproto.tl.gen.ChannelParticipant
@@ -116,9 +117,11 @@ import iris.kmtproto.tl.gen.TextWithEntities
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.UpdateBotBusinessConnect
 import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
+import iris.kmtproto.tl.gen.UpdateBotChatBoost
 import iris.kmtproto.tl.gen.UpdateBotChatInviteRequester
 import iris.kmtproto.tl.gen.UpdateBotDeleteBusinessMessage
 import iris.kmtproto.tl.gen.UpdateBotEditBusinessMessage
+import iris.kmtproto.tl.gen.UpdateBotGuestChatQuery
 import iris.kmtproto.tl.gen.UpdateBotInlineQuery
 import iris.kmtproto.tl.gen.UpdateBotInlineSend
 import iris.kmtproto.tl.gen.UpdateBotMessageReaction
@@ -127,14 +130,18 @@ import iris.kmtproto.tl.gen.UpdateBotNewBusinessMessage
 import iris.kmtproto.tl.gen.UpdateBotPrecheckoutQuery
 import iris.kmtproto.tl.gen.UpdateBotPurchasedPaidMedia
 import iris.kmtproto.tl.gen.UpdateBotShippingQuery
+import iris.kmtproto.tl.gen.UpdateBotStarsSubscription
 import iris.kmtproto.tl.gen.UpdateBotStopped
+import iris.kmtproto.tl.gen.UpdateBusinessBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateChannelParticipant
 import iris.kmtproto.tl.gen.UpdateChatParticipant
 import iris.kmtproto.tl.gen.UpdateChatParticipantAdd
+import iris.kmtproto.tl.gen.UpdateChatParticipantAdmin
 import iris.kmtproto.tl.gen.UpdateChatParticipantDelete
 import iris.kmtproto.tl.gen.UpdateEditChannelMessage
 import iris.kmtproto.tl.gen.UpdateEditMessage
 import iris.kmtproto.tl.gen.UpdateInlineBotCallbackQuery
+import iris.kmtproto.tl.gen.UpdateManagedBot
 import iris.kmtproto.tl.gen.UpdateMessageID
 import iris.kmtproto.tl.gen.UpdateMessagePoll
 import iris.kmtproto.tl.gen.UpdateMessagePollVote
@@ -294,6 +301,45 @@ class BotApiWriter(
             }
             is UpdateBotMessageReactions -> map().also { it["message_reaction_count"] = reactionCountUpdated(u) }
             is UpdateBotMessageReaction -> map().also { it["message_reaction"] = reactionUpdated(u) }
+            is UpdateBotChatBoost -> map().also { chatBoostUpdate(it, u) }
+            is UpdateManagedBot -> map().also {
+                it["managed_bot"] = map().apply {
+                    put("user", user(u.userId))
+                    put("bot", user(u.botId, isBot = true))
+                }
+            }
+            is UpdateBotStarsSubscription -> map().also {
+                it["subscription"] = map().apply {
+                    put("user", user(u.userId))
+                    put("invoice_payload", u.payload.utf8().orEmpty())
+                    put(
+                        "state",
+                        when {
+                            u.canceled -> "canceled"
+                            u.paymentFailed -> "failed"
+                            else -> "active"
+                        },
+                    )
+                }
+            }
+            is UpdateBotGuestChatQuery -> {
+                val m = message(u.message) ?: return null
+                m["guest_query_id"] = u.queryId.toString()
+                map().also { it["guest_message"] = m }
+            }
+            is UpdateBusinessBotCallbackQuery -> map().also { it["callback_query"] = businessCallback(u) }
+            is UpdateChatParticipantAdmin -> {
+                val admin = u.isAdmin is BoolTrue
+                map().also {
+                    it[memberKey(u.userId)] = chatMemberUpdated(
+                        chatPeer = PeerChat(u.chatId),
+                        actorId = 0L,
+                        date = 0,
+                        oldMember = memberStatus(user(u.userId), if (admin) "member" else "administrator"),
+                        newMember = memberStatus(user(u.userId), if (admin) "administrator" else "member"),
+                    )
+                }
+            }
             is UpdateMessageID -> null
             else -> null
         }
@@ -1123,6 +1169,57 @@ class BotApiWriter(
         }
         put("old_reaction", u.oldReactions.mapNotNull { reactionType(it) })
         put("new_reaction", u.newReactions.mapNotNull { reactionType(it) })
+    }
+
+    private fun chatBoostUpdate(out: MutableMap<String, Any?>, u: UpdateBotChatBoost) {
+        val b = u.boost
+        if (b.expires == 0) {
+            out["removed_chat_boost"] = map().apply {
+                put("chat", chat(u.peer))
+                put("boost_id", b.id)
+                put("remove_date", b.date)
+                put("source", boostSource(b))
+            }
+        } else {
+            out["chat_boost"] = map().apply {
+                put("chat", chat(u.peer))
+                put("boost", map().apply {
+                    put("boost_id", b.id)
+                    put("add_date", b.date)
+                    put("expiration_date", b.expires)
+                    put("source", boostSource(b))
+                })
+            }
+        }
+    }
+
+    private fun boostSource(b: Boost): MutableMap<String, Any?> = map().apply {
+        when {
+            b.giveaway -> {
+                put("source", "giveaway")
+                if (b.giveawayMsgId != 0) put("giveaway_message_id", b.giveawayMsgId)
+                if (b.stars > 0L) put("prize_star_count", b.stars.toInt())
+                if (b.userId != 0L) put("user", user(b.userId))
+                else if (b.unclaimed) put("is_unclaimed", true)
+            }
+            b.gift -> {
+                put("source", "gift_code")
+                if (b.userId != 0L) put("user", user(b.userId))
+            }
+            else -> {
+                put("source", "premium")
+                if (b.userId != 0L) put("user", user(b.userId))
+            }
+        }
+    }
+
+    private fun businessCallback(u: UpdateBusinessBotCallbackQuery): MutableMap<String, Any?> = map().apply {
+        put("id", u.queryId.toString())
+        put("from", user(u.userId))
+        put("chat_instance", u.chatInstance.toString())
+        put("business_connection_id", u.connectionId)
+        message(u.message, u.replyToMessage)?.let { put("message", it) }
+        opt("data", u.data.utf8())
     }
 
     private fun replyMarkup(raw: ReplyMarkup?): MutableMap<String, Any?>? = when (raw) {

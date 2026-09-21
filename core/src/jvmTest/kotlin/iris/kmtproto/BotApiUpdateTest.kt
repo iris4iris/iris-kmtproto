@@ -2,6 +2,7 @@ package iris.kmtproto
 
 import iris.kmtproto.api.bot.BotApiMapFactory
 import iris.kmtproto.api.bot.toBotApiMap
+import iris.kmtproto.tl.gen.Boost
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelParticipantCtor
 import iris.kmtproto.tl.gen.ChannelParticipantSelf
@@ -15,10 +16,15 @@ import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.ReactionCount
 import iris.kmtproto.tl.gen.ReactionEmoji
 import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
+import iris.kmtproto.tl.gen.UpdateBotChatBoost
+import iris.kmtproto.tl.gen.UpdateBotGuestChatQuery
 import iris.kmtproto.tl.gen.UpdateBotMessageReaction
 import iris.kmtproto.tl.gen.UpdateBotMessageReactions
+import iris.kmtproto.tl.gen.UpdateBotStarsSubscription
+import iris.kmtproto.tl.gen.UpdateBusinessBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateChannel
 import iris.kmtproto.tl.gen.UpdateChannelParticipant
+import iris.kmtproto.tl.gen.UpdateManagedBot
 import iris.kmtproto.tl.gen.UpdateMessageID
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
@@ -338,6 +344,65 @@ class BotApiUpdateTest {
     fun updateMessageIdHasNoBotApiShape() {
         assertNull(UpdateMessageID(id = 10, randomId = 99L).toBotApiMap(maps, 1))
     }
+
+    @Test
+    fun chatBoostAndRemoved() {
+        val added = UpdateBotChatBoost(
+            peer = PeerChannel(9),
+            boost = Boost(id = "b1", date = 10, expires = 20, userId = 7),
+            qts = 1,
+        )
+        val u = added.toBotApiMap(maps, 1)!!
+        val boost = (u["chat_boost"] as Map<*, *>)["boost"] as Map<*, *>
+        assertEquals("b1", boost["boost_id"])
+        assertEquals("premium", (boost["source"] as Map<*, *>)["source"])
+        val gone = UpdateBotChatBoost(
+            peer = PeerChannel(9),
+            boost = Boost(id = "b1", date = 11, expires = 0, userId = 7),
+            qts = 2,
+        ).toBotApiMap(maps, 2)!!
+        assertEquals("b1", (gone["removed_chat_boost"] as Map<*, *>)["boost_id"])
+    }
+
+    @Test
+    fun managedBotAndSubscription() {
+        val mb = UpdateManagedBot(userId = 1, botId = 2, qts = 1).toBotApiMap(maps, 1)!!
+        val body = mb["managed_bot"] as Map<*, *>
+        assertEquals(1L, (body["user"] as Map<*, *>)["id"])
+        assertEquals(true, (body["bot"] as Map<*, *>)["is_bot"])
+        val sub = UpdateBotStarsSubscription(
+            userId = 3,
+            payload = "pay".encodeToByteArray(),
+            qts = 1,
+            canceled = true,
+        ).toBotApiMap(maps, 2)!!
+        val s = sub["subscription"] as Map<*, *>
+        assertEquals("canceled", s["state"])
+        assertEquals("pay", s["invoice_payload"])
+    }
+
+    @Test
+    fun guestMessageAndBusinessCallback() {
+        val guest = UpdateBotGuestChatQuery(
+            queryId = 88L,
+            message = MessageCtor(id = 1, peerId = PeerUser(7), date = 1, message = "hi", fromId = PeerUser(7)),
+            qts = 1,
+        ).toBotApiMap(maps, 1)!!
+        val gm = guest["guest_message"] as Map<*, *>
+        assertEquals("88", gm["guest_query_id"])
+        assertEquals("hi", gm["text"])
+        val cb = UpdateBusinessBotCallbackQuery(
+            queryId = 5L,
+            userId = 7L,
+            connectionId = "c1",
+            message = MessageCtor(id = 2, peerId = PeerUser(7), date = 1, message = "x", fromId = PeerUser(7)),
+            chatInstance = 9L,
+            data = "ok".encodeToByteArray(),
+        ).toBotApiMap(maps, 2)!!
+        val q = cb["callback_query"] as Map<*, *>
+        assertEquals("c1", q["business_connection_id"])
+        assertEquals("ok", q["data"])
+    }
 }
 
 fun main() {
@@ -358,6 +423,9 @@ fun main() {
         botMessageReactionIsMessageReaction()
         updateChannelHasNoBotApiShape()
         updateMessageIdHasNoBotApiShape()
+        chatBoostAndRemoved()
+        managedBotAndSubscription()
+        guestMessageAndBusinessCallback()
     }
     println("BotApiUpdateTest ok")
 }
