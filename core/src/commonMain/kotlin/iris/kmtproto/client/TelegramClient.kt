@@ -33,11 +33,17 @@ import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatForbidden
 import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeer
+import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
+import iris.kmtproto.tl.gen.MessageEmpty
+import iris.kmtproto.tl.gen.MessageService
+import iris.kmtproto.tl.gen.Peer
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.Update
+import iris.kmtproto.tl.gen.UpdateBotEditBusinessMessage
+import iris.kmtproto.tl.gen.UpdateBotNewBusinessMessage
 import iris.kmtproto.tl.gen.UpdateChannelTooLong
 import iris.kmtproto.tl.gen.UpdateChannelWebPage
 import iris.kmtproto.tl.gen.UpdateDeleteChannelMessages
@@ -143,6 +149,7 @@ class TelegramClient(
     private val entitiesLock = Any()
     private val knownUsers = HashMap<Long, UserCtor>()
     private val knownChats = HashMap<Long, Chat>()
+    private val knownMessages = LinkedHashMap<MsgKey, Message>()
 
     var user: User? = null
         internal set
@@ -181,6 +188,11 @@ class TelegramClient(
     fun knownUser(id: Long): UserCtor? = synchronized(entitiesLock) { knownUsers[id] }
 
     fun knownChat(id: Long): Chat? = synchronized(entitiesLock) { knownChats[id] }
+
+    fun knownMessage(peer: Peer, id: Int): Message? {
+        val key = MsgKey(peer.botApiChatId(), id)
+        synchronized(entitiesLock) { return knownMessages[key] }
+    }
 
     fun selfUserId(): Long = user?.id ?: loadedSession?.userId ?: 0L
 
@@ -806,11 +818,35 @@ class TelegramClient(
             is UpdatesCtor -> {
                 rememberUsers(updates.users)
                 rememberChats(updates.chats)
+                updates.updates.forEach { rememberUpdateMessage(it) }
             }
             is UpdatesCombined -> {
                 rememberUsers(updates.users)
                 rememberChats(updates.chats)
+                updates.updates.forEach { rememberUpdateMessage(it) }
             }
+            is UpdateShortMessage -> rememberMessage(
+                MessageCtor(
+                    id = updates.id,
+                    peerId = PeerUser(updates.userId),
+                    date = updates.date,
+                    message = updates.message,
+                    out = updates.out,
+                    fromId = if (updates.out) null else PeerUser(updates.userId),
+                    replyTo = updates.replyTo,
+                ),
+            )
+            is UpdateShortChatMessage -> rememberMessage(
+                MessageCtor(
+                    id = updates.id,
+                    peerId = PeerChat(updates.chatId),
+                    date = updates.date,
+                    message = updates.message,
+                    out = updates.out,
+                    fromId = PeerUser(updates.fromId),
+                    replyTo = updates.replyTo,
+                ),
+            )
             else -> Unit
         }
     }
@@ -841,7 +877,40 @@ class TelegramClient(
         }
     }
 
+    internal fun rememberMessages(list: List<Message>) {
+        for (m in list) rememberMessage(m)
+    }
+
+    internal fun rememberMessage(msg: Message) {
+        if (msg is MessageEmpty) return
+        val peer = msg.peer ?: return
+        val id = msg.id
+        if (id == 0) return
+        val key = MsgKey(peer.botApiChatId(), id)
+        synchronized(entitiesLock) {
+            knownMessages.remove(key)
+            knownMessages[key] = msg
+            if (knownMessages.size > MESSAGE_CACHE_CAP) {
+                knownMessages.remove(knownMessages.keys.first())
+            }
+        }
+    }
+
+    private fun rememberUpdateMessage(u: Update) {
+        val msg = when (u) {
+            is UpdateNewMessage -> u.message
+            is UpdateNewChannelMessage -> u.message
+            is UpdateEditMessage -> u.message
+            is UpdateEditChannelMessage -> u.message
+            is UpdateBotNewBusinessMessage -> u.message
+            is UpdateBotEditBusinessMessage -> u.message
+            else -> return
+        }
+        rememberMessage(msg)
+    }
+
     private fun emitUpdate(update: Update) {
+        rememberUpdateMessage(update)
         incomingUpdates.tryEmit(update)
     }
 
@@ -860,8 +929,18 @@ class TelegramClient(
         synchronized(entitiesLock) {
             knownUsers.clear()
             knownChats.clear()
+            knownMessages.clear()
         }
     }
+}
+
+private const val MESSAGE_CACHE_CAP = 2048
+
+private class MsgKey(val chatId: Long, val id: Int) {
+    override fun equals(other: Any?): Boolean =
+        other is MsgKey && other.chatId == chatId && other.id == id
+
+    override fun hashCode(): Int = chatId.hashCode() * 31 + id
 }
 
 private fun UpdatesState.updated(

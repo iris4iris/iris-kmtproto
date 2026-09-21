@@ -120,6 +120,7 @@ class BotApi(val client: TelegramClient) {
             chatOf = client::knownChat,
             self = client.user as? UserCtor,
             selfIdOf = client::selfUserId,
+            messageOf = client::knownMessage,
         ).also { botApiWriter = it }
         return client.incomingUpdates().mapNotNull {
             it.toBotApiMap(writer, nextUpdateId())

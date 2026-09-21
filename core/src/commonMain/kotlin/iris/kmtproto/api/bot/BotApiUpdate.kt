@@ -211,8 +211,9 @@ fun Update.toBotApiMap(
     chats: (Long) -> Chat? = { null },
     self: UserCtor? = null,
     selfId: Long = 0L,
+    messages: (Peer, Int) -> Message? = { _, _ -> null },
 ): MutableMap<String, Any?>? {
-    val w = BotApiWriter(maps, users, chats, self, selfId)
+    val w = BotApiWriter(maps, users, chats, self, selfId, messageOf = messages)
     return toBotApiMap(w, updateId)
 }
 
@@ -234,6 +235,7 @@ class BotApiWriter(
     val self: UserCtor? = null,
     selfId: Long = 0L,
     private val selfIdOf: () -> Long = { selfId },
+    val messageOf: (Peer, Int) -> Message? = { _, _ -> null },
 ) {
     private fun me(): Long {
         val id = selfIdOf()
@@ -428,16 +430,16 @@ class BotApiWriter(
         return map().also { it[key] = m }
     }
 
-    fun message(raw: Message, replyTo: Message? = null): MutableMap<String, Any?>? = when (raw) {
-        is MessageCtor -> regularMessage(raw, replyTo)
-        is MessageService -> serviceMessage(raw, replyTo)
+    fun message(raw: Message, replyTo: Message? = null, withReply: Boolean = true): MutableMap<String, Any?>? = when (raw) {
+        is MessageCtor -> regularMessage(raw, replyTo, withReply)
+        is MessageService -> serviceMessage(raw, replyTo, withReply)
         else -> null
     }
 
-    private fun regularMessage(m: MessageCtor, replyTo: Message?): MutableMap<String, Any?> {
+    private fun regularMessage(m: MessageCtor, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
-        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo)
+        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
         if (m.fromBoostsApplied != 0) out["sender_boost_count"] = m.fromBoostsApplied
         out.opt("author_signature", m.postAuthor)
         if (m.editDate != 0) out["edit_date"] = m.editDate
@@ -457,10 +459,10 @@ class BotApiWriter(
         return out
     }
 
-    private fun serviceMessage(m: MessageService, replyTo: Message?): MutableMap<String, Any?> {
+    private fun serviceMessage(m: MessageService, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
-        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo)
+        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
         when (val a = m.action) {
             is MessageActionChatAddUser -> out["new_chat_members"] = a.users.map { user(it) }
             is MessageActionChatJoinedByLink, is MessageActionChatJoinedByRequest ->
@@ -800,6 +802,7 @@ class BotApiWriter(
         outgoing: Boolean,
         replyTo: iris.kmtproto.tl.gen.MessageReplyHeader?,
         nestedReply: Message?,
+        withReply: Boolean,
     ) {
         out["date"] = date
         out["chat"] = chat(peer, post)
@@ -808,7 +811,16 @@ class BotApiWriter(
             fromId is PeerChannel || fromId is PeerChat ->
                 out["sender_chat"] = chat(fromId, post = fromId is PeerChannel)
             fromId is PeerUser -> out["from"] = user(fromId.userId)
-            outgoing && self != null -> out["from"] = user(self)
+            outgoing -> {
+                val meUser = self
+                when {
+                    meUser != null -> out["from"] = user(meUser)
+                    else -> {
+                        val id = me()
+                        if (id != 0L) out["from"] = user(id, isBot = true)
+                    }
+                }
+            }
             !outgoing && peer is PeerUser -> out["from"] = user(peer.userId)
         }
         val rh = replyTo as? MessageReplyHeaderCtor
@@ -817,14 +829,15 @@ class BotApiWriter(
                 out["message_thread_id"] = rh.replyToTopId
                 out["is_topic_message"] = true
             }
-            val replyMsg = nestedReply?.let { message(it) }
-            if (replyMsg != null) {
-                out["reply_to_message"] = replyMsg
-            } else if (rh.replyToMsgId != 0) {
-                out["reply_to_message"] = map().apply {
-                    put("message_id", rh.replyToMsgId)
-                    put("date", date)
-                    put("chat", rh.replyToPeerId?.let { chat(it, post) } ?: out["chat"])
+            if (withReply) {
+                val replyMsg = nestedReply?.let { message(it, withReply = false) }
+                    ?: rh.replyToMsgId.takeIf { it != 0 }?.let { id ->
+                        messageOf(rh.replyToPeerId ?: peer, id)?.let { message(it, withReply = false) }
+                    }
+                if (replyMsg != null) {
+                    out["reply_to_message"] = replyMsg
+                } else if (rh.replyToMsgId != 0) {
+                    out["reply_to_message"] = replyStub(rh, peer, post, date)
                 }
             }
             if (rh.quote && !rh.quoteText.isNullOrEmpty()) {
@@ -836,6 +849,29 @@ class BotApiWriter(
                 }
             }
         }
+    }
+
+    private fun replyStub(
+        rh: MessageReplyHeaderCtor,
+        peer: Peer,
+        post: Boolean,
+        fallbackDate: Int,
+    ): MutableMap<String, Any?> {
+        val out = map()
+        out["message_id"] = rh.replyToMsgId
+        val replyPeer = rh.replyToPeerId ?: peer
+        val fwd = rh.replyFrom
+        out["date"] = fwd?.date?.takeIf { it != 0 } ?: fallbackDate
+        out["chat"] = chat(replyPeer, post)
+        when (val from = fwd?.fromId) {
+            is PeerUser -> out["from"] = user(from.userId)
+            is PeerChannel -> out["sender_chat"] = chat(from, post = true)
+            is PeerChat -> out["sender_chat"] = chat(from)
+            else -> Unit
+        }
+        out.opt("author_signature", fwd?.postAuthor)
+        rh.replyMedia?.let { fillMedia(out, it, caption = "", ents = null, invert = false) }
+        return out
     }
 
     private fun fillMedia(

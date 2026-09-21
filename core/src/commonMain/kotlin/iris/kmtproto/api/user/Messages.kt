@@ -96,6 +96,7 @@ class Messages(
     suspend fun send(peer: InputPeer, text: String = "", randomId: Long = 0, noWebpage: Boolean = false, silent: Boolean = false, background: Boolean = false, clearDraft: Boolean = false, noforwards: Boolean = false, updateStickersetsOrder: Boolean = false, invertMedia: Boolean = false, allowPaidFloodskip: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null, entities: List<MessageEntity>? = null, scheduleDate: Int = 0, scheduleRepeatPeriod: Int = 0, sendAs: InputPeer? = null, sendAsId: Long = 0, quickReplyShortcut: InputQuickReplyShortcut? = null, effect: Long = 0, allowPaidStars: Long = 0, suggestedPost: SuggestedPost? = null, richMessage: InputRichMessage? = null): RpcResponse<SentMessage> {
         require(text.isNotEmpty() || richMessage != null) { "empty message" }
         val raw = client.invoke(MessagesSendMessage(peer = peer, message = text, randomId = nextRandomId(randomId), noWebpage = noWebpage, silent = silent, background = background, clearDraft = clearDraft, noforwards = noforwards, updateStickersetsOrder = updateStickersetsOrder, invertMedia = invertMedia, allowPaidFloodskip = allowPaidFloodskip, replyTo = replyTo, replyMarkup = replyMarkup, entities = entities, scheduleDate = scheduleDate, scheduleRepeatPeriod = scheduleRepeatPeriod, sendAs = sendAs ?: sendAsId.takeIf { it != 0L }?.let { client.inputPeerFromId(it) }, quickReplyShortcut = quickReplyShortcut, effect = effect, allowPaidStars = allowPaidStars, suggestedPost = suggestedPost, richMessage = richMessage))
+        raw.result?.let { client.rememberUpdates(it) }
         return raw.map { SentMessage.from(it, text) }
     }
 
@@ -209,6 +210,7 @@ class Messages(
             val pack = raw.result!!.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
             if (pack.messages.isEmpty()) break
             out += pack.messages
             val lastId = pack.messages.last().id
@@ -239,6 +241,7 @@ class Messages(
             val pack = it.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
         }
         return raw.map { it.unpack().messages }
     }
@@ -545,6 +548,7 @@ class Messages(
             val pack = raw.result!!.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
             if (pack.messages.isEmpty()) break
             out += pack.messages
             val lastId = pack.messages.last().id
@@ -615,6 +619,7 @@ class Messages(
             val pack = raw.result!!.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
             if (pack.messages.isEmpty()) break
             out += pack.messages
             val last = pack.messages.last()
@@ -720,6 +725,7 @@ class Messages(
 
     private suspend fun sendMedia(peer: InputPeer, media: InputMedia, caption: String, randomId: Long, silent: Boolean, background: Boolean, clearDraft: Boolean, noforwards: Boolean, updateStickersetsOrder: Boolean, invertMedia: Boolean, allowPaidFloodskip: Boolean, replyTo: InputReplyTo?, replyMarkup: ReplyMarkup?, entities: List<MessageEntity>?, scheduleDate: Int, scheduleRepeatPeriod: Int, sendAs: InputPeer?, sendAsId: Long, quickReplyShortcut: InputQuickReplyShortcut?, effect: Long, allowPaidStars: Long, suggestedPost: SuggestedPost?): RpcResponse<SentMessage> {
         val raw = client.invoke(MessagesSendMedia(peer = peer, media = media, message = caption, randomId = nextRandomId(randomId), silent = silent, background = background, clearDraft = clearDraft, noforwards = noforwards, updateStickersetsOrder = updateStickersetsOrder, invertMedia = invertMedia, allowPaidFloodskip = allowPaidFloodskip, replyTo = replyTo, replyMarkup = replyMarkup, entities = entities, scheduleDate = scheduleDate, scheduleRepeatPeriod = scheduleRepeatPeriod, sendAs = sendAs ?: sendAsId.takeIf { it != 0L }?.let { client.inputPeerFromId(it) }, quickReplyShortcut = quickReplyShortcut, effect = effect, allowPaidStars = allowPaidStars, suggestedPost = suggestedPost))
+        raw.result?.let { client.rememberUpdates(it) }
         return raw.map { SentMessage.from(it, caption) }
     }
 

@@ -10,6 +10,8 @@ import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatPhotoEmpty
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntityBold
+import iris.kmtproto.tl.gen.MessageFwdHeader
+import iris.kmtproto.tl.gen.MessageReplyHeaderCtor
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
@@ -523,6 +525,107 @@ class BotApiUpdateTest {
         assertEquals(50L, inv["total_amount"])
         assertEquals("pay", inv["start_parameter"])
     }
+
+    @Test
+    fun replyToMessageUsesReplyFromForFrom() {
+        val users = mapOf(
+            661079614L to UserCtor(id = 661079614L, firstName = "Ivan", username = "airi_gf"),
+        )
+        val raw = UpdateNewMessage(
+            message = MessageCtor(
+                id = 114,
+                peerId = PeerUser(661079614),
+                date = 2_000,
+                message = "пинг",
+                replyTo = MessageReplyHeaderCtor(
+                    replyToMsgId = 113,
+                    replyFrom = MessageFwdHeader(date = 1_000, fromId = PeerUser(661079614)),
+                ),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        )
+        val u = raw.toBotApiMap(maps, 1, users = { users[it] })!!
+        val reply = (u["message"] as Map<*, *>)["reply_to_message"] as Map<*, *>
+        assertEquals(113, reply["message_id"])
+        assertEquals(1_000, reply["date"])
+        val from = reply["from"] as Map<*, *>
+        assertEquals(661079614L, from["id"])
+        assertEquals("Ivan", from["first_name"])
+        assertEquals("airi_gf", from["username"])
+    }
+
+    @Test
+    fun replyToMessageUsesCachedOriginal() {
+        val original = MessageCtor(
+            id = 113,
+            peerId = PeerUser(661079614),
+            date = 1_000,
+            message = "привет",
+            fromId = PeerUser(661079614),
+            replyTo = MessageReplyHeaderCtor(replyToMsgId = 100),
+        )
+        val users = mapOf(
+            661079614L to UserCtor(id = 661079614L, firstName = "Ivan", username = "airi_gf"),
+        )
+        val raw = UpdateNewMessage(
+            message = MessageCtor(
+                id = 114,
+                peerId = PeerUser(661079614),
+                date = 2_000,
+                message = "пинг",
+                replyTo = MessageReplyHeaderCtor(replyToMsgId = 113),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        )
+        val u = raw.toBotApiMap(
+            maps,
+            1,
+            users = { users[it] },
+            messages = { _, id -> original.takeIf { id == 113 } },
+        )!!
+        val reply = (u["message"] as Map<*, *>)["reply_to_message"] as Map<*, *>
+        assertEquals(113, reply["message_id"])
+        assertEquals("привет", reply["text"])
+        val from = reply["from"] as Map<*, *>
+        assertEquals(661079614L, from["id"])
+        assertEquals("Ivan", from["first_name"])
+        assertTrue("reply_to_message" !in reply)
+    }
+
+    @Test
+    fun replyToMessageNestedWithoutFromIdInfersPeer() {
+        val original = MessageCtor(
+            id = 113,
+            peerId = PeerUser(661079614),
+            date = 1_000,
+            message = "hello",
+        )
+        val users = mapOf(
+            661079614L to UserCtor(id = 661079614L, firstName = "Ivan"),
+        )
+        val raw = UpdateNewMessage(
+            message = MessageCtor(
+                id = 114,
+                peerId = PeerUser(661079614),
+                date = 2_000,
+                message = "пинг",
+                replyTo = MessageReplyHeaderCtor(replyToMsgId = 113),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        )
+        val u = raw.toBotApiMap(
+            maps,
+            1,
+            users = { users[it] },
+            messages = { _, id -> original.takeIf { id == 113 } },
+        )!!
+        val from = ((u["message"] as Map<*, *>)["reply_to_message"] as Map<*, *>)["from"] as Map<*, *>
+        assertEquals(661079614L, from["id"])
+        assertEquals("Ivan", from["first_name"])
+    }
 }
 
 fun main() {
@@ -549,6 +652,9 @@ fun main() {
         customEventAndQuery()
         servicePaymentAndWebApp()
         forumTopicAndWriteAccessAndInvoice()
+        replyToMessageUsesReplyFromForFrom()
+        replyToMessageUsesCachedOriginal()
+        replyToMessageNestedWithoutFromIdInfersPeer()
     }
     println("BotApiUpdateTest ok")
 }
