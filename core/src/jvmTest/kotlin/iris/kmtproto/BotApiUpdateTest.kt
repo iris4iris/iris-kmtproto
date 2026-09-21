@@ -2,14 +2,19 @@ package iris.kmtproto
 
 import iris.kmtproto.api.bot.BotApiMapFactory
 import iris.kmtproto.api.bot.toBotApiMap
+import iris.kmtproto.tl.gen.Channel
+import iris.kmtproto.tl.gen.ChatCtor
+import iris.kmtproto.tl.gen.ChatPhotoEmpty
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntityBold
 import iris.kmtproto.tl.gen.PeerChannel
+import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
+import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.tl.gen.UserStatusOffline
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -122,6 +127,93 @@ class BotApiUpdateTest {
         val raw = UpdateUserStatus(userId = 1, status = UserStatusOffline(wasOnline = 0))
         assertNull(raw.toBotApiMap(maps, 1))
     }
+
+    @Test
+    fun privateMessageWithoutFromIdUsesPeerAndCachedUser() {
+        val raw = UpdateNewMessage(
+            message = MessageCtor(
+                id = 114,
+                peerId = PeerUser(661079614),
+                date = 1_789_997_041,
+                message = "пинг",
+            ),
+            pts = 1,
+            ptsCount = 1,
+        )
+        val users = mapOf(
+            661079614L to UserCtor(
+                id = 661079614L,
+                firstName = "Ivan",
+                lastName = "I",
+                username = "airi_gf",
+                langCode = "ru",
+            ),
+        )
+        val u = raw.toBotApiMap(maps, 1, users = { users[it] })!!
+        val msg = u["message"] as Map<*, *>
+        val from = msg["from"] as Map<*, *>
+        assertEquals(661079614L, from["id"])
+        assertEquals(false, from["is_bot"])
+        assertEquals("Ivan", from["first_name"])
+        assertEquals("I", from["last_name"])
+        assertEquals("airi_gf", from["username"])
+        assertEquals("ru", from["language_code"])
+        val chat = msg["chat"] as Map<*, *>
+        assertEquals("private", chat["type"])
+        assertEquals("Ivan", chat["first_name"])
+        assertEquals("airi_gf", chat["username"])
+    }
+
+    @Test
+    fun groupChatGetsTitleFromCache() {
+        val raw = UpdateNewMessage(
+            message = MessageCtor(
+                id = 1,
+                peerId = PeerChat(50),
+                date = 1,
+                message = "hi",
+                fromId = PeerUser(7),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        )
+        val chats = mapOf(
+            50L to ChatCtor(
+                id = 50,
+                title = "Room",
+                photo = ChatPhotoEmpty,
+                participantsCount = 2,
+                date = 1,
+                version = 1,
+            ),
+        )
+        val u = raw.toBotApiMap(maps, 1, chats = { chats[it] })!!
+        val chat = (u["message"] as Map<*, *>)["chat"] as Map<*, *>
+        assertEquals(-50L, chat["id"])
+        assertEquals("group", chat["type"])
+        assertEquals("Room", chat["title"])
+    }
+
+    @Test
+    fun channelChatGetsTitleAndUsername() {
+        val raw = UpdateNewChannelMessage(
+            message = MessageCtor(
+                id = 3,
+                peerId = PeerChannel(99),
+                date = 2,
+                message = "post",
+                post = true,
+            ),
+            pts = 1,
+            ptsCount = 1,
+        )
+        val chats = mapOf(99L to Channel(id = 99, title = "News", photo = ChatPhotoEmpty, date = 1, broadcast = true, username = "news"))
+        val u = raw.toBotApiMap(maps, 1, chats = { chats[it] })!!
+        val chat = (u["channel_post"] as Map<*, *>)["chat"] as Map<*, *>
+        assertEquals("channel", chat["type"])
+        assertEquals("News", chat["title"])
+        assertEquals("news", chat["username"])
+    }
 }
 
 fun main() {
@@ -131,6 +223,9 @@ fun main() {
         factoryBuildsEveryNestedMap()
         callbackQuery()
         unmappedUpdateDropped()
+        privateMessageWithoutFromIdUsesPeerAndCachedUser()
+        groupChatGetsTitleFromCache()
+        channelChatGetsTitleAndUsername()
     }
     println("BotApiUpdateTest ok")
 }

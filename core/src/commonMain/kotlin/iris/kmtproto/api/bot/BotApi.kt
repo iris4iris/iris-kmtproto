@@ -30,6 +30,7 @@ import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.User
+import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
 import kotlinx.coroutines.Deferred
@@ -106,7 +107,15 @@ class BotApi(val client: TelegramClient) {
 
     /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
     fun incomingBotUpdates(maps: BotApiMapFactory = mapFactory): Flow<Map<String, Any?>> =
-        client.incomingUpdates().mapNotNull { it.toBotApiMap(maps, nextUpdateId()) }
+        client.incomingUpdates().mapNotNull {
+            it.toBotApiMap(
+                maps,
+                nextUpdateId(),
+                users = client::knownUser,
+                chats = client::knownChat,
+                self = client.user as? UserCtor,
+            )
+        }
 
     fun getStarGiftsAsync(hash: Int = 0): Deferred<RpcResponse<PaymentsStarGifts>> = user.payments.getStarGiftsAsync(hash)
 

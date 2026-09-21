@@ -28,6 +28,9 @@ import iris.kmtproto.tl.gen.AuthImportAuthorization
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelForbidden
 import iris.kmtproto.tl.gen.ChannelMessagesFilterEmpty
+import iris.kmtproto.tl.gen.Chat
+import iris.kmtproto.tl.gen.ChatCtor
+import iris.kmtproto.tl.gen.ChatForbidden
 import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.MessageCtor
@@ -76,6 +79,7 @@ import iris.kmtproto.tl.gen.UploadGetWebFile
 import iris.kmtproto.tl.gen.UploadSaveBigFilePart
 import iris.kmtproto.tl.gen.UploadSaveFilePart
 import iris.kmtproto.tl.gen.User
+import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
 import iris.kmtproto.transport.connectObfuscated
@@ -135,6 +139,9 @@ class TelegramClient(
     private var mediaLastUse = 0L
     private val fileDcMutex = Mutex()
     private val fileDcs = mutableMapOf<Int, SocketLink>()
+    private val entitiesLock = Any()
+    private val knownUsers = HashMap<Long, UserCtor>()
+    private val knownChats = HashMap<Long, Chat>()
 
     var user: User? = null
         internal set
@@ -169,6 +176,10 @@ class TelegramClient(
         flow.startPolling(scope, collector)
 
     fun accessHash(id: Long): Long = storage.getAccessHash(id)
+
+    fun knownUser(id: Long): UserCtor? = synchronized(entitiesLock) { knownUsers[id] }
+
+    fun knownChat(id: Long): Chat? = synchronized(entitiesLock) { knownChats[id] }
 
     /** Bot-API chat id → [InputPeer], access_hash from [storage]. */
     fun inputPeerFromId(peerId: Long): InputPeer = inputPeerFromBotApiId(peerId, hashFor(peerId))
@@ -547,7 +558,7 @@ class TelegramClient(
                             date = raw.date,
                             message = raw.message,
                             out = raw.out,
-                            fromId = PeerUser(raw.userId),
+                            fromId = if (raw.out) null else PeerUser(raw.userId),
                         ),
                         pts = raw.pts,
                         ptsCount = raw.ptsCount,
@@ -764,15 +775,19 @@ class TelegramClient(
         }
     }
 
-    internal fun rememberChats(list: List<iris.kmtproto.tl.gen.Chat>) {
+    internal fun rememberChats(list: List<Chat>) {
         for (obj in list) {
             when (obj) {
                 is Channel -> {
                     val hash = obj.accessHash
-                    if (hash == 0L) continue
-                    storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), hash)
+                    if (hash != 0L) storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), hash)
+                    putChat(obj)
                 }
-                is ChannelForbidden -> storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), obj.accessHash)
+                is ChannelForbidden -> {
+                    storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), obj.accessHash)
+                    putChat(obj)
+                }
+                is ChatCtor, is ChatForbidden -> putChat(obj)
                 else -> Unit
             }
         }
@@ -799,6 +814,27 @@ class TelegramClient(
     internal fun rememberUser(user: User) {
         val hash = user.accessHash
         if (hash != 0L) storage.putAccessHash(user.id, hash)
+        val ctor = user as? UserCtor ?: return
+        synchronized(entitiesLock) {
+            val old = knownUsers[ctor.id]
+            if (ctor.min && old != null && !old.min) return
+            knownUsers[ctor.id] = ctor
+        }
+    }
+
+    private fun putChat(chat: Chat) {
+        val (id, min) = when (chat) {
+            is Channel -> chat.id to chat.min
+            is ChannelForbidden -> chat.id to false
+            is ChatCtor -> chat.id to false
+            is ChatForbidden -> chat.id to false
+            else -> return
+        }
+        synchronized(entitiesLock) {
+            val old = knownChats[id]
+            if (min && old is Channel && !old.min) return
+            knownChats[id] = chat
+        }
     }
 
     private fun emitUpdate(update: Update) {
@@ -817,6 +853,10 @@ class TelegramClient(
         mediaLink = null
         updatesState = null
         channels.clear()
+        synchronized(entitiesLock) {
+            knownUsers.clear()
+            knownChats.clear()
+        }
     }
 }
 

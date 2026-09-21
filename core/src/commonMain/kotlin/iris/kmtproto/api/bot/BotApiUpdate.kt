@@ -2,6 +2,11 @@ package iris.kmtproto.api.bot
 
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.tl.gen.BoolTrue
+import iris.kmtproto.tl.gen.Channel
+import iris.kmtproto.tl.gen.ChannelForbidden
+import iris.kmtproto.tl.gen.Chat
+import iris.kmtproto.tl.gen.ChatCtor
+import iris.kmtproto.tl.gen.ChatForbidden
 import iris.kmtproto.tl.gen.DocumentAttributeAnimated
 import iris.kmtproto.tl.gen.DocumentAttributeAudio
 import iris.kmtproto.tl.gen.DocumentAttributeCustomEmoji
@@ -111,6 +116,7 @@ import iris.kmtproto.tl.gen.UpdateMessagePollVote
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UserCtor
+import iris.kmtproto.tl.gen.Username
 
 /**
  * One [core.telegram.org/bots/api#update] object as a map, or null if this MTProto
@@ -119,8 +125,11 @@ import iris.kmtproto.tl.gen.UserCtor
 fun Update.toBotApiMap(
     maps: BotApiMapFactory,
     updateId: Int,
+    users: (Long) -> UserCtor? = { null },
+    chats: (Long) -> Chat? = { null },
+    self: UserCtor? = null,
 ): MutableMap<String, Any?>? {
-    val w = BotApiWriter(maps)
+    val w = BotApiWriter(maps, users, chats, self)
     val body = w.updateBody(this) ?: return null
     val out = maps.create()
     out["update_id"] = updateId
@@ -128,7 +137,12 @@ fun Update.toBotApiMap(
     return out
 }
 
-internal class BotApiWriter(val maps: BotApiMapFactory) {
+internal class BotApiWriter(
+    val maps: BotApiMapFactory,
+    val userOf: (Long) -> UserCtor? = { null },
+    val chatOf: (Long) -> Chat? = { null },
+    val self: UserCtor? = null,
+) {
     fun map(): MutableMap<String, Any?> = maps.create()
 
     fun MutableMap<String, Any?>.opt(key: String, value: Any?) {
@@ -231,7 +245,7 @@ internal class BotApiWriter(val maps: BotApiMapFactory) {
     private fun regularMessage(m: MessageCtor, replyTo: Message?): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
-        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.replyTo, replyTo)
+        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo)
         if (m.fromBoostsApplied != 0) out["sender_boost_count"] = m.fromBoostsApplied
         out.opt("author_signature", m.postAuthor)
         if (m.editDate != 0) out["edit_date"] = m.editDate
@@ -254,7 +268,7 @@ internal class BotApiWriter(val maps: BotApiMapFactory) {
     private fun serviceMessage(m: MessageService, replyTo: Message?): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
-        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.replyTo, replyTo)
+        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo)
         when (val a = m.action) {
             is MessageActionChatAddUser -> out["new_chat_members"] = a.users.map { user(it) }
             is MessageActionChatJoinedByLink, is MessageActionChatJoinedByRequest ->
@@ -290,18 +304,19 @@ internal class BotApiWriter(val maps: BotApiMapFactory) {
         fromId: Peer?,
         date: Int,
         post: Boolean,
+        outgoing: Boolean,
         replyTo: iris.kmtproto.tl.gen.MessageReplyHeader?,
         nestedReply: Message?,
     ) {
         out["date"] = date
         out["chat"] = chat(peer, post)
         when {
-            post -> {
-                out["sender_chat"] = out["chat"]
-                out.opt("author_signature", null)
-            }
-            fromId is PeerChannel || fromId is PeerChat -> out["sender_chat"] = chat(fromId, post = fromId is PeerChannel)
+            post -> out["sender_chat"] = out["chat"]
+            fromId is PeerChannel || fromId is PeerChat ->
+                out["sender_chat"] = chat(fromId, post = fromId is PeerChannel)
             fromId is PeerUser -> out["from"] = user(fromId.userId)
+            outgoing && self != null -> out["from"] = user(self)
+            !outgoing && peer is PeerUser -> out["from"] = user(peer.userId)
         }
         val rh = replyTo as? MessageReplyHeaderCtor
         if (rh != null) {
@@ -506,29 +521,63 @@ internal class BotApiWriter(val maps: BotApiMapFactory) {
 
     fun chat(peer: Peer, post: Boolean = false): MutableMap<String, Any?> = map().apply {
         put("id", peer.botApiChatId())
-        put(
-            "type",
-            when (peer) {
-                is PeerUser -> "private"
-                is PeerChat -> "group"
-                is PeerChannel -> if (post) "channel" else "supergroup"
-                else -> "private"
-            },
-        )
+        when (peer) {
+            is PeerUser -> {
+                put("type", "private")
+                val u = userOf(peer.userId)
+                if (u != null) {
+                    put("first_name", u.firstName.orEmpty())
+                    opt("last_name", u.lastName)
+                    opt("username", usernameOf(u.username, u.usernames))
+                }
+            }
+            is PeerChat -> {
+                put("type", "group")
+                when (val c = chatOf(peer.chatId)) {
+                    is ChatCtor -> put("title", c.title)
+                    is ChatForbidden -> put("title", c.title)
+                    else -> Unit
+                }
+            }
+            is PeerChannel -> {
+                val c = chatOf(peer.channelId)
+                val channel = c as? Channel
+                val forbidden = c as? ChannelForbidden
+                put(
+                    "type",
+                    when {
+                        post || channel?.broadcast == true || forbidden?.broadcast == true -> "channel"
+                        else -> "supergroup"
+                    },
+                )
+                when {
+                    channel != null -> {
+                        put("title", channel.title)
+                        opt("username", usernameOf(channel.username, channel.usernames))
+                        if (channel.forum) put("is_forum", true)
+                    }
+                    forbidden != null -> put("title", forbidden.title)
+                }
+            }
+            else -> put("type", "private")
+        }
     }
 
-    fun user(id: Long, isBot: Boolean = false, firstName: String = ""): MutableMap<String, Any?> = map().apply {
-        put("id", id)
-        put("is_bot", isBot)
-        put("first_name", firstName)
+    fun user(id: Long, isBot: Boolean = false, firstName: String = ""): MutableMap<String, Any?> {
+        userOf(id)?.let { return user(it) }
+        return map().apply {
+            put("id", id)
+            put("is_bot", isBot)
+            put("first_name", firstName)
+        }
     }
 
     fun user(u: UserCtor): MutableMap<String, Any?> = map().apply {
         put("id", u.id)
         put("is_bot", u.bot)
-        put("first_name", u.firstName)
+        put("first_name", u.firstName.orEmpty())
         opt("last_name", u.lastName)
-        opt("username", u.username)
+        opt("username", usernameOf(u.username, u.usernames))
         opt("language_code", u.langCode)
         if (u.premium) put("is_premium", true)
         if (u.bot && u.botAttachMenu) put("added_to_attachment_menu", true)
@@ -536,6 +585,11 @@ internal class BotApiWriter(val maps: BotApiMapFactory) {
         if (u.fake) put("is_fake", true)
         if (u.scam) put("is_scam", true)
         if (u.verified) put("is_verified", true)
+    }
+
+    private fun usernameOf(primary: String?, extras: List<Username>?): String? {
+        if (!primary.isNullOrEmpty()) return primary
+        return extras?.firstOrNull { it.active }?.username ?: extras?.firstOrNull()?.username
     }
 
     private fun entities(list: List<MessageEntity>?): List<Map<String, Any?>> {
