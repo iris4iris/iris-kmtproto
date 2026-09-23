@@ -1,13 +1,12 @@
 package iris.kmtproto
 
-import iris.kmtproto.LongIntPair
 import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.storage.MemoryStorage
 import iris.kmtproto.client.storage.MultilayerStorage
 import iris.kmtproto.client.storage.Storage
 import iris.kmtproto.client.storage.TelegramSource
-import iris.kmtproto.example.SimpleFileStorage
+import iris.kmtproto.client.storage.SimpleFileStorage
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.Chat
 import iris.kmtproto.tl.gen.ChatCtor

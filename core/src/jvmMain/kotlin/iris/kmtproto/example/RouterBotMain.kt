@@ -6,6 +6,7 @@ import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.id
 import iris.kmtproto.client.storage.MemoryStorage
 import iris.kmtproto.client.storage.MultilayerStorage
+import iris.kmtproto.client.storage.SimpleFileStorage
 import iris.kmtproto.client.storage.TelegramSource
 import iris.kmtproto.tl.gen.UserCtor
 import kotlinx.coroutines.runBlocking

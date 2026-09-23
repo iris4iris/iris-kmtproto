@@ -1,8 +1,6 @@
-package iris.kmtproto.example
+package iris.kmtproto.client.storage
 
 import iris.kmtproto.LongIntPair
-import iris.kmtproto.client.storage.MemoryStorage
-import iris.kmtproto.client.storage.Storage
 import iris.kmtproto.tl.gen.Chat
 import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.UserCtor

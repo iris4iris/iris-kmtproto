@@ -70,7 +70,8 @@ class MultilayerStorage(
     private inline fun <T> find(read: (Storage) -> T?, write: (Storage, T) -> Unit): T? {
         for (i in storages.indices) {
             val found = read(storages[i]) ?: continue
-            for (j in i downTo 0) write(storages[j], found)
+            if (i > 0)
+                for (j in i-1 downTo 0) write(storages[j], found)
             return found
         }
         return null
