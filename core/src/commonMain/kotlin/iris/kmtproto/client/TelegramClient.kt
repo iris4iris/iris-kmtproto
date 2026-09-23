@@ -124,7 +124,7 @@ class TelegramClient(
     val dc: Datacenter = Datacenter.DC2,
     val info: ClientInfo = ClientInfo(),
     val layer: Int = API_LAYER,
-    val storage: Storage = MemoryStorage(),
+    var storage: Storage = MemoryStorage(),
     val proxy: Proxy? = null,
 ) {
     private var currentDc: Datacenter = dc
