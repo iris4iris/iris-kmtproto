@@ -13,6 +13,16 @@ import iris.kmtproto.tl.gen.UserCtor
 class MultilayerStorage(
     private val storages: Array<out Storage>,
 ) : Storage {
+    constructor(storage: Storage): this(arrayOf(storage))
+    constructor(storage1: Storage, storage2: Storage): this(arrayOf(storage1, storage2))
+    constructor(storage1: Storage, storage2: Storage, storage3: Storage): this(arrayOf(storage1, storage2, storage3))
+    constructor(storage1: Storage, storage2: Storage, storage3: Storage, vararg otherStorages: Storage):
+            this(arrayOfNulls<Storage>(3+otherStorages.size).also {
+                it[0] = storage1
+                it[1] = storage2
+                it[3] = storage3
+                otherStorages.copyInto(it, 3)
+            } as Array<Storage>)
 
     override fun getAccessHash(id: Long): Long = find(
         { it.getAccessHash(id).takeIf { hash -> hash != 0L } },
@@ -20,7 +30,7 @@ class MultilayerStorage(
     ) ?: 0L
 
     override fun putAccessHash(id: Long, hash: Long) {
-        for (i in storages.indices) storages[i].putAccessHash(id, hash)
+        for (storage in storages) storage.putAccessHash(id, hash)
     }
 
     override fun getUser(id: Long): UserCtor? = find(
@@ -34,11 +44,11 @@ class MultilayerStorage(
     )
 
     override fun rememberUser(user: UserCtor) {
-        for (i in storages.indices) storages[i].rememberUser(user)
+        for (storage in storages) storage.rememberUser(user)
     }
 
     override fun rememberChat(chat: Chat) {
-        for (i in storages.indices) storages[i].rememberChat(chat)
+        for (storage in storages) storage.rememberChat(chat)
     }
 
     override fun getMessage(key: LongIntPair): Message? = find(
@@ -47,11 +57,11 @@ class MultilayerStorage(
     )
 
     override fun rememberMessage(message: Message) {
-        for (i in storages.indices) storages[i].rememberMessage(message)
+        for (storage in storages) storage.rememberMessage(message)
     }
 
     override fun clearEntities() {
-        for (i in storages.indices) storages[i].clearEntities()
+        for (storage in storages) storage.clearEntities()
     }
 
     override fun getChannelPts(channelId: Long): Int = find(
@@ -60,11 +70,11 @@ class MultilayerStorage(
     ) ?: 0
 
     override fun putChannelPts(channelId: Long, pts: Int) {
-        for (i in storages.indices) storages[i].putChannelPts(channelId, pts)
+        for (storage in storages) storage.putChannelPts(channelId, pts)
     }
 
     override fun removeChannelPts(channelId: Long) {
-        for (i in storages.indices) storages[i].removeChannelPts(channelId)
+        for (storage in storages) storage.removeChannelPts(channelId)
     }
 
     private inline fun <T> find(read: (Storage) -> T?, write: (Storage, T) -> Unit): T? {
