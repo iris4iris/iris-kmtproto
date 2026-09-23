@@ -6,9 +6,9 @@ import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.UserCtor
 
 /**
- * Walks [storages] from front to back. A hit is copied into every earlier layer
- * (`i` down to `0`), so the next read can stop at memory. Writes go to every layer.
- * Put the fast cache first and [TelegramSource] last.
+ * Walks [storages] from front to back. A hit is copied into the faster layers
+ * in front of it (`i - 1` down to `0`), not back into the layer that already had it.
+ * Writes go to every layer. Put the fast cache first and [TelegramSource] last.
  */
 class MultilayerStorage(
     private val storages: Array<out Storage>,
