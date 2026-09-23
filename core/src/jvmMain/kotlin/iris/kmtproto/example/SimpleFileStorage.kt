@@ -1,8 +1,10 @@
 package iris.kmtproto.example
 
+import iris.kmtproto.LongIntPair
 import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.Storage
 import iris.kmtproto.tl.gen.Chat
+import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.UserCtor
 import java.io.File
 
@@ -41,6 +43,10 @@ class SimpleFileStorage(private val file: File) : Storage {
 	override fun rememberUser(user: UserCtor) = entities.rememberUser(user)
 
 	override fun rememberChat(chat: Chat) = entities.rememberChat(chat)
+
+	override fun getMessage(key: LongIntPair): Message? = entities.getMessage(key)
+
+	override fun rememberMessage(message: Message) = entities.rememberMessage(message)
 
 	override fun clearEntities() = entities.clearEntities()
 

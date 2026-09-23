@@ -209,6 +209,7 @@ class Messages(
             val pack = raw.result!!.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
             if (pack.messages.isEmpty()) break
             out += pack.messages
             val lastId = pack.messages.last().id
@@ -239,6 +240,7 @@ class Messages(
             val pack = it.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
         }
         return raw.map { it.unpack().messages }
     }
@@ -378,6 +380,7 @@ class Messages(
         raw.result?.let {
             client.rememberUsers(it.users())
             client.rememberChats(it.chats())
+            client.rememberMessages(it.messages())
         }
         return raw.map { it.dialogs() }
     }
@@ -545,6 +548,7 @@ class Messages(
             val pack = raw.result!!.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
             if (pack.messages.isEmpty()) break
             out += pack.messages
             val lastId = pack.messages.last().id
@@ -615,6 +619,7 @@ class Messages(
             val pack = raw.result!!.unpack()
             client.rememberUsers(pack.users)
             client.rememberChats(pack.chats)
+            client.rememberMessages(pack.messages)
             if (pack.messages.isEmpty()) break
             out += pack.messages
             val last = pack.messages.last()
@@ -780,6 +785,12 @@ private fun MessagesDialogs.dialogs(): List<Dialog> = when (this) {
 private fun MessagesDialogs.users(): List<User> = when (this) {
     is MessagesDialogsCtor -> users
     is MessagesDialogsSlice -> users
+    is MessagesDialogsNotModified -> emptyList()
+}
+
+private fun MessagesDialogs.messages(): List<Message> = when (this) {
+    is MessagesDialogsCtor -> messages
+    is MessagesDialogsSlice -> messages
     is MessagesDialogsNotModified -> emptyList()
 }
 

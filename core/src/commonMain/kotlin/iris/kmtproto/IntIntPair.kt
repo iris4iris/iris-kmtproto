@@ -10,3 +10,6 @@ class LongIntIntTriple(val first: Long, val second: Int, val third: Int) {
     operator fun component2(): Int = second
     operator fun component3(): Int = third
 }
+
+/** Map key: bot-api chat id + message id. */
+data class LongIntPair(val first: Long, val second: Int)

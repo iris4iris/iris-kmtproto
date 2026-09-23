@@ -45,6 +45,13 @@ val Message.id: Int
         is MessageService -> id
     }
 
+val Message.peer: Peer?
+    get() = when (this) {
+        is MessageEmpty -> peerId
+        is MessageCtor -> peerId
+        is MessageService -> peerId
+    }
+
 fun InputPeer.asInputChannel(): InputChannel? = when (this) {
     is InputPeerChannel -> InputChannelCtor(channelId, accessHash)
     else -> null

@@ -1,5 +1,7 @@
 package iris.kmtproto.api.bot
 
+import iris.kmtproto.client.MemoryStorage
+import iris.kmtproto.client.Storage
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.tl.gen.BoolTrue
 import iris.kmtproto.tl.gen.Boost
@@ -214,8 +216,36 @@ fun Update.toBotApiMap(
     selfId: Long = 0L,
     messages: (Peer, Int) -> Message? = { _, _ -> null },
 ): MutableMap<String, Any?>? {
-    val w = BotApiWriter(maps, users, chats, self, selfId, messageOf = { p, i -> messages(p, i) })
+    val base = MemoryStorage()
+    if (self != null) base.rememberUser(self)
+    val storage = LookupStorage(base, users, chats, messages)
+    val id = if (selfId != 0L) selfId else self?.id ?: 0L
+    val w = BotApiWriter(selfId = id, storage = storage, maps = maps)
     return runBlocking { toBotApiMap(w, updateId) }
+}
+
+/** Test/helper storage: callbacks first, then [base]. */
+private class LookupStorage(
+    private val base: MemoryStorage,
+    private val users: (Long) -> UserCtor?,
+    private val chats: (Long) -> Chat?,
+    private val messages: (Peer, Int) -> Message?,
+) : Storage by base {
+    override fun getUser(id: Long): UserCtor? = users(id) ?: base.getUser(id)
+
+    override fun getChat(id: Long): Chat? = chats(id) ?: base.getChat(id)
+
+    override fun getMessage(peerId: Long, messageId: Int): Message? =
+        getMessage(iris.kmtproto.LongIntPair(peerId, messageId))
+
+    override fun getMessage(key: iris.kmtproto.LongIntPair): Message? {
+        val peer = when {
+            key.first > 0L -> PeerUser(key.first)
+            key.first <= -1_000_000_000_000L -> PeerChannel(-key.first - 1_000_000_000_000L)
+            else -> PeerChat(-key.first)
+        }
+        return messages(peer, key.second) ?: base.getMessage(key)
+    }
 }
 
 suspend fun Update.toBotApiMap(
@@ -230,18 +260,12 @@ suspend fun Update.toBotApiMap(
 }
 
 class BotApiWriter(
+    val selfId: Long,
+    val storage: Storage,
     val maps: BotApiMapFactory,
-    val userOf: (Long) -> UserCtor? = { null },
-    val chatOf: (Long) -> Chat? = { null },
-    val self: UserCtor? = null,
-    selfId: Long = 0L,
-    private val selfIdOf: () -> Long = { selfId },
-    val messageOf: suspend (Peer, Int) -> Message? = { _, _ -> null },
 ) {
-    private fun me(): Long {
-        val id = selfIdOf()
-        return if (id != 0L) id else self?.id ?: 0L
-    }
+    private fun me(): Long = selfId
+
     fun map(): MutableMap<String, Any?> = maps.create()
 
     fun MutableMap<String, Any?>.opt(key: String, value: Any?) {
@@ -813,7 +837,7 @@ class BotApiWriter(
                 out["sender_chat"] = chat(fromId, post = fromId is PeerChannel)
             fromId is PeerUser -> out["from"] = user(fromId.userId)
             outgoing -> {
-                val meUser = self
+                val meUser = if (selfId != 0L) storage.getUser(selfId) else null
                 when {
                     meUser != null -> out["from"] = user(meUser)
                     else -> {
@@ -833,7 +857,8 @@ class BotApiWriter(
             if (withReply) {
                 val replyMsg = nestedReply?.let { message(it, withReply = false) }
                     ?: rh.replyToMsgId.takeIf { it != 0 }?.let { id ->
-                        messageOf(rh.replyToPeerId ?: peer, id)?.let { message(it, withReply = false) }
+                        val replyPeer = rh.replyToPeerId ?: peer
+                        storage.getMessage(replyPeer.botApiChatId(), id)?.let { message(it, withReply = false) }
                     }
                 if (replyMsg != null) {
                     out["reply_to_message"] = replyMsg
@@ -1100,7 +1125,7 @@ class BotApiWriter(
         when (peer) {
             is PeerUser -> {
                 put("type", "private")
-                val u = userOf(peer.userId)
+                val u = storage.getUser(peer.userId)
                 if (u != null) {
                     put("first_name", u.firstName.orEmpty())
                     opt("last_name", u.lastName)
@@ -1109,14 +1134,14 @@ class BotApiWriter(
             }
             is PeerChat -> {
                 put("type", "group")
-                when (val c = chatOf(peer.chatId)) {
+                when (val c = storage.getChat(peer.chatId)) {
                     is ChatCtor -> put("title", c.title)
                     is ChatForbidden -> put("title", c.title)
                     else -> Unit
                 }
             }
             is PeerChannel -> {
-                val c = chatOf(peer.channelId)
+                val c = storage.getChat(peer.channelId)
                 val channel = c as? Channel
                 val forbidden = c as? ChannelForbidden
                 put(
@@ -1140,7 +1165,7 @@ class BotApiWriter(
     }
 
     fun user(id: Long, isBot: Boolean = false, firstName: String = ""): MutableMap<String, Any?> {
-        userOf(id)?.let { return user(it) }
+        storage.getUser(id)?.let { return user(it) }
         return map().apply {
             put("id", id)
             put("is_bot", isBot)

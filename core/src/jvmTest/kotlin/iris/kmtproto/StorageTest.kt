@@ -5,6 +5,9 @@ import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
+import iris.kmtproto.tl.gen.MessageCtor
+import iris.kmtproto.tl.gen.PeerChat
+import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.UserCtor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -61,5 +64,16 @@ class StorageTest {
         s.rememberUser(UserCtor(id = 7, firstName = "A"))
         assertEquals("A", client.knownUser(7)?.firstName)
         assertNull(client.knownChat(7))
+    }
+
+    @Test
+    fun messagesKeyedByBotApiChatId() {
+        val s = MemoryStorage()
+        s.rememberMessage(MessageCtor(id = 1, peerId = PeerUser(5), date = 1, message = "u"))
+        s.rememberMessage(MessageCtor(id = 1, peerId = PeerChat(5), date = 1, message = "c"))
+        assertEquals("u", (s.getMessage(5, 1) as MessageCtor).message)
+        assertEquals("c", (s.getMessage(-5, 1) as MessageCtor).message)
+        s.clearEntities()
+        assertNull(s.getMessage(5, 1))
     }
 }

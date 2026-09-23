@@ -22,7 +22,6 @@ import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputQuickReplyShortcut
 import iris.kmtproto.tl.gen.InputReplyTo
 import iris.kmtproto.tl.gen.InputRichMessage
-import iris.kmtproto.tl.gen.MessageEmpty
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntity
 import iris.kmtproto.tl.gen.PeerChannel
@@ -32,7 +31,6 @@ import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.User
-import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
 import kotlinx.coroutines.CancellationException
@@ -117,24 +115,13 @@ class BotApi(val client: TelegramClient) {
 
     /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
     fun incomingBotUpdates(): Flow<Map<String, Any?>> {
-        val writer = botApiWriter ?: BotApiWriter(
-            maps = mapFactory,
-            userOf = client::knownUser,
-            chatOf = client::knownChat,
-            self = client.user as? UserCtor,
-            selfIdOf = client::selfUserId,
-            messageOf = { peer, messageId ->
-                try {
-                    user.messages.get(client.inputPeerFromId(peer.botApiChatId()), messageId)
-                        .result
-                        ?.firstOrNull { it !is MessageEmpty }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Throwable) {
-                    null
-                }
-            },
-        ).also { botApiWriter = it }
+        val sid = client.selfUserId()
+        val cached = botApiWriter
+        val writer = if (cached != null && (cached.selfId != 0L || sid == 0L)) {
+            cached
+        } else {
+            BotApiWriter(selfId = sid, storage = client.storage, maps = mapFactory).also { botApiWriter = it }
+        }
         return client.incomingUpdates().mapNotNull {
             try {
                 it.toBotApiMap(writer, nextUpdateId())

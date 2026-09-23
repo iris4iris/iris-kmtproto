@@ -33,6 +33,7 @@ import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatForbidden
 import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeer
+import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
@@ -603,7 +604,10 @@ class TelegramClient(
             is Updates -> dispatchUpdates(obj)
             is UpdateChannelTooLong -> scheduleCatchUpChannel(obj.channelId, obj.pts)
             is UpdateMessageID -> Unit
-            is Update -> if (shouldEmit(obj)) emitUpdate(obj)
+            is Update -> {
+                rememberUpdateMessage(obj)
+                if (shouldEmit(obj)) emitUpdate(obj)
+            }
             else -> Unit
         }
     }
@@ -785,6 +789,7 @@ class TelegramClient(
             else -> {
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
+                rememberMessages(diff.newMessages)
                 diff.newMessages.mapNotNull { it.asText() }.forEach { emitUpdate(UpdateNewMessage(message = it, pts = 0, ptsCount = 0)) }
                 diff.otherUpdates.forEach { if (it is Update) emitUpdate(it) }
             }
@@ -810,6 +815,7 @@ class TelegramClient(
             is UpdatesChannelDifferenceCtor -> {
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
+                rememberMessages(diff.newMessages)
                 channels.put(channelId, diff.pts)
                 diff.newMessages.mapNotNull { it.asText() }.forEach { emitUpdate(UpdateNewChannelMessage(message = it, pts = diff.pts, ptsCount = 0)) }
                 diff.otherUpdates.forEach { if (it is Update) emitUpdate(it) }
@@ -829,11 +835,13 @@ class TelegramClient(
                 updatesState = diff.state
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
+                rememberMessages(diff.newMessages)
             }
             is UpdatesDifferenceSlice -> {
                 updatesState = diff.intermediateState
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
+                rememberMessages(diff.newMessages)
             }
         }
     }
@@ -881,7 +889,21 @@ class TelegramClient(
         storage.rememberUser(ctor)
     }
 
+    internal fun rememberMessages(list: List<Message>) = storage.rememberMessages(list)
+
+    private fun rememberUpdateMessage(update: Update) {
+        val message = when (update) {
+            is UpdateNewMessage -> update.message
+            is UpdateNewChannelMessage -> update.message
+            is UpdateEditMessage -> update.message
+            is UpdateEditChannelMessage -> update.message
+            else -> return
+        }
+        storage.rememberMessage(message)
+    }
+
     private fun emitUpdate(update: Update) {
+        rememberUpdateMessage(update)
         incomingUpdates.tryEmit(update)
     }
 
