@@ -1,5 +1,5 @@
 // Generated from Bot API 10.3 (August 24, 2026). Do not edit.
-// Regenerate: python3 gen/generate_bot_api.py
+// Regenerate: ./gradlew :bot:generateBotApi
 package iris.kmtproto.bot
 
 sealed interface MediaOfInputRichMessageMedia

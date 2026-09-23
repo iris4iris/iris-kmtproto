@@ -3,7 +3,9 @@ plugins {
 }
 
 kotlin {
-    jvm()
+    jvm {
+        compilations.create("botgen")
+    }
 
     sourceSets {
         commonTest.dependencies {
@@ -15,9 +17,22 @@ kotlin {
     }
 }
 
-tasks.register<Exec>("generateBotApi") {
+val botgenCompilation = kotlin.targets.getByName("jvm").compilations.getByName("botgen")
+
+kotlin.sourceSets.getByName("jvmBotgen").dependencies {
+    implementation("org.json:json:20240303")
+}
+
+tasks.register<JavaExec>("generateBotApi") {
     group = "botgen"
     description = "Regenerate Bot API types from schema/api.min.json"
+    dependsOn(botgenCompilation.compileTaskProvider)
+    classpath = botgenCompilation.output.allOutputs + (botgenCompilation.runtimeDependencyFiles ?: files())
+    mainClass.set("iris.kmtproto.botgen.GenerateBotApiKt")
     workingDir = projectDir
-    commandLine("python3", "gen/generate_bot_api.py")
+    inputs.file(layout.projectDirectory.file("schema/api.min.json"))
+    outputs.files(
+        layout.projectDirectory.file("src/commonMain/kotlin/iris/kmtproto/bot/gen/Types.kt"),
+        layout.projectDirectory.file("src/commonMain/kotlin/iris/kmtproto/bot/gen/Decode.kt"),
+    )
 }
