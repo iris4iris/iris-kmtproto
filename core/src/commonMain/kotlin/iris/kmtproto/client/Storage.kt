@@ -57,33 +57,40 @@ interface Storage {
     fun removeChannelPts(channelId: Long)
 }
 
-/** Process-lifetime maps. Dies with the JVM. */
-class MemoryStorage : Storage {
-    private val hashes = HashMap<Long, Long>()
-    private val users = HashMap<Long, UserCtor>()
-    private val chats = HashMap<Long, Chat>()
-    private val knownMessages = HashMap<LongIntPair, Message>()
+/** Process-lifetime maps. Dies with the JVM. Each map drops the oldest entry past its capacity. */
+class MemoryStorage(
+    private val hashCapacity: Int = 16_384,
+    private val userCapacity: Int = 16_384,
+    private val chatCapacity: Int = 16_384,
+    private val messageCapacity: Int = 16_384,
+    private val channelPtsCapacity: Int = 16_384,
+) : Storage {
+    private val hashes = LinkedHashMap<Long, Long>()
+    private val users = LinkedHashMap<Long, UserCtor>()
+    private val chats = LinkedHashMap<Long, Chat>()
+    private val knownMessages = LinkedHashMap<LongIntPair, Message>()
     private val channelPts = LinkedHashMap<Long, Int>()
 
     @Synchronized
-    override fun getAccessHash(id: Long): Long = hashes[id] ?: 0L
+    override fun getAccessHash(id: Long): Long = touch(hashes, id) ?: 0L
 
     @Synchronized
     override fun putAccessHash(id: Long, hash: Long) {
-        if (hash != 0L) hashes[id] = hash
+        if (hash == 0L) return
+        putCapped(hashes, id, hash, hashCapacity)
     }
 
     @Synchronized
-    override fun getUser(id: Long): UserCtor? = users[id]
+    override fun getUser(id: Long): UserCtor? = touch(users, id)
 
     @Synchronized
-    override fun getChat(id: Long): Chat? = chats[id]
+    override fun getChat(id: Long): Chat? = touch(chats, id)
 
     @Synchronized
     override fun rememberUser(user: UserCtor) {
         val old = users[user.id]
         if (user.min && old != null && !old.min) return
-        users[user.id] = user
+        putCapped(users, user.id, user, userCapacity)
     }
 
     @Synchronized
@@ -96,17 +103,17 @@ class MemoryStorage : Storage {
         }
         val old = chats[id]
         if (min && old is Channel && !old.min) return
-        chats[id] = chat
+        putCapped(chats, id, chat, chatCapacity)
     }
 
     @Synchronized
-    override fun getMessage(key: LongIntPair): Message? = knownMessages[key]
+    override fun getMessage(key: LongIntPair): Message? = touch(knownMessages, key)
 
     @Synchronized
     override fun rememberMessage(message: Message) {
         if (message is MessageEmpty || message.id == 0) return
         val peer = message.peer ?: return
-        knownMessages[LongIntPair(peer.botApiChatId(), message.id)] = message
+        putCapped(knownMessages, LongIntPair(peer.botApiChatId(), message.id), message, messageCapacity)
     }
 
     @Synchronized
@@ -117,22 +124,32 @@ class MemoryStorage : Storage {
     }
 
     @Synchronized
-    override fun getChannelPts(channelId: Long): Int {
-        val pts = channelPts.remove(channelId) ?: return 0
-        channelPts[channelId] = pts
-        return pts
-    }
+    override fun getChannelPts(channelId: Long): Int = touch(channelPts, channelId) ?: 0
 
     @Synchronized
     override fun putChannelPts(channelId: Long, pts: Int) {
         channelPts.remove(channelId)
         if (pts == 0) return
-        channelPts[channelId] = pts
-        while (channelPts.size > 16_384) channelPts.remove(channelPts.keys.first())
+        putCapped(channelPts, channelId, pts, channelPtsCapacity)
     }
 
     @Synchronized
     override fun removeChannelPts(channelId: Long) {
         channelPts.remove(channelId)
+    }
+
+    private fun <K, V> touch(map: LinkedHashMap<K, V>, key: K): V? {
+        val value = map.remove(key) ?: return null
+        map[key] = value
+        return value
+    }
+
+    private fun <K, V> putCapped(map: LinkedHashMap<K, V>, key: K, value: V, capacity: Int) {
+        map.remove(key)
+        map[key] = value
+        while (map.size > capacity) {
+            val eldest = map.keys.firstOrNull() ?: break
+            map.remove(eldest)
+        }
     }
 }

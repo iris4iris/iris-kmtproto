@@ -132,4 +132,42 @@ class StorageTest {
         again.clearEntities()
         assertEquals(100, again.getChannelPts(9))
     }
+
+    @Test
+    fun eachMapDropsTheOldestPastItsCapacity() {
+        val s = MemoryStorage(
+            hashCapacity = 2,
+            userCapacity = 1,
+            chatCapacity = 1,
+            messageCapacity = 1,
+            channelPtsCapacity = 1,
+        )
+        s.putAccessHash(1, 10)
+        s.putAccessHash(2, 20)
+        assertEquals(10L, s.getAccessHash(1))
+        s.putAccessHash(3, 30)
+        assertEquals(10L, s.getAccessHash(1))
+        assertEquals(0L, s.getAccessHash(2))
+        assertEquals(30L, s.getAccessHash(3))
+
+        s.rememberUser(UserCtor(id = 1, firstName = "A"))
+        s.rememberUser(UserCtor(id = 2, firstName = "B"))
+        assertNull(s.getUser(1))
+        assertEquals("B", s.getUser(2)?.firstName)
+
+        s.rememberChat(ChatCtor(id = 1, title = "one", photo = ChatPhotoEmpty, participantsCount = 1, date = 1, version = 1))
+        s.rememberChat(ChatCtor(id = 2, title = "two", photo = ChatPhotoEmpty, participantsCount = 1, date = 1, version = 1))
+        assertNull(s.getChat(-1))
+        assertEquals("two", (s.getChat(-2) as ChatCtor).title)
+
+        s.rememberMessage(MessageCtor(id = 1, peerId = PeerUser(1), date = 1, message = "a"))
+        s.rememberMessage(MessageCtor(id = 2, peerId = PeerUser(1), date = 1, message = "b"))
+        assertNull(s.getMessage(1, 1))
+        assertEquals("b", (s.getMessage(1, 2) as MessageCtor).message)
+
+        s.putChannelPts(1, 10)
+        s.putChannelPts(2, 20)
+        assertEquals(0, s.getChannelPts(1))
+        assertEquals(20, s.getChannelPts(2))
+    }
 }
