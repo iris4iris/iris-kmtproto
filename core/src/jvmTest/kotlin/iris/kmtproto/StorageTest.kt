@@ -5,8 +5,10 @@ import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
+import iris.kmtproto.tl.gen.UserCtor
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class StorageTest {
@@ -45,5 +47,19 @@ class StorageTest {
         val ch = client.inputPeerFromId(-1001234567890L) as InputPeerChannel
         assertEquals(1234567890L, ch.channelId)
         assertEquals(99L, ch.accessHash)
+    }
+
+    @Test
+    fun memoryKeepsFullUserOverMinStub() {
+        val s = MemoryStorage()
+        s.rememberUser(UserCtor(id = 1, firstName = "Ivan", min = false))
+        s.rememberUser(UserCtor(id = 1, firstName = "stub", min = true))
+        assertEquals("Ivan", s.getUser(1)?.firstName)
+        s.clearEntities()
+        assertNull(s.getUser(1))
+        val client = TelegramClient(apiId = 1, apiHash = "x", storage = s)
+        s.rememberUser(UserCtor(id = 7, firstName = "A"))
+        assertEquals("A", client.knownUser(7)?.firstName)
+        assertNull(client.knownChat(7))
     }
 }

@@ -141,9 +141,6 @@ class TelegramClient(
     private var mediaLastUse = 0L
     private val fileDcMutex = Mutex()
     private val fileDcs = mutableMapOf<Int, SocketLink>()
-    private val entitiesLock = Any()
-    private val knownUsers = HashMap<Long, UserCtor>()
-    private val knownChats = HashMap<Long, Chat>()
 
     var user: User? = null
         internal set
@@ -180,9 +177,9 @@ class TelegramClient(
 
     fun accessHash(id: Long): Long = storage.getAccessHash(id)
 
-    fun knownUser(id: Long): UserCtor? = synchronized(entitiesLock) { knownUsers[id] }
+    fun knownUser(id: Long): UserCtor? = storage.getUser(id)
 
-    fun knownChat(id: Long): Chat? = synchronized(entitiesLock) { knownChats[id] }
+    fun knownChat(id: Long): Chat? = storage.getChat(id)
 
     fun selfUserId(): Long = user?.id ?: loadedSession?.userId ?: 0L
 
@@ -847,13 +844,13 @@ class TelegramClient(
                 is Channel -> {
                     val hash = obj.accessHash
                     if (hash != 0L) storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), hash)
-                    putChat(obj)
+                    storage.rememberChat(obj)
                 }
                 is ChannelForbidden -> {
                     storage.putAccessHash(PeerChannel(obj.id).botApiChatId(), obj.accessHash)
-                    putChat(obj)
+                    storage.rememberChat(obj)
                 }
-                is ChatCtor, is ChatForbidden -> putChat(obj)
+                is ChatCtor, is ChatForbidden -> storage.rememberChat(obj)
                 else -> Unit
             }
         }
@@ -881,26 +878,7 @@ class TelegramClient(
         val hash = user.accessHash
         if (hash != 0L) storage.putAccessHash(user.id, hash)
         val ctor = user as? UserCtor ?: return
-        synchronized(entitiesLock) {
-            val old = knownUsers[ctor.id]
-            if (ctor.min && old != null && !old.min) return
-            knownUsers[ctor.id] = ctor
-        }
-    }
-
-    private fun putChat(chat: Chat) {
-        val (id, min) = when (chat) {
-            is Channel -> chat.id to chat.min
-            is ChannelForbidden -> chat.id to false
-            is ChatCtor -> chat.id to false
-            is ChatForbidden -> chat.id to false
-            else -> return
-        }
-        synchronized(entitiesLock) {
-            val old = knownChats[id]
-            if (min && old is Channel && !old.min) return
-            knownChats[id] = chat
-        }
+        storage.rememberUser(ctor)
     }
 
     private fun emitUpdate(update: Update) {
@@ -919,10 +897,7 @@ class TelegramClient(
         mediaLink = null
         updatesState = null
         channels.clear()
-        synchronized(entitiesLock) {
-            knownUsers.clear()
-            knownChats.clear()
-        }
+        storage.clearEntities()
     }
 }
 
