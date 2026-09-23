@@ -9,6 +9,18 @@ val tlJarFile = rootProject.layout.projectDirectory
     .file("tl/build/libs/tl-jvm-${rootProject.version}.jar")
     .asFile
 
+// The prebuilt jar lives in :tl's output dir, but core must not rebuild TL.
+// mustRunAfter is registered after all projects exist: KMP adds jvmJar during :tl evaluation.
+// It orders the tasks when both run, without putting :tl:jvmJar on the core graph.
+if (tlPrebuilt.get()) {
+    gradle.projectsEvaluated {
+        val tlJar = project(":tl").tasks.named("jvmJar")
+        tasks.configureEach {
+            mustRunAfter(tlJar)
+        }
+    }
+}
+
 kotlin {
     jvm()
 
