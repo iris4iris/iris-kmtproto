@@ -19,6 +19,7 @@ kotlin {
             } else {
                 api(project(":tl"))
             }
+            api(project(":bot"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
         }
         commonTest.dependencies {

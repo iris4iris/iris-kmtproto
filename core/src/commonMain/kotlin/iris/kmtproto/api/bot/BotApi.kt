@@ -30,6 +30,8 @@ import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.Update
+import iris.kmtproto.bot.Update as BotUpdate
+import iris.kmtproto.bot.toBotUpdate
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
@@ -94,11 +96,20 @@ class BotApi(val client: TelegramClient) {
 
     fun startPollingBotUpdates(
         writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage),
-        collector: suspend (Map<String, Any?>) -> Unit,
+        collector: suspend (BotUpdate) -> Unit,
     ): Job = client.startPolling(incomingBotUpdates(writer), collector)
 
-    /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
+    /** Bot API [Update](https://core.telegram.org/bots/api#update) objects. */
     fun incomingBotUpdates(
+        writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage),
+    ): Flow<BotUpdate> = incomingBotUpdatesToMap(writer).mapNotNull { map ->
+        val update = map.toBotUpdate() ?: return@mapNotNull null
+        // A map key the spec does not know (custom_event, …) would otherwise become an empty Update.
+        if (update.copy(updateId = 0) == BotUpdate()) null else update
+    }
+
+    /** Same updates as [incomingBotUpdates], kept as `Map<String, Any?>`. */
+    fun incomingBotUpdatesToMap(
         writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage),
     ): Flow<Map<String, Any?>> = client.incomingUpdates().mapNotNull {
         try {

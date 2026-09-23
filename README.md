@@ -50,7 +50,9 @@ client.incomingMessages() // sugar: UpdateNewMessage / UpdateNewChannelMessage �
 
 bot.startPolling { upd -> /* Job, does not wait */ }
 bot.startPollingMessages { msg -> }
-bot.startPollingBotUpdates { map -> }
+bot.startPollingBotUpdates { upd ->
+    val text = upd.message?.text
+}
 job.cancel() // or client.close()
 
 val writer = BotApiWriter(
@@ -59,8 +61,10 @@ val writer = BotApiWriter(
     maps = BotApiMapFactory { MyOwnHashMap() }, // MutableMap<String, Any?>
 )
 bot.incomingBotUpdates(writer).collect { upd ->
+    val text = upd.message?.text
+}
+bot.incomingBotUpdatesToMap(writer).collect { upd ->
     val msg = upd["message"] as Map<String, Any?>?
-    // update_id lives on writer; message / channel_post / callback_query / …
 }
 
 val router = SingleEventRouter()
@@ -158,10 +162,13 @@ processor.start(scope)
 
 `PackUpdateProcessor(client, handler)` gets `List<>` per type (drain queue → split → wait for the handler → next pack). Compose with `One*` / `Array*` / `List*` — the processor does not know about lists.
 
-Same processors take any `Flow<T>` — e.g. Bot API maps:
+Same processors take any `Flow<T>` — e.g. Bot API objects, or the map form:
 
 ```kotlin
 SingleUpdateProcessor(bot.incomingBotUpdates()) { upd ->
+    // iris.kmtproto.bot.Update
+}
+SingleUpdateProcessor(bot.incomingBotUpdatesToMap()) { upd ->
     // Map<String, Any?>
 }
 ```
@@ -170,11 +177,12 @@ Types wired today on the default MTProto dispatcher: message, edit, chatMember, 
 
 ## Layout
 
-One Gradle build, two modules:
+One Gradle build, three modules:
 
 ```
 :tl     schema/api.tl, TL codec, generator → tl/build/generated (not in git)
-:core   handshake, client, echo bot — depends on :tl
+:bot    Bot API objects (https://core.telegram.org/bots/api), generated from schema/api.min.json
+:core   handshake, client, MTProto → Bot API mapping — depends on :tl and :bot
 ```
 
 ## Generate TL types

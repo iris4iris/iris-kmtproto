@@ -4,6 +4,7 @@ import iris.kmtproto.LongIntPair
 import iris.kmtproto.api.bot.BotApiMapFactory
 import iris.kmtproto.api.bot.BotApiWriter
 import iris.kmtproto.api.bot.toBotApiMap
+import iris.kmtproto.bot.toBotUpdate
 import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.Storage
 import iris.kmtproto.client.botApiChatId
@@ -86,6 +87,11 @@ class BotApiUpdateTest {
         val chat = msg["chat"] as Map<*, *>
         assertEquals(42L, chat["id"])
         assertEquals("private", chat["type"])
+        val typed = u.toBotUpdate()
+        assertEquals(7L, typed?.updateId)
+        assertEquals("hello", typed?.message?.text)
+        assertEquals(42L, typed?.message?.chat?.id)
+        assertEquals("private", typed?.message?.chat?.type)
         val from = msg["from"] as Map<*, *>
         assertEquals(42L, from["id"])
         assertEquals(false, from["is_bot"])

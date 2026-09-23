@@ -6,4 +6,4 @@ pluginManagement {
 }
 
 rootProject.name = "iris-kmtproto"
-include(":tl", ":core")
+include(":tl", ":bot", ":core")
