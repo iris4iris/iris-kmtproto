@@ -1,8 +1,8 @@
 package iris.kmtproto.api.bot
 
-import iris.kmtproto.client.MemoryStorage
-import iris.kmtproto.client.Storage
 import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.Storage
 import iris.kmtproto.tl.gen.BoolTrue
 import iris.kmtproto.tl.gen.Boost
 import iris.kmtproto.tl.gen.BotAppCtor

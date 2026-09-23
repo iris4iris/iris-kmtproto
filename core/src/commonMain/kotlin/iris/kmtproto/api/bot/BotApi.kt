@@ -2,12 +2,12 @@ package iris.kmtproto.api.bot
 
 import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.client.ClientInfo
-import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.RpcResponse
 import iris.kmtproto.client.SentMessage
-import iris.kmtproto.client.Storage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.Storage
 import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
 import iris.kmtproto.logCaught

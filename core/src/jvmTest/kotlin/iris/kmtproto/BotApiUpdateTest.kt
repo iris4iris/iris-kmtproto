@@ -5,9 +5,9 @@ import iris.kmtproto.api.bot.BotApiMapFactory
 import iris.kmtproto.api.bot.BotApiWriter
 import iris.kmtproto.api.bot.toBotApiMap
 import iris.kmtproto.bot.toBotUpdate
-import iris.kmtproto.client.MemoryStorage
-import iris.kmtproto.client.Storage
 import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.Storage
 import iris.kmtproto.tl.gen.Boost
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelParticipantCtor

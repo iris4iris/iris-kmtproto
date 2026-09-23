@@ -1,16 +1,21 @@
 package iris.kmtproto
 
+import iris.kmtproto.LongIntPair
 import iris.kmtproto.api.user.UserApi
-import iris.kmtproto.client.ReadThroughStorage
-import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.TelegramClient
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.MultilayerStorage
+import iris.kmtproto.client.storage.Storage
+import iris.kmtproto.client.storage.TelegramSource
 import iris.kmtproto.example.SimpleFileStorage
 import iris.kmtproto.tl.gen.Channel
+import iris.kmtproto.tl.gen.Chat
 import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatPhotoEmpty
 import iris.kmtproto.tl.gen.InputPeerChannel
 import iris.kmtproto.tl.gen.InputPeerChat
 import iris.kmtproto.tl.gen.InputPeerUser
+import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
@@ -85,18 +90,42 @@ class StorageTest {
     }
 
     @Test
-    fun readThroughStorageServesCachedEntities() {
-        val inner = MemoryStorage()
-        inner.rememberUser(UserCtor(id = 5, firstName = "Ivan"))
-        inner.rememberChat(ChatCtor(id = 50, title = "Room", photo = ChatPhotoEmpty, participantsCount = 2, date = 1, version = 1))
-        inner.rememberMessage(MessageCtor(id = 1, peerId = PeerUser(5), date = 1, message = "u"))
-        val client = TelegramClient(apiId = 1, apiHash = "x", storage = inner)
-        val storage = ReadThroughStorage(UserApi(client), inner)
+    fun multilayerFillsFasterLayersAndSkipsTheRest() {
+        val memory = MemoryStorage()
+        val disk = MemoryStorage()
+        disk.rememberUser(UserCtor(id = 5, firstName = "Ivan"))
+        disk.rememberChat(ChatCtor(id = 50, title = "Room", photo = ChatPhotoEmpty, participantsCount = 2, date = 1, version = 1))
+        disk.rememberMessage(MessageCtor(id = 1, peerId = PeerUser(5), date = 1, message = "u"))
+        disk.putAccessHash(5, 11)
+        disk.putChannelPts(9, 40)
+        val storage = MultilayerStorage(arrayOf(memory, disk, object : Storage by MemoryStorage() {
+            override fun getUser(id: Long): UserCtor? = error("telegram")
+            override fun getChat(id: Long): Chat? = error("telegram")
+            override fun getMessage(key: LongIntPair): Message? = error("telegram")
+            override fun getAccessHash(id: Long): Long = error("telegram")
+            override fun getChannelPts(channelId: Long): Int = error("telegram")
+        }))
         assertEquals("Ivan", storage.getUser(5)?.firstName)
         assertEquals("Room", (storage.getChat(-50) as ChatCtor).title)
         assertEquals("u", (storage.getMessage(5, 1) as MessageCtor).message)
-        client.storage = storage
+        assertEquals(11L, storage.getAccessHash(5))
+        assertEquals(40, storage.getChannelPts(9))
+        assertEquals("Ivan", memory.getUser(5)?.firstName)
+        assertEquals("Room", (memory.getChat(-50) as ChatCtor).title)
+        assertEquals("u", (memory.getMessage(5, 1) as MessageCtor).message)
+        assertEquals(11L, memory.getAccessHash(5))
+        assertEquals(40, memory.getChannelPts(9))
+
+        val client = TelegramClient(apiId = 1, apiHash = "x", storage = storage)
         assertEquals("Ivan", client.knownUser(5)?.firstName)
+        val source = TelegramSource(UserApi(client))
+        source.rememberUser(UserCtor(id = 1, firstName = "A"))
+        source.putAccessHash(1, 2)
+        source.putChannelPts(1, 3)
+        assertNull(source.getUser(0))
+        assertNull(source.getChat(0))
+        assertEquals(0L, source.getAccessHash(1))
+        assertEquals(0, source.getChannelPts(1))
     }
 
     @Test

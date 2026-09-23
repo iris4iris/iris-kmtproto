@@ -1,6 +1,9 @@
-package iris.kmtproto.client
+package iris.kmtproto.client.storage
 
 import iris.kmtproto.LongIntPair
+import iris.kmtproto.client.botApiChatId
+import iris.kmtproto.client.id
+import iris.kmtproto.client.peer
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelForbidden
 import iris.kmtproto.tl.gen.Chat

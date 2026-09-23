@@ -4,6 +4,9 @@ import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.client.SessionPasswordNeeded
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.id
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.MultilayerStorage
+import iris.kmtproto.client.storage.TelegramSource
 import iris.kmtproto.mtproto.RpcException
 import iris.kmtproto.tl.gen.AuthSentCodeCtor
 import iris.kmtproto.tl.gen.UserCtor
@@ -35,6 +38,7 @@ private suspend fun runUserApiExample() {
     val sessionFile = sessionFile("session-user.properties")
     val client = TelegramClient(apiId, creds["TELEGRAM_API_HASH"]!!)
     val api = UserApi(client)
+    client.storage = MultilayerStorage(arrayOf(MemoryStorage(), TelegramSource(api)))
     try {
         val saved = loadSession(sessionFile)
         client.connect(session = saved)

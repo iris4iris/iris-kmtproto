@@ -1,8 +1,12 @@
 package iris.kmtproto.example
 
 import iris.kmtproto.api.bot.BotApi
+import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.client.id
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.MultilayerStorage
+import iris.kmtproto.client.storage.TelegramSource
 import iris.kmtproto.tl.gen.UserCtor
 import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
@@ -23,7 +27,14 @@ private suspend fun run() {
     val client = TelegramClient(
         creds["TELEGRAM_API_ID"]!!.toInt(),
         creds["TELEGRAM_API_HASH"]!!,
-        storage = SimpleFileStorage(creds["FILE_STORAGE"]!!),
+    )
+    val users = UserApi(client)
+    client.storage = MultilayerStorage(
+        arrayOf(
+            MemoryStorage(),
+            SimpleFileStorage(creds["FILE_STORAGE"]!!),
+            TelegramSource(users),
+        ),
     )
     val bot = BotApi(client)
     try {

@@ -1,6 +1,6 @@
 # Iris kMTProto
 
-Kotlin Multiplatform MTProto client (`iris.kmtproto`). First target: **JVM**. Session is in-memory only — no disk, no local message database. **0.x — API will break.**
+Kotlin Multiplatform MTProto client (`iris.kmtproto`). First target: **JVM**. **0.x — API will break.**
 
 Jars (library + deps, not a fat jar): `./gradlew distJars` → `build/dist/lib/`.
 
@@ -137,6 +137,24 @@ user.restrict(channelId, userId, ChatBannedRights(untilDate = 0, sendMessages = 
 ```
 
 Save `client.session()` and pass it to the next `connect(session = …)` so you do not send SMS again.
+
+Storage is a stack. The first layer that has the entity wins, and the value is copied into every faster layer in front of it. [TelegramSource] only answers `getUser` / `getChat` / `getMessage` and does not store.
+
+```kotlin
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.MultilayerStorage
+import iris.kmtproto.client.storage.TelegramSource
+
+val client = TelegramClient(apiId, apiHash)
+val user = UserApi(client)
+client.storage = MultilayerStorage(
+    arrayOf(
+        MemoryStorage(),
+        SimpleFileStorage("hashes.txt"), // access_hash and channel pts
+        TelegramSource(user),
+    ),
+)
+```
 
 Incoming dispatch sits **above** [TelegramClient] — the client stays a raw `incomingUpdates()` stream. [SingleUpdateProcessor] / [PackUpdateProcessor] collect; [SingleEventDispatcher] / [PackEventDispatcher] decide what to do with an item or a pack. [DefaultSingleEventDispatcher] / [DefaultPackEventDispatcher] split MTProto [Update] by type onto a handler.
 

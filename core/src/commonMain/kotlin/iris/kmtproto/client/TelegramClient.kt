@@ -5,6 +5,8 @@ import iris.kmtproto.LongIntIntTriple
 import iris.kmtproto.isDisconnect
 import iris.kmtproto.logCaught
 import iris.kmtproto.startPolling
+import iris.kmtproto.client.storage.MemoryStorage
+import iris.kmtproto.client.storage.Storage
 import iris.kmtproto.crypto.AuthKey
 import iris.kmtproto.crypto.PlatformCrypto
 import iris.kmtproto.mtproto.Handshake
