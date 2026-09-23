@@ -1,22 +1,31 @@
 package iris.kmtproto
 
+import iris.kmtproto.LongIntPair
 import iris.kmtproto.api.bot.BotApiMapFactory
+import iris.kmtproto.api.bot.BotApiWriter
 import iris.kmtproto.api.bot.toBotApiMap
+import iris.kmtproto.client.MemoryStorage
+import iris.kmtproto.client.Storage
+import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.tl.gen.Boost
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChannelParticipantCtor
 import iris.kmtproto.tl.gen.ChannelParticipantSelf
+import iris.kmtproto.tl.gen.Chat
 import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatPhotoEmpty
+import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
 import iris.kmtproto.tl.gen.MessageEntityBold
 import iris.kmtproto.tl.gen.MessageFwdHeader
 import iris.kmtproto.tl.gen.MessageReplyHeaderCtor
+import iris.kmtproto.tl.gen.Peer
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
 import iris.kmtproto.tl.gen.ReactionCount
 import iris.kmtproto.tl.gen.ReactionEmoji
+import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.tl.gen.UpdateBotCallbackQuery
 import iris.kmtproto.tl.gen.UpdateBotChatBoost
 import iris.kmtproto.tl.gen.UpdateBotGuestChatQuery
@@ -47,6 +56,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 
 class MyBotMap : LinkedHashMap<String, Any?>()
 
@@ -205,7 +215,7 @@ class BotApiUpdateTest {
             ptsCount = 1,
         )
         val chats = mapOf(
-            50L to ChatCtor(
+            PeerChat(50).botApiChatId() to ChatCtor(
                 id = 50,
                 title = "Room",
                 photo = ChatPhotoEmpty,
@@ -234,7 +244,7 @@ class BotApiUpdateTest {
             pts = 1,
             ptsCount = 1,
         )
-        val chats = mapOf(99L to Channel(id = 99, title = "News", photo = ChatPhotoEmpty, date = 1, broadcast = true, username = "news"))
+        val chats = mapOf(PeerChannel(99).botApiChatId() to Channel(id = 99, title = "News", photo = ChatPhotoEmpty, date = 1, broadcast = true, username = "news"))
         val u = raw.toBotApiMap(maps, 1, chats = { chats[it] })!!
         val chat = (u["channel_post"] as Map<*, *>)["chat"] as Map<*, *>
         assertEquals("channel", chat["type"])
@@ -657,4 +667,35 @@ fun main() {
         replyToMessageNestedWithoutFromIdInfersPeer()
     }
     println("BotApiUpdateTest ok")
+}
+
+private fun Update.toBotApiMap(
+    maps: BotApiMapFactory,
+    updateId: Int,
+    users: (Long) -> UserCtor? = { null },
+    chats: (Long) -> Chat? = { null },
+    self: UserCtor? = null,
+    selfId: Long = 0L,
+    messages: (Peer, Int) -> Message? = { _, _ -> null },
+): MutableMap<String, Any?>? {
+    val base = MemoryStorage()
+    if (self != null) base.rememberUser(self)
+    val storage = object : Storage by base {
+        override fun getUser(id: Long): UserCtor? = users(id) ?: base.getUser(id)
+        override fun getChat(id: Long): Chat? = chats(id) ?: base.getChat(id)
+        override fun getMessage(peerId: Long, messageId: Int): Message? =
+            getMessage(LongIntPair(peerId, messageId))
+        override fun getMessage(key: LongIntPair): Message? {
+            val peer = when {
+                key.first > 0L -> PeerUser(key.first)
+                key.first <= -1_000_000_000_000L -> PeerChannel(-(key.first + 1_000_000_000_000L))
+                else -> PeerChat(-key.first)
+            }
+            return messages(peer, key.second) ?: base.getMessage(key)
+        }
+    }
+    val id = if (selfId != 0L) selfId else self?.id ?: 0L
+    val writer = BotApiWriter(selfId = id, storage = storage, maps = maps)
+    repeat((updateId - 1).coerceAtLeast(0)) { writer.nextUpdateId() }
+    return runBlocking { toBotApiMap(writer) }
 }

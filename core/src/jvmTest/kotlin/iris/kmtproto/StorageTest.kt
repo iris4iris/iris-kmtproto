@@ -4,6 +4,7 @@ import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.client.ReadThroughStorage
 import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.TelegramClient
+import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatPhotoEmpty
 import iris.kmtproto.tl.gen.InputPeerChannel
@@ -90,9 +91,18 @@ class StorageTest {
         val client = TelegramClient(apiId = 1, apiHash = "x", storage = inner)
         val storage = ReadThroughStorage(UserApi(client), inner)
         assertEquals("Ivan", storage.getUser(5)?.firstName)
-        assertEquals("Room", (storage.getChat(50) as ChatCtor).title)
+        assertEquals("Room", (storage.getChat(-50) as ChatCtor).title)
         assertEquals("u", (storage.getMessage(5, 1) as MessageCtor).message)
         client.storage = storage
         assertEquals("Ivan", client.knownUser(5)?.firstName)
+    }
+
+    @Test
+    fun channelAndBasicChatDoNotShareKey() {
+        val s = MemoryStorage()
+        s.rememberChat(ChatCtor(id = 5, title = "group", photo = ChatPhotoEmpty, participantsCount = 2, date = 1, version = 1))
+        s.rememberChat(Channel(id = 5, title = "chan", photo = ChatPhotoEmpty, date = 1))
+        assertEquals("group", (s.getChat(-5) as ChatCtor).title)
+        assertEquals("chan", (s.getChat(-(5L + 1_000_000_000_000L)) as Channel).title)
     }
 }
