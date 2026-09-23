@@ -370,7 +370,7 @@ internal class EncryptedConnection(
             is MtMessage -> flatten(obj.body)
             is RpcResult -> {
                 val inner = flatten(obj.result).singleOrNull() ?: obj.result
-                listOf(obj.copy(result = inner))
+                listOf(RpcResult(obj.reqMsgId, inner))
             }
             else -> listOf(obj)
         }

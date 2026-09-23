@@ -60,12 +60,12 @@ object TlRegistry {
     }
 }
 
-data class ReqPqMulti(val nonce: ByteArray) : TlMethod<ResPq> {
+class ReqPqMulti(val nonce: ByteArray) : TlMethod<ResPq> {
     override val constructorId: Int = TlIds.REQ_PQ_MULTI
     override fun serialize(w: TlWriter) = w.writeInt128(nonce)
 }
 
-data class ResPq(
+class ResPq(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val pq: ByteArray,
@@ -89,7 +89,7 @@ data class ResPq(
     }
 }
 
-data class PqInnerDataDc(
+class PqInnerDataDc(
     val pq: ByteArray,
     val p: ByteArray,
     val q: ByteArray,
@@ -110,7 +110,7 @@ data class PqInnerDataDc(
     }
 }
 
-data class PqInnerData(
+class PqInnerData(
     val pq: ByteArray,
     val p: ByteArray,
     val q: ByteArray,
@@ -129,7 +129,7 @@ data class PqInnerData(
     }
 }
 
-data class ReqDhParams(
+class ReqDhParams(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val p: ByteArray,
@@ -148,7 +148,7 @@ data class ReqDhParams(
     }
 }
 
-data class ServerDhParamsOk(
+class ServerDhParamsOk(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val encryptedAnswer: ByteArray,
@@ -167,7 +167,7 @@ data class ServerDhParamsOk(
     }
 }
 
-data class ServerDhParamsFail(
+class ServerDhParamsFail(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val newNonceHash: ByteArray,
@@ -186,7 +186,7 @@ data class ServerDhParamsFail(
     }
 }
 
-data class ServerDhInnerData(
+class ServerDhInnerData(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val g: Int,
@@ -212,7 +212,7 @@ data class ServerDhInnerData(
     }
 }
 
-data class ClientDhInnerData(
+class ClientDhInnerData(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val retryId: Long,
@@ -227,7 +227,7 @@ data class ClientDhInnerData(
     }
 }
 
-data class SetClientDhParams(
+class SetClientDhParams(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val encryptedData: ByteArray,
@@ -240,7 +240,7 @@ data class SetClientDhParams(
     }
 }
 
-data class DhGenOk(
+class DhGenOk(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val newNonceHash1: ByteArray,
@@ -257,7 +257,7 @@ data class DhGenOk(
     }
 }
 
-data class DhGenRetry(
+class DhGenRetry(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val newNonceHash2: ByteArray,
@@ -274,7 +274,7 @@ data class DhGenRetry(
     }
 }
 
-data class DhGenFail(
+class DhGenFail(
     val nonce: ByteArray,
     val serverNonce: ByteArray,
     val newNonceHash3: ByteArray,
@@ -291,7 +291,7 @@ data class DhGenFail(
     }
 }
 
-data class Ping(val pingId: Long) : TlMethod<Pong> {
+class Ping(val pingId: Long) : TlMethod<Pong> {
     override val constructorId: Int = TlIds.PING
     override fun serialize(w: TlWriter) = w.writeLong(pingId)
 
@@ -300,7 +300,7 @@ data class Ping(val pingId: Long) : TlMethod<Pong> {
     }
 }
 
-data class Pong(val msgId: Long, val pingId: Long) : TlObject {
+class Pong(val msgId: Long, val pingId: Long) : TlObject {
     override val constructorId: Int = TlIds.PONG
     override fun serialize(w: TlWriter) {
         w.writeLong(msgId)
@@ -312,7 +312,7 @@ data class Pong(val msgId: Long, val pingId: Long) : TlObject {
     }
 }
 
-data class RpcResult(val reqMsgId: Long, val result: TlObject) : TlObject {
+class RpcResult(val reqMsgId: Long, val result: TlObject) : TlObject {
     override val constructorId: Int = TlIds.RPC_RESULT
     override fun serialize(w: TlWriter) {
         w.writeLong(reqMsgId)
@@ -324,7 +324,7 @@ data class RpcResult(val reqMsgId: Long, val result: TlObject) : TlObject {
     }
 }
 
-data class RpcError(val errorCode: Int, val errorMessage: String) : TlObject {
+class RpcError(val errorCode: Int, val errorMessage: String) : TlObject {
     override val constructorId: Int = TlIds.RPC_ERROR
     override fun serialize(w: TlWriter) {
         w.writeInt(errorCode)
@@ -336,7 +336,7 @@ data class RpcError(val errorCode: Int, val errorMessage: String) : TlObject {
     }
 }
 
-data class GzipPacked(val packedData: ByteArray) : TlObject {
+class GzipPacked(val packedData: ByteArray) : TlObject {
     override val constructorId: Int = TlIds.GZIP_PACKED
     override fun serialize(w: TlWriter) = w.writeTlBytes(packedData)
 
@@ -345,7 +345,7 @@ data class GzipPacked(val packedData: ByteArray) : TlObject {
     }
 }
 
-data class MsgsAck(val msgIds: LongArray) : TlObject {
+class MsgsAck(val msgIds: LongArray) : TlObject {
     override val constructorId: Int = TlIds.MSGS_ACK
     override fun serialize(w: TlWriter) = w.writeVectorLong(msgIds)
 
@@ -354,7 +354,7 @@ data class MsgsAck(val msgIds: LongArray) : TlObject {
     }
 }
 
-data class NewSessionCreated(
+class NewSessionCreated(
     val firstMsgId: Long,
     val uniqueId: Long,
     val serverSalt: Long,
@@ -371,7 +371,7 @@ data class NewSessionCreated(
     }
 }
 
-data class BadServerSalt(
+class BadServerSalt(
     val badMsgId: Long,
     val badMsgSeqno: Int,
     val errorCode: Int,
@@ -390,7 +390,7 @@ data class BadServerSalt(
     }
 }
 
-data class BadMsgNotification(
+class BadMsgNotification(
     val badMsgId: Long,
     val badMsgSeqno: Int,
     val errorCode: Int,
@@ -407,7 +407,7 @@ data class BadMsgNotification(
     }
 }
 
-data class MtMessage(
+class MtMessage(
     val msgId: Long,
     val seqNo: Int,
     val body: TlObject,
@@ -422,7 +422,7 @@ data class MtMessage(
     }
 }
 
-data class MsgContainer(val messages: List<MtMessage>) : TlObject {
+class MsgContainer(val messages: List<MtMessage>) : TlObject {
     override val constructorId: Int = TlIds.MSG_CONTAINER
     override fun serialize(w: TlWriter) {
         w.writeInt(messages.size)

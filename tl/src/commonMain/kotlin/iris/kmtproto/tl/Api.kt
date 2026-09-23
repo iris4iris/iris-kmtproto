@@ -3,7 +3,7 @@ package iris.kmtproto.tl
 /** Default `invokeWithLayer` version. Must match `// LAYER` in `tl/schema/api.tl`. Override via `TelegramClient(layer = …)`. */
 const val API_LAYER = 229
 
-data class InvokeWithLayer<T : TlObject>(
+class InvokeWithLayer<T : TlObject>(
     val layer: Int,
     val query: TlMethod<T>,
 ) : TlMethod<T> {
@@ -14,7 +14,7 @@ data class InvokeWithLayer<T : TlObject>(
     }
 }
 
-data class InvokeWithoutUpdates<T : TlObject>(
+class InvokeWithoutUpdates<T : TlObject>(
     val query: TlMethod<T>,
 ) : TlMethod<T> {
     override val constructorId: Int = TlIds.INVOKE_WITHOUT_UPDATES
@@ -23,7 +23,7 @@ data class InvokeWithoutUpdates<T : TlObject>(
     }
 }
 
-data class InitConnection<T : TlObject>(
+class InitConnection<T : TlObject>(
     val flags: Int = 0,
     val apiId: Int,
     val deviceModel: String,
