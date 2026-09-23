@@ -16,13 +16,8 @@ class MultilayerStorage(
     constructor(storage: Storage): this(arrayOf(storage))
     constructor(storage1: Storage, storage2: Storage): this(arrayOf(storage1, storage2))
     constructor(storage1: Storage, storage2: Storage, storage3: Storage): this(arrayOf(storage1, storage2, storage3))
-    constructor(storage1: Storage, storage2: Storage, storage3: Storage, vararg otherStorages: Storage):
-            this(arrayOfNulls<Storage>(3+otherStorages.size).also {
-                it[0] = storage1
-                it[1] = storage2
-                it[3] = storage3
-                otherStorages.copyInto(it, 3)
-            } as Array<Storage>)
+    constructor(storage1: Storage, storage2: Storage, storage3: Storage, vararg otherStorages: Storage) :
+        this(arrayOf(storage1, storage2, storage3) + otherStorages)
 
     override fun getAccessHash(id: Long): Long = find(
         { it.getAccessHash(id).takeIf { hash -> hash != 0L } },
