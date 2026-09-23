@@ -82,14 +82,14 @@ fun main() {
             typeChunks.add(
                 if (name == "InputFile") {
                     "/** [$name]($href). Path, file_id, or attach:// name. */\n" +
-                        "data class InputFile(\n    val value: String = \"\",\n)\n\n"
+                        "class InputFile(\n    val value: String = \"\",\n)\n\n"
                 } else {
                     "/** [$name]($href). */\ndata object $name\n\n"
                 },
             )
             continue
         }
-        val lines = mutableListOf("/** [$name]($href). */\ndata class $name(")
+        val lines = mutableListOf("/** [$name]($href). */\nclass $name(")
         for (field in fields) {
             val ktype = kotlinRef(field.typeNames(), unions)
             val decl = when {
@@ -107,9 +107,9 @@ fun main() {
     if ("RichText" in parents) {
         typeChunks.add(
             "/** Plain string used where the spec allows a [RichText] value to be a String. */\n" +
-                "data class RichTextPlain(\n    val text: String = \"\",\n) : RichText\n\n" +
+                "class RichTextPlain(\n    val text: String = \"\",\n) : RichText\n\n" +
                 "/** List used where the spec allows a [RichText] value to be an array. */\n" +
-                "data class RichTextParts(\n    val parts: List<RichText> = emptyList(),\n) : RichText\n\n",
+                "class RichTextParts(\n    val parts: List<RichText> = emptyList(),\n) : RichText\n\n",
         )
     }
     File(out, "Types.kt").writeText(typeChunks.joinToString(""))
@@ -135,6 +135,20 @@ fun main() {
     }
     for (name in parents.sorted()) {
         emitParent(dec, name, types, unions)
+    }
+    val update = types["Update"]
+    if (update != null) {
+        val checks = update.fields().mapNotNull { field ->
+            if (field.getString("name") == "update_id") return@mapNotNull null
+            val prop = camel(field.getString("name"))
+            val names = field.typeNames()
+            when {
+                isPrimitive(names) && field.getBoolean("required") -> "$prop != ${scalarDefault(names[0])}"
+                isList(names) && field.getBoolean("required") -> "$prop.isNotEmpty()"
+                else -> "$prop != null"
+            }
+        }
+        dec.add("fun Update.hasPayload(): Boolean =\n    " + checks.joinToString(" ||\n    ") + "\n\n")
     }
     File(out, "Decode.kt").writeText(dec.joinToString(""))
     println("$version types=${types.size} parents=${parents.size} unions=${unions.size} -> ${out.path}")

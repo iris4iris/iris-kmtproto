@@ -31,6 +31,7 @@ import iris.kmtproto.tl.gen.ReplyMarkup
 import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.bot.Update as BotUpdate
+import iris.kmtproto.bot.hasPayload
 import iris.kmtproto.bot.toBotUpdate
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
@@ -105,7 +106,7 @@ class BotApi(val client: TelegramClient) {
     ): Flow<BotUpdate> = incomingBotUpdatesToMap(writer).mapNotNull { map ->
         val update = map.toBotUpdate() ?: return@mapNotNull null
         // A map key the spec does not know (custom_event, …) would otherwise become an empty Update.
-        if (update.copy(updateId = 0) == BotUpdate()) null else update
+        if (!update.hasPayload()) null else update
     }
 
     /** Same updates as [incomingBotUpdates], kept as `Map<String, Any?>`. */

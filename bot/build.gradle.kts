@@ -30,9 +30,4 @@ tasks.register<JavaExec>("generateBotApi") {
     classpath = botgenCompilation.output.allOutputs + (botgenCompilation.runtimeDependencyFiles ?: files())
     mainClass.set("iris.kmtproto.botgen.GenerateBotApiKt")
     workingDir = projectDir
-    inputs.file(layout.projectDirectory.file("schema/api.min.json"))
-    outputs.files(
-        layout.projectDirectory.file("src/commonMain/kotlin/iris/kmtproto/bot/gen/Types.kt"),
-        layout.projectDirectory.file("src/commonMain/kotlin/iris/kmtproto/bot/gen/Decode.kt"),
-    )
 }

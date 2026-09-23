@@ -4512,3 +4512,32 @@ fun transactionPartnerFromMap(raw: Any?): TransactionPartner? {
     }
 }
 
+fun Update.hasPayload(): Boolean =
+    message != null ||
+    editedMessage != null ||
+    channelPost != null ||
+    editedChannelPost != null ||
+    businessConnection != null ||
+    businessMessage != null ||
+    editedBusinessMessage != null ||
+    deletedBusinessMessages != null ||
+    guestMessage != null ||
+    messageReaction != null ||
+    messageReactionCount != null ||
+    inlineQuery != null ||
+    chosenInlineResult != null ||
+    callbackQuery != null ||
+    shippingQuery != null ||
+    preCheckoutQuery != null ||
+    purchasedPaidMedia != null ||
+    poll != null ||
+    pollAnswer != null ||
+    myChatMember != null ||
+    chatMember != null ||
+    chatJoinRequest != null ||
+    chatBoost != null ||
+    removedChatBoost != null ||
+    managedBot != null ||
+    subscription != null ||
+    stoppedMessageGeneration != null
+
