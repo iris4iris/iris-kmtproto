@@ -261,9 +261,15 @@ suspend fun Update.toBotApiMap(
 
 class BotApiWriter(
     val selfId: Long,
-    val storage: Storage,
-    val maps: BotApiMapFactory,
+    val storage: Storage = MemoryStorage(),
+    val maps: BotApiMapFactory = BotApiMapFactory { HashMap() },
 ) {
+
+    private var updateIdSeq = 0
+
+    @Synchronized
+    fun nextUpdateId(): Int = ++updateIdSeq
+
     private fun me(): Long = selfId
 
     fun map(): MutableMap<String, Any?> = maps.create()

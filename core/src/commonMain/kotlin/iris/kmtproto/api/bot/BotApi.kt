@@ -95,36 +95,17 @@ class BotApi(val client: TelegramClient) {
     fun startPollingBotUpdates(collector: suspend (Map<String, Any?>) -> Unit): Job =
         client.startPolling(incomingBotUpdates(), collector)
 
-    /**
-     * Builds every nested Bot API object. Default [LinkedHashMap].
-     * Assign a factory that returns your [MutableMap] implementation.
-     */
-    private var mapFactory: BotApiMapFactory = BotApiMapFactory { LinkedHashMap() }
-
-    private var updateIdSeq = 0
-
-    @Synchronized
-    private fun nextUpdateId(): Int = ++updateIdSeq
-
-    private var botApiWriter: BotApiWriter? = null
-
-    fun setMapFactory(mapFactory: BotApiMapFactory) {
-        botApiWriter = null
-        this.mapFactory = mapFactory
-    }
-
     /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
-    fun incomingBotUpdates(): Flow<Map<String, Any?>> {
+    fun incomingBotUpdates(botApiWriter: BotApiWriter? = null): Flow<Map<String, Any?>> {
         val sid = client.selfUserId()
-        val cached = botApiWriter
-        val writer = if (cached != null && (cached.selfId != 0L || sid == 0L)) {
-            cached
+        val writer = if (botApiWriter != null && (botApiWriter.selfId != 0L || sid == 0L)) {
+            botApiWriter
         } else {
-            BotApiWriter(selfId = sid, storage = client.storage, maps = mapFactory).also { botApiWriter = it }
+            BotApiWriter(selfId = sid, storage = client.storage)
         }
         return client.incomingUpdates().mapNotNull {
             try {
-                it.toBotApiMap(writer, nextUpdateId())
+                it.toBotApiMap(writer, writer.nextUpdateId())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
