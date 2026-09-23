@@ -12,13 +12,17 @@ class SimpleFileStorage(private val file: File) : Storage {
 	constructor(path: String) : this(File(path))
 
 	private val hashes = HashMap<Long, Long>()
+	private val channelPts = HashMap<Long, Int>()
 	private val entities = MemoryStorage()
 
 	init {
 		if (file.exists()) {
-			file.readLines().forEach {
-				val (peerId, hash) = it.split(';')
-				hashes[peerId.toLong()] = hash.toLong()
+			file.readLines().forEach { line ->
+				val parts = line.split(';')
+				when {
+					parts.size == 3 && parts[0] == "c" -> channelPts[parts[1].toLong()] = parts[2].toInt()
+					parts.size >= 2 && parts[0].isNotEmpty() -> hashes[parts[0].toLong()] = parts[1].toLong()
+				}
 			}
 		}
 	}
@@ -50,8 +54,27 @@ class SimpleFileStorage(private val file: File) : Storage {
 
 	override fun clearEntities() = entities.clearEntities()
 
+	@Synchronized
+	override fun getChannelPts(channelId: Long): Int = channelPts[channelId] ?: 0
+
+	@Synchronized
+	override fun putChannelPts(channelId: Long, pts: Int) {
+		if (pts == 0) {
+			if (channelPts.remove(channelId) != null) updateFile()
+			return
+		}
+		if (channelPts.put(channelId, pts) != pts) updateFile()
+	}
+
+	@Synchronized
+	override fun removeChannelPts(channelId: Long) {
+		if (channelPts.remove(channelId) != null) updateFile()
+	}
+
 	private fun updateFile() {
 		if (!file.exists()) file.createNewFile()
-		file.writeText(hashes.entries.joinToString("\n") { (k, v) -> "$k;$v" })
+		val hashesText = hashes.entries.joinToString("\n") { (k, v) -> "$k;$v" }
+		val ptsText = channelPts.entries.joinToString("\n") { (k, v) -> "c;$k;$v" }
+		file.writeText(listOf(hashesText, ptsText).filter { it.isNotEmpty() }.joinToString("\n"))
 	}
 }

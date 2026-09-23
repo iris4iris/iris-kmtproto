@@ -131,7 +131,6 @@ class TelegramClient(
     private var supervisor = SupervisorJob()
     private var scope = CoroutineScope(supervisor + Dispatchers.Default)
     private var apiScope = CoroutineScope(supervisor + Dispatchers.Default)
-    private val channels = ChannelCursors()
     private val incomingUpdates = MutableSharedFlow<Update>(extraBufferCapacity = 256, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
     private var catchingChannel: Long = 0
@@ -201,7 +200,6 @@ class TelegramClient(
         currentDc = session?.let { Datacenter.production(it.dcId) } ?: target
         updatesState = null
         user = null
-        channels.clear()
         val updates = SocketLink("updates")
         val rpc = SocketLink("rpc")
         updatesLink = updates
@@ -699,19 +697,19 @@ class TelegramClient(
     }
 
     private fun acceptChannelPts(channelId: Long, pts: Int, count: Int): Boolean {
-        val cur = channels.get(channelId)
+        val cur = storage.getChannelPts(channelId)
         return when {
-            cur == null || cur.pts == 0 -> {
-                channels.put(channelId, pts)
+            cur == 0 -> {
+                storage.putChannelPts(channelId, pts)
                 true
             }
-            pts <= cur.pts -> false
-            count > 0 && pts == cur.pts + count -> {
-                channels.put(channelId, pts)
+            pts <= cur -> false
+            count > 0 && pts == cur + count -> {
+                storage.putChannelPts(channelId, pts)
                 true
             }
             else -> {
-                scheduleCatchUpChannel(channelId, cur.pts)
+                scheduleCatchUpChannel(channelId, cur)
                 false
             }
         }
@@ -797,10 +795,10 @@ class TelegramClient(
     }
 
     private suspend fun catchUpChannel(channelId: Long, ptsHint: Int) {
-        val cur = channels.get(channelId)
+        val cur = storage.getChannelPts(channelId)
         val hash = storage.getAccessHash(PeerChannel(channelId).botApiChatId())
         if (hash == 0L) return
-        val pts = if (ptsHint != 0) ptsHint else cur?.pts ?: return
+        val pts = if (ptsHint != 0) ptsHint else cur.takeIf { it != 0 } ?: return
         val r = invoke(
             UpdatesGetChannelDifference(
                 channel = InputChannelCtor(channelId, hash),
@@ -811,16 +809,16 @@ class TelegramClient(
         )
         when (val diff = r.result) {
             null -> return
-            is UpdatesChannelDifferenceEmpty -> channels.put(channelId, diff.pts)
+            is UpdatesChannelDifferenceEmpty -> storage.putChannelPts(channelId, diff.pts)
             is UpdatesChannelDifferenceCtor -> {
                 rememberUsers(diff.users)
                 rememberChats(diff.chats)
                 rememberMessages(diff.newMessages)
-                channels.put(channelId, diff.pts)
+                storage.putChannelPts(channelId, diff.pts)
                 diff.newMessages.mapNotNull { it.asText() }.forEach { emitUpdate(UpdateNewChannelMessage(message = it, pts = diff.pts, ptsCount = 0)) }
                 diff.otherUpdates.forEach { if (it is Update) emitUpdate(it) }
             }
-            is UpdatesChannelDifferenceTooLong -> channels.remove(channelId)
+            is UpdatesChannelDifferenceTooLong -> storage.removeChannelPts(channelId)
         }
     }
 
@@ -918,7 +916,6 @@ class TelegramClient(
         rpcLink = null
         mediaLink = null
         updatesState = null
-        channels.clear()
         storage.clearEntities()
     }
 }

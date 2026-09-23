@@ -4,6 +4,7 @@ import iris.kmtproto.api.user.UserApi
 import iris.kmtproto.client.ReadThroughStorage
 import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.TelegramClient
+import iris.kmtproto.example.SimpleFileStorage
 import iris.kmtproto.tl.gen.Channel
 import iris.kmtproto.tl.gen.ChatCtor
 import iris.kmtproto.tl.gen.ChatPhotoEmpty
@@ -18,6 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import java.io.File
 
 class StorageTest {
     @Test
@@ -104,5 +106,30 @@ class StorageTest {
         s.rememberChat(Channel(id = 5, title = "chan", photo = ChatPhotoEmpty, date = 1))
         assertEquals("group", (s.getChat(-5) as ChatCtor).title)
         assertEquals("chan", (s.getChat(-(5L + 1_000_000_000_000L)) as Channel).title)
+    }
+
+    @Test
+    fun channelPtsOutliveEntitiesAndProcess() {
+        val s = MemoryStorage()
+        assertEquals(0, s.getChannelPts(5))
+        s.putChannelPts(5, 40)
+        s.putChannelPts(5, 0)
+        assertEquals(0, s.getChannelPts(5))
+        s.putChannelPts(5, 40)
+        s.clearEntities()
+        assertEquals(40, s.getChannelPts(5))
+        s.removeChannelPts(5)
+        assertEquals(0, s.getChannelPts(5))
+
+        val file = File.createTempFile("kmtproto-pts", ".txt")
+        file.deleteOnExit()
+        val disk = SimpleFileStorage(file)
+        disk.putAccessHash(1, 2)
+        disk.putChannelPts(9, 100)
+        val again = SimpleFileStorage(file)
+        assertEquals(2L, again.getAccessHash(1))
+        assertEquals(100, again.getChannelPts(9))
+        again.clearEntities()
+        assertEquals(100, again.getChannelPts(9))
     }
 }

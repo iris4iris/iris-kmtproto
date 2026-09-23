@@ -43,6 +43,18 @@ interface Storage {
     }
 
     fun clearEntities()
+
+    /**
+     * Raw MTProto channel id → channel pts.
+     * Not a bot-api id, and not part of the auth session: a new session of the same account
+     * continues [updates.getChannelDifference](https://core.telegram.org/method/updates.getChannelDifference) from here.
+     * 0 if this channel has no cursor yet. Not removed by [clearEntities].
+     */
+    fun getChannelPts(channelId: Long): Int
+
+    fun putChannelPts(channelId: Long, pts: Int)
+
+    fun removeChannelPts(channelId: Long)
 }
 
 /** Process-lifetime maps. Dies with the JVM. */
@@ -51,6 +63,7 @@ class MemoryStorage : Storage {
     private val users = HashMap<Long, UserCtor>()
     private val chats = HashMap<Long, Chat>()
     private val knownMessages = HashMap<LongIntPair, Message>()
+    private val channelPts = LinkedHashMap<Long, Int>()
 
     @Synchronized
     override fun getAccessHash(id: Long): Long = hashes[id] ?: 0L
@@ -101,5 +114,25 @@ class MemoryStorage : Storage {
         users.clear()
         chats.clear()
         knownMessages.clear()
+    }
+
+    @Synchronized
+    override fun getChannelPts(channelId: Long): Int {
+        val pts = channelPts.remove(channelId) ?: return 0
+        channelPts[channelId] = pts
+        return pts
+    }
+
+    @Synchronized
+    override fun putChannelPts(channelId: Long, pts: Int) {
+        channelPts.remove(channelId)
+        if (pts == 0) return
+        channelPts[channelId] = pts
+        while (channelPts.size > 16_384) channelPts.remove(channelPts.keys.first())
+    }
+
+    @Synchronized
+    override fun removeChannelPts(channelId: Long) {
+        channelPts.remove(channelId)
     }
 }
