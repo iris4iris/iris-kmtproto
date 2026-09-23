@@ -102,7 +102,7 @@ class BotApi(val client: TelegramClient) {
         writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage),
     ): Flow<Map<String, Any?>> = client.incomingUpdates().mapNotNull {
         try {
-            it.toBotApiMap(writer, writer.nextUpdateId())
+            it.toBotApiMap(writer)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

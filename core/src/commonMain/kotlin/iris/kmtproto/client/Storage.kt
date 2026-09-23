@@ -75,11 +75,10 @@ class MemoryStorage : Storage {
 
     @Synchronized
     override fun rememberChat(chat: Chat) {
-        val (id, min) = when (chat) {
-            is Channel -> chat.id to chat.min
-            is ChannelForbidden -> chat.id to false
-            is ChatCtor -> chat.id to false
-            is ChatForbidden -> chat.id to false
+        val id = chat.botApiChatId()
+        val min= when (chat) {
+            is Channel -> chat.min
+            is ChannelForbidden, is ChatCtor, is ChatForbidden -> false
             else -> return
         }
         val old = chats[id]

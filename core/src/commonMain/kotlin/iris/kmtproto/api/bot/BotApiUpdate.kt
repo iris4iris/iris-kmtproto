@@ -15,7 +15,6 @@ import iris.kmtproto.tl.gen.ChannelParticipantCtor
 import iris.kmtproto.tl.gen.ChannelParticipantCreator
 import iris.kmtproto.tl.gen.ChannelParticipantLeft
 import iris.kmtproto.tl.gen.ChannelParticipantSelf
-import iris.kmtproto.tl.gen.Chat
 import iris.kmtproto.tl.gen.ChatAdminRights
 import iris.kmtproto.tl.gen.ChatBannedRights
 import iris.kmtproto.tl.gen.ChatCtor
@@ -146,7 +145,6 @@ import iris.kmtproto.tl.gen.PollAnswerCtor
 import iris.kmtproto.tl.gen.PollResults
 import iris.kmtproto.tl.gen.PostAddress
 import iris.kmtproto.tl.gen.Reaction
-import iris.kmtproto.tl.gen.ReactionCount
 import iris.kmtproto.tl.gen.ReactionCustomEmoji
 import iris.kmtproto.tl.gen.ReactionEmoji
 import iris.kmtproto.tl.gen.ReactionPaid
@@ -201,60 +199,13 @@ import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UserCtor
 import iris.kmtproto.tl.gen.Username
-import kotlinx.coroutines.runBlocking
-
-/**
- * One [core.telegram.org/bots/api#update] object as a map, or null if this MTProto
- * update has no Bot API counterpart (typing, pts-only, …).
- */
-fun Update.toBotApiMap(
-    maps: BotApiMapFactory,
-    updateId: Int,
-    users: (Long) -> UserCtor? = { null },
-    chats: (Long) -> Chat? = { null },
-    self: UserCtor? = null,
-    selfId: Long = 0L,
-    messages: (Peer, Int) -> Message? = { _, _ -> null },
-): MutableMap<String, Any?>? {
-    val base = MemoryStorage()
-    if (self != null) base.rememberUser(self)
-    val storage = LookupStorage(base, users, chats, messages)
-    val id = if (selfId != 0L) selfId else self?.id ?: 0L
-    val w = BotApiWriter(selfId = id, storage = storage, maps = maps)
-    return runBlocking { toBotApiMap(w, updateId) }
-}
-
-/** Test/helper storage: callbacks first, then [base]. */
-private class LookupStorage(
-    private val base: MemoryStorage,
-    private val users: (Long) -> UserCtor?,
-    private val chats: (Long) -> Chat?,
-    private val messages: (Peer, Int) -> Message?,
-) : Storage by base {
-    override fun getUser(id: Long): UserCtor? = users(id) ?: base.getUser(id)
-
-    override fun getChat(id: Long): Chat? = chats(id) ?: base.getChat(id)
-
-    override fun getMessage(peerId: Long, messageId: Int): Message? =
-        getMessage(iris.kmtproto.LongIntPair(peerId, messageId))
-
-    override fun getMessage(key: iris.kmtproto.LongIntPair): Message? {
-        val peer = when {
-            key.first > 0L -> PeerUser(key.first)
-            key.first <= -1_000_000_000_000L -> PeerChannel(-key.first - 1_000_000_000_000L)
-            else -> PeerChat(-key.first)
-        }
-        return messages(peer, key.second) ?: base.getMessage(key)
-    }
-}
 
 suspend fun Update.toBotApiMap(
     w: BotApiWriter,
-    updateId: Int
 ): MutableMap<String, Any?>? {
     val body = w.updateBody(this) ?: return null
     val out = w.maps.create()
-    out["update_id"] = updateId
+    out["update_id"] = w.nextUpdateId()
     out.putAll(body)
     return out
 }
@@ -1131,7 +1082,7 @@ class BotApiWriter(
         when (peer) {
             is PeerUser -> {
                 put("type", "private")
-                val u = storage.getUser(peer.userId)
+                val u = storage.getUser(peer.botApiChatId())
                 if (u != null) {
                     put("first_name", u.firstName.orEmpty())
                     opt("last_name", u.lastName)
@@ -1140,14 +1091,14 @@ class BotApiWriter(
             }
             is PeerChat -> {
                 put("type", "group")
-                when (val c = storage.getChat(peer.chatId)) {
+                when (val c = storage.getChat(peer.botApiChatId())) {
                     is ChatCtor -> put("title", c.title)
                     is ChatForbidden -> put("title", c.title)
                     else -> Unit
                 }
             }
             is PeerChannel -> {
-                val c = storage.getChat(peer.channelId)
+                val c = storage.getChat(peer.botApiChatId())
                 val channel = c as? Channel
                 val forbidden = c as? ChannelForbidden
                 put(
