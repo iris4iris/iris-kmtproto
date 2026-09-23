@@ -92,26 +92,22 @@ class BotApi(val client: TelegramClient) {
     fun startPollingMessages(collector: suspend (BotMessage) -> Unit): Job =
         client.startPolling(incomingMessages(), collector)
 
-    fun startPollingBotUpdates(collector: suspend (Map<String, Any?>) -> Unit): Job =
-        client.startPolling(incomingBotUpdates(), collector)
+    fun startPollingBotUpdates(
+        writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage),
+        collector: suspend (Map<String, Any?>) -> Unit,
+    ): Job = client.startPolling(incomingBotUpdates(writer), collector)
 
     /** Bot API Update maps: `update_id` plus one of `message`, `callback_query`, … */
-    fun incomingBotUpdates(botApiWriter: BotApiWriter? = null): Flow<Map<String, Any?>> {
-        val sid = client.selfUserId()
-        val writer = if (botApiWriter != null && (botApiWriter.selfId != 0L || sid == 0L)) {
-            botApiWriter
-        } else {
-            BotApiWriter(selfId = sid, storage = client.storage)
-        }
-        return client.incomingUpdates().mapNotNull {
-            try {
-                it.toBotApiMap(writer, writer.nextUpdateId())
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                logCaught("bot-api-map", e)
-                null
-            }
+    fun incomingBotUpdates(
+        writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage),
+    ): Flow<Map<String, Any?>> = client.incomingUpdates().mapNotNull {
+        try {
+            it.toBotApiMap(writer, writer.nextUpdateId())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logCaught("bot-api-map", e)
+            null
         }
     }
 

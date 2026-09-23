@@ -53,10 +53,14 @@ bot.startPollingMessages { msg -> }
 bot.startPollingBotUpdates { map -> }
 job.cancel() // or client.close()
 
-bot.setMapFactory(BotApiMapFactory { MyOwnHashMap() }) // MutableMap<String, Any?>
-bot.incomingBotUpdates().collect { upd ->
+val writer = BotApiWriter(
+    selfId = bot.client.selfUserId(),
+    storage = bot.client.storage,
+    maps = BotApiMapFactory { MyOwnHashMap() }, // MutableMap<String, Any?>
+)
+bot.incomingBotUpdates(writer).collect { upd ->
     val msg = upd["message"] as Map<String, Any?>?
-    // update_id, message / channel_post / callback_query / …
+    // update_id lives on writer; message / channel_post / callback_query / …
 }
 
 val router = SingleEventRouter()
