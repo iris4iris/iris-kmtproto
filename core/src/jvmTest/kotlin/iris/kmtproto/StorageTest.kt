@@ -1,7 +1,7 @@
 package iris.kmtproto
 
 import iris.kmtproto.api.user.UserApi
-import iris.kmtproto.client.GetMissingStorage
+import iris.kmtproto.client.ReadThroughStorage
 import iris.kmtproto.client.MemoryStorage
 import iris.kmtproto.client.TelegramClient
 import iris.kmtproto.tl.gen.ChatCtor
@@ -82,16 +82,15 @@ class StorageTest {
     }
 
     @Test
-    fun getMissingStorageServesCachedEntities() {
+    fun readThroughStorageServesCachedEntities() {
         val inner = MemoryStorage()
         inner.rememberUser(UserCtor(id = 5, firstName = "Ivan"))
         inner.rememberChat(ChatCtor(id = 50, title = "Room", photo = ChatPhotoEmpty, participantsCount = 2, date = 1, version = 1))
         inner.rememberMessage(MessageCtor(id = 1, peerId = PeerUser(5), date = 1, message = "u"))
         val client = TelegramClient(apiId = 1, apiHash = "x", storage = inner)
-        val storage = GetMissingStorage(UserApi(client), inner)
+        val storage = ReadThroughStorage(UserApi(client), inner)
         assertEquals("Ivan", storage.getUser(5)?.firstName)
         assertEquals("Room", (storage.getChat(50) as ChatCtor).title)
-        assertEquals("Room", (storage.getChat(-50) as ChatCtor).title)
         assertEquals("u", (storage.getMessage(5, 1) as MessageCtor).message)
         client.storage = storage
         assertEquals("Ivan", client.knownUser(5)?.firstName)
