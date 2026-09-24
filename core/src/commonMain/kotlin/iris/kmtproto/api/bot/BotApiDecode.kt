@@ -317,7 +317,7 @@ import iris.kmtproto.tl.gen.Username
  * MTProto [Update] → Bot API [BotUpdate], without an intermediate map.
  */
 suspend fun Update.toBotUpdate(w: BotApiWriter): BotUpdate? {
-    val id = w.nextUpdateId().toLong()
+    val id = w.nextUpdateId()
     return when (this) {
         is UpdateNewMessage -> w.keyedMessage(id, message, edited = false)
         is UpdateNewChannelMessage -> w.keyedMessage(id, message, edited = false)
@@ -454,7 +454,7 @@ suspend fun Update.toBotUpdate(w: BotApiWriter): BotUpdate? {
     }
 }
 
-private suspend fun BotApiWriter.keyedMessage(updateId: Long, raw: TlMessage, edited: Boolean): BotUpdate? {
+private suspend fun BotApiWriter.keyedMessage(updateId: Int, raw: TlMessage, edited: Boolean): BotUpdate? {
     val m = botMessage(raw) ?: return null
     val post = when (raw) {
         is MessageCtor -> raw.post
@@ -469,7 +469,7 @@ private suspend fun BotApiWriter.keyedMessage(updateId: Long, raw: TlMessage, ed
     }
 }
 
-private fun BotApiWriter.placedMember(updateId: Long, userId: Long, member: ChatMemberUpdated): BotUpdate =
+private fun BotApiWriter.placedMember(updateId: Int, userId: Long, member: ChatMemberUpdated): BotUpdate =
     if (isMyMember(userId)) BotUpdate(updateId = updateId, myChatMember = member)
     else BotUpdate(updateId = updateId, chatMember = member)
 
@@ -1789,7 +1789,7 @@ private fun BotApiWriter.reaction(u: UpdateBotMessageReaction) = MessageReaction
     newReaction = u.newReactions.mapNotNull { reactionType(it) },
 )
 
-private fun BotApiWriter.chatBoost(updateId: Long, u: UpdateBotChatBoost): BotUpdate {
+private fun BotApiWriter.chatBoost(updateId: Int, u: UpdateBotChatBoost): BotUpdate {
     val b = u.boost
     val source = boostSource(b)
     val chat = botChat(u.peer)

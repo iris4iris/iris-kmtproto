@@ -91,10 +91,11 @@ fun main() {
         }
         val lines = mutableListOf("/** [$name]($href). */\nclass $name(")
         for (field in fields) {
-            val ktype = kotlinRef(field.typeNames(), unions)
+            val fname = field.getString("name")
+            val ktype = if (isUpdateId(fname)) "Int" else kotlinRef(field.typeNames(), unions)
             val decl = when {
-                isPrimitive(field.typeNames()) && field.getBoolean("required") ->
-                    "$ktype = ${scalarDefault(field.typeNames()[0])}"
+                isUpdateId(fname) || (isPrimitive(field.typeNames()) && field.getBoolean("required")) ->
+                    "$ktype = ${if (isUpdateId(fname)) "0" else scalarDefault(field.typeNames()[0])}"
                 isList(field.typeNames()) && field.getBoolean("required") ->
                     "$ktype = emptyList()"
                 else -> "$ktype? = null"
@@ -178,9 +179,10 @@ private fun emitStruct(
     }
     val args = fields.joinToString("\n") { field ->
         val raw = "m[\"${field.getString("name")}\"]"
-        var expr = decodeExpr(field.typeNames(), raw, unions)
+        var expr = if (isUpdateId(field.getString("name"))) "botInt($raw)" else decodeExpr(field.typeNames(), raw, unions)
         expr = when {
-            isPrimitive(field.typeNames()) && field.getBoolean("required") -> "$expr ?: ${scalarDefault(field.typeNames()[0])}"
+            isUpdateId(field.getString("name")) || (isPrimitive(field.typeNames()) && field.getBoolean("required")) ->
+                "$expr ?: ${if (isUpdateId(field.getString("name"))) "0" else scalarDefault(field.typeNames()[0])}"
             isList(field.typeNames()) && field.getBoolean("required") -> "$expr ?: emptyList()"
             else -> expr
         }
@@ -270,6 +272,9 @@ private fun emitParent(
         )
     }
 }
+
+/** Bot API: a plain Integer is 32-bit unless the field text says otherwise. `update_id` has no such note. */
+private fun isUpdateId(name: String) = name == "update_id"
 
 private fun camel(name: String): String {
     val parts = name.split("_")

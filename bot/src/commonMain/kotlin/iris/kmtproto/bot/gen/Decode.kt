@@ -3885,7 +3885,7 @@ fun uniqueGiftSymbolFromMap(raw: Any?): UniqueGiftSymbol? {
 fun updateFromMap(raw: Any?): Update? {
     val m = raw as? Map<*, *> ?: return null
     return Update(
-        updateId = botLong(m["update_id"]) ?: 0,
+        updateId = botInt(m["update_id"]) ?: 0,
         message = messageFromMap(m["message"]),
         editedMessage = messageFromMap(m["edited_message"]),
         channelPost = messageFromMap(m["channel_post"]),

@@ -3271,7 +3271,7 @@ class UniqueGiftSymbol(
 
 /** [Update](https://core.telegram.org/bots/api#update). */
 class Update(
-    val updateId: Long = 0,
+    val updateId: Int = 0,
     val message: Message? = null,
     val editedMessage: Message? = null,
     val channelPost: Message? = null,

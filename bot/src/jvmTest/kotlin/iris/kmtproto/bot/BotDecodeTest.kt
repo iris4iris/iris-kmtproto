@@ -19,7 +19,7 @@ class BotDecodeTest {
             ),
         )
         val update = raw.toBotUpdate()!!
-        assertEquals(7L, update.updateId)
+        assertEquals(7, update.updateId)
         val message = update.message!!
         assertEquals("hello", message.text)
         assertEquals(-1_000_000_000_099L, message.chat!!.id)

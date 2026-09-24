@@ -21,6 +21,13 @@ internal fun botLong(raw: Any?): Long? = when (raw) {
     else -> null
 }
 
+/** 32-bit Bot API Integer. Values outside [Int] are rejected, not truncated. */
+internal fun botInt(raw: Any?): Int? = when (raw) {
+    is Number -> raw.toLong().takeIf { it in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() }?.toInt()
+    is String -> raw.toIntOrNull()
+    else -> null
+}
+
 internal fun botDouble(raw: Any?): Double? = when (raw) {
     is Number -> raw.toDouble()
     is String -> raw.toDoubleOrNull()

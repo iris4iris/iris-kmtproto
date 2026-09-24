@@ -89,7 +89,7 @@ class BotApiUpdateTest {
         assertEquals(42L, chat["id"])
         assertEquals("private", chat["type"])
         val typed = u.toBotUpdate()
-        assertEquals(7L, typed?.updateId)
+        assertEquals(7, typed?.updateId)
         assertEquals("hello", typed?.message?.text)
         assertEquals(42L, typed?.message?.chat?.id)
         assertEquals("private", typed?.message?.chat?.type)
