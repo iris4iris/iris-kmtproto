@@ -198,4 +198,55 @@ class StorageTest {
         assertEquals(0, s.getChannelPts(1))
         assertEquals(20, s.getChannelPts(2))
     }
+
+    @Test
+    fun disabledCapacityStoresNothingAndUnlimitedKeepsAll() {
+        val off = MemoryStorage(
+            hashCapacity = MemoryStorage.DISABLED,
+            userCapacity = MemoryStorage.DISABLED,
+            chatCapacity = MemoryStorage.DISABLED,
+            messageCapacity = MemoryStorage.DISABLED,
+            channelPtsCapacity = MemoryStorage.DISABLED,
+        )
+        off.putAccessHash(1, 10)
+        off.rememberUser(UserCtor(id = 1, firstName = "A"))
+        off.rememberChat(ChatCtor(id = 1, title = "one", photo = ChatPhotoEmpty, participantsCount = 1, date = 1, version = 1))
+        off.rememberMessage(MessageCtor(id = 1, peerId = PeerUser(1), date = 1, message = "a"))
+        off.putChannelPts(1, 40)
+        assertEquals(0L, off.getAccessHash(1))
+        assertNull(off.getUser(1))
+        assertNull(off.getChat(-1))
+        assertNull(off.getMessage(1, 1))
+        assertEquals(0, off.getChannelPts(1))
+
+        val all = MemoryStorage(
+            hashCapacity = MemoryStorage.UNLIMITED,
+            userCapacity = MemoryStorage.UNLIMITED,
+            chatCapacity = MemoryStorage.UNLIMITED,
+            messageCapacity = MemoryStorage.UNLIMITED,
+            channelPtsCapacity = MemoryStorage.UNLIMITED,
+        )
+        all.putAccessHash(1, 10)
+        all.putAccessHash(2, 20)
+        all.putAccessHash(3, 30)
+        all.rememberUser(UserCtor(id = 1, firstName = "A"))
+        all.rememberUser(UserCtor(id = 2, firstName = "B"))
+        all.rememberChat(ChatCtor(id = 1, title = "one", photo = ChatPhotoEmpty, participantsCount = 1, date = 1, version = 1))
+        all.rememberChat(ChatCtor(id = 2, title = "two", photo = ChatPhotoEmpty, participantsCount = 1, date = 1, version = 1))
+        all.rememberMessage(MessageCtor(id = 1, peerId = PeerUser(1), date = 1, message = "a"))
+        all.rememberMessage(MessageCtor(id = 2, peerId = PeerUser(1), date = 1, message = "b"))
+        all.putChannelPts(1, 10)
+        all.putChannelPts(2, 20)
+        assertEquals(10L, all.getAccessHash(1))
+        assertEquals(20L, all.getAccessHash(2))
+        assertEquals(30L, all.getAccessHash(3))
+        assertEquals("A", all.getUser(1)?.firstName)
+        assertEquals("B", all.getUser(2)?.firstName)
+        assertEquals("one", (all.getChat(-1) as ChatCtor).title)
+        assertEquals("two", (all.getChat(-2) as ChatCtor).title)
+        assertEquals("a", (all.getMessage(1, 1) as MessageCtor).message)
+        assertEquals("b", (all.getMessage(1, 2) as MessageCtor).message)
+        assertEquals(10, all.getChannelPts(1))
+        assertEquals(20, all.getChannelPts(2))
+    }
 }
