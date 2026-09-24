@@ -95,18 +95,18 @@ class AcceptedGiftTypes(
 class AffiliateInfo(
     val affiliateUser: User? = null,
     val affiliateChat: Chat? = null,
-    val commissionPerMille: Long = 0,
-    val amount: Long = 0,
-    val nanostarAmount: Long? = null,
+    val commissionPerMille: Int = 0,
+    val amount: Int = 0,
+    val nanostarAmount: Int? = null,
 )
 
 /** [Animation](https://core.telegram.org/bots/api#animation). */
 class Animation(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val width: Long = 0,
-    val height: Long = 0,
-    val duration: Long = 0,
+    val width: Int = 0,
+    val height: Int = 0,
+    val duration: Int = 0,
     val thumbnail: PhotoSize? = null,
     val fileName: String? = null,
     val mimeType: String? = null,
@@ -117,7 +117,7 @@ class Animation(
 class Audio(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val duration: Long = 0,
+    val duration: Int = 0,
     val performer: String? = null,
     val title: String? = null,
     val fileName: String? = null,
@@ -129,21 +129,21 @@ class Audio(
 /** [BackgroundFillFreeformGradient](https://core.telegram.org/bots/api#backgroundfillfreeformgradient). */
 class BackgroundFillFreeformGradient(
     val type: String = "",
-    val colors: List<Long> = emptyList(),
+    val colors: List<Int> = emptyList(),
 ) : BackgroundFill
 
 /** [BackgroundFillGradient](https://core.telegram.org/bots/api#backgroundfillgradient). */
 class BackgroundFillGradient(
     val type: String = "",
-    val topColor: Long = 0,
-    val bottomColor: Long = 0,
-    val rotationAngle: Long = 0,
+    val topColor: Int = 0,
+    val bottomColor: Int = 0,
+    val rotationAngle: Int = 0,
 ) : BackgroundFill
 
 /** [BackgroundFillSolid](https://core.telegram.org/bots/api#backgroundfillsolid). */
 class BackgroundFillSolid(
     val type: String = "",
-    val color: Long = 0,
+    val color: Int = 0,
 ) : BackgroundFill
 
 /** [BackgroundTypeChatTheme](https://core.telegram.org/bots/api#backgroundtypechattheme). */
@@ -156,7 +156,7 @@ class BackgroundTypeChatTheme(
 class BackgroundTypeFill(
     val type: String = "",
     val fill: BackgroundFill? = null,
-    val darkThemeDimming: Long = 0,
+    val darkThemeDimming: Int = 0,
 ) : BackgroundType
 
 /** [BackgroundTypePattern](https://core.telegram.org/bots/api#backgroundtypepattern). */
@@ -164,7 +164,7 @@ class BackgroundTypePattern(
     val type: String = "",
     val document: Document? = null,
     val fill: BackgroundFill? = null,
-    val intensity: Long = 0,
+    val intensity: Int = 0,
     val isInverted: Boolean? = null,
     val isMoving: Boolean? = null,
 ) : BackgroundType
@@ -173,16 +173,16 @@ class BackgroundTypePattern(
 class BackgroundTypeWallpaper(
     val type: String = "",
     val document: Document? = null,
-    val darkThemeDimming: Long = 0,
+    val darkThemeDimming: Int = 0,
     val isBlurred: Boolean? = null,
     val isMoving: Boolean? = null,
 ) : BackgroundType
 
 /** [Birthdate](https://core.telegram.org/bots/api#birthdate). */
 class Birthdate(
-    val day: Long = 0,
-    val month: Long = 0,
-    val year: Long? = null,
+    val day: Int = 0,
+    val month: Int = 0,
+    val year: Int? = null,
 )
 
 /** [BotAccessSettings](https://core.telegram.org/bots/api#botaccesssettings). */
@@ -282,7 +282,7 @@ class BusinessConnection(
     val id: String = "",
     val user: User? = null,
     val userChatId: Long = 0,
-    val date: Long = 0,
+    val date: Int = 0,
     val rights: BusinessBotRights? = null,
     val isEnabled: Boolean = false,
 )
@@ -304,7 +304,7 @@ class BusinessLocation(
 class BusinessMessagesDeleted(
     val businessConnectionId: String = "",
     val chat: Chat? = null,
-    val messageIds: List<Long> = emptyList(),
+    val messageIds: List<Int> = emptyList(),
 )
 
 /** [BusinessOpeningHours](https://core.telegram.org/bots/api#businessopeninghours). */
@@ -315,8 +315,8 @@ class BusinessOpeningHours(
 
 /** [BusinessOpeningHoursInterval](https://core.telegram.org/bots/api#businessopeninghoursinterval). */
 class BusinessOpeningHoursInterval(
-    val openingMinute: Long = 0,
-    val closingMinute: Long = 0,
+    val openingMinute: Int = 0,
+    val closingMinute: Int = 0,
 )
 
 /** [CallbackGame](https://core.telegram.org/bots/api#callbackgame). */
@@ -375,21 +375,21 @@ class ChatBackground(
 /** [ChatBoost](https://core.telegram.org/bots/api#chatboost). */
 class ChatBoost(
     val boostId: String = "",
-    val addDate: Long = 0,
-    val expirationDate: Long = 0,
+    val addDate: Int = 0,
+    val expirationDate: Int = 0,
     val source: ChatBoostSource? = null,
 )
 
 /** [ChatBoostAdded](https://core.telegram.org/bots/api#chatboostadded). */
 class ChatBoostAdded(
-    val boostCount: Long = 0,
+    val boostCount: Int = 0,
 )
 
 /** [ChatBoostRemoved](https://core.telegram.org/bots/api#chatboostremoved). */
 class ChatBoostRemoved(
     val chat: Chat? = null,
     val boostId: String = "",
-    val removeDate: Long = 0,
+    val removeDate: Int = 0,
     val source: ChatBoostSource? = null,
 )
 
@@ -402,9 +402,9 @@ class ChatBoostSourceGiftCode(
 /** [ChatBoostSourceGiveaway](https://core.telegram.org/bots/api#chatboostsourcegiveaway). */
 class ChatBoostSourceGiveaway(
     val source: String = "",
-    val giveawayMessageId: Long = 0,
+    val giveawayMessageId: Int = 0,
     val user: User? = null,
-    val prizeStarCount: Long? = null,
+    val prizeStarCount: Int? = null,
     val isUnclaimed: Boolean? = null,
 ) : ChatBoostSource
 
@@ -430,8 +430,8 @@ class ChatFullInfo(
     val lastName: String? = null,
     val isForum: Boolean? = null,
     val isDirectMessages: Boolean? = null,
-    val accentColorId: Long = 0,
-    val maxReactionCount: Long = 0,
+    val accentColorId: Int = 0,
+    val maxReactionCount: Int = 0,
     val photo: ChatPhoto? = null,
     val activeUsernames: List<String>? = null,
     val birthdate: Birthdate? = null,
@@ -442,10 +442,10 @@ class ChatFullInfo(
     val parentChat: Chat? = null,
     val availableReactions: List<ReactionType>? = null,
     val backgroundCustomEmojiId: String? = null,
-    val profileAccentColorId: Long? = null,
+    val profileAccentColorId: Int? = null,
     val profileBackgroundCustomEmojiId: String? = null,
     val emojiStatusCustomEmojiId: String? = null,
-    val emojiStatusExpirationDate: Long? = null,
+    val emojiStatusExpirationDate: Int? = null,
     val bio: String? = null,
     val hasPrivateForwards: Boolean? = null,
     val hasRestrictedVoiceAndVideoMessages: Boolean? = null,
@@ -457,9 +457,9 @@ class ChatFullInfo(
     val permissions: ChatPermissions? = null,
     val acceptedGiftTypes: AcceptedGiftTypes? = null,
     val canSendPaidMedia: Boolean? = null,
-    val slowModeDelay: Long? = null,
-    val unrestrictBoostCount: Long? = null,
-    val messageAutoDeleteTime: Long? = null,
+    val slowModeDelay: Int? = null,
+    val unrestrictBoostCount: Int? = null,
+    val messageAutoDeleteTime: Int? = null,
     val hasAggressiveAntiSpamEnabled: Boolean? = null,
     val hasHiddenMembers: Boolean? = null,
     val hasProtectedContent: Boolean? = null,
@@ -472,7 +472,7 @@ class ChatFullInfo(
     val rating: UserRating? = null,
     val firstProfileAudio: Audio? = null,
     val uniqueGiftColors: UniqueGiftColors? = null,
-    val paidMessageStarCount: Long? = null,
+    val paidMessageStarCount: Int? = null,
     val guardBot: User? = null,
     val community: Community? = null,
 )
@@ -485,11 +485,11 @@ class ChatInviteLink(
     val isPrimary: Boolean = false,
     val isRevoked: Boolean = false,
     val name: String? = null,
-    val expireDate: Long? = null,
-    val memberLimit: Long? = null,
-    val pendingJoinRequestCount: Long? = null,
-    val subscriptionPeriod: Long? = null,
-    val subscriptionPrice: Long? = null,
+    val expireDate: Int? = null,
+    val memberLimit: Int? = null,
+    val pendingJoinRequestCount: Int? = null,
+    val subscriptionPeriod: Int? = null,
+    val subscriptionPrice: Int? = null,
 )
 
 /** [ChatJoinRequest](https://core.telegram.org/bots/api#chatjoinrequest). */
@@ -497,7 +497,7 @@ class ChatJoinRequest(
     val chat: Chat? = null,
     val from: User? = null,
     val userChatId: Long = 0,
-    val date: Long = 0,
+    val date: Int = 0,
     val bio: String? = null,
     val inviteLink: ChatInviteLink? = null,
     val queryId: String? = null,
@@ -539,7 +539,7 @@ class ChatMemberAdministrator(
 class ChatMemberBanned(
     val status: String = "",
     val user: User? = null,
-    val untilDate: Long = 0,
+    val untilDate: Int = 0,
 ) : ChatMember
 
 /** [ChatMemberLeft](https://core.telegram.org/bots/api#chatmemberleft). */
@@ -553,7 +553,7 @@ class ChatMemberMember(
     val status: String = "",
     val tag: String? = null,
     val user: User? = null,
-    val untilDate: Long? = null,
+    val untilDate: Int? = null,
 ) : ChatMember
 
 /** [ChatMemberOwner](https://core.telegram.org/bots/api#chatmemberowner). */
@@ -586,14 +586,14 @@ class ChatMemberRestricted(
     val canInviteUsers: Boolean = false,
     val canPinMessages: Boolean = false,
     val canManageTopics: Boolean = false,
-    val untilDate: Long = 0,
+    val untilDate: Int = 0,
 ) : ChatMember
 
 /** [ChatMemberUpdated](https://core.telegram.org/bots/api#chatmemberupdated). */
 class ChatMemberUpdated(
     val chat: Chat? = null,
     val from: User? = null,
-    val date: Long = 0,
+    val date: Int = 0,
     val oldChatMember: ChatMember? = null,
     val newChatMember: ChatMember? = null,
     val inviteLink: ChatInviteLink? = null,
@@ -641,7 +641,7 @@ class ChatPhoto(
 
 /** [ChatShared](https://core.telegram.org/bots/api#chatshared). */
 class ChatShared(
-    val requestId: Long = 0,
+    val requestId: Int = 0,
     val chatId: Long = 0,
     val title: String? = null,
     val username: String? = null,
@@ -659,12 +659,12 @@ class Checklist(
 
 /** [ChecklistTask](https://core.telegram.org/bots/api#checklisttask). */
 class ChecklistTask(
-    val id: Long = 0,
+    val id: Int = 0,
     val text: String = "",
     val textEntities: List<MessageEntity>? = null,
     val completedByUser: User? = null,
     val completedByChat: Chat? = null,
-    val completionDate: Long? = null,
+    val completionDate: Int? = null,
 )
 
 /** [ChecklistTasksAdded](https://core.telegram.org/bots/api#checklisttasksadded). */
@@ -676,8 +676,8 @@ class ChecklistTasksAdded(
 /** [ChecklistTasksDone](https://core.telegram.org/bots/api#checklisttasksdone). */
 class ChecklistTasksDone(
     val checklistMessage: Message? = null,
-    val markedAsDoneTaskIds: List<Long>? = null,
-    val markedAsNotDoneTaskIds: List<Long>? = null,
+    val markedAsDoneTaskIds: List<Int>? = null,
+    val markedAsNotDoneTaskIds: List<Int>? = null,
 )
 
 /** [ChosenInlineResult](https://core.telegram.org/bots/api#choseninlineresult). */
@@ -725,13 +725,13 @@ class CopyTextButton(
 /** [Dice](https://core.telegram.org/bots/api#dice). */
 class Dice(
     val emoji: String = "",
-    val value: Long = 0,
+    val value: Int = 0,
 )
 
 /** [DirectMessagePriceChanged](https://core.telegram.org/bots/api#directmessagepricechanged). */
 class DirectMessagePriceChanged(
     val areDirectMessagesEnabled: Boolean = false,
-    val directMessageStarCount: Long? = null,
+    val directMessageStarCount: Int? = null,
 )
 
 /** [DirectMessagesTopic](https://core.telegram.org/bots/api#directmessagestopic). */
@@ -785,7 +785,7 @@ class EphemeralMessageParameters(
 class ExternalReplyInfo(
     val origin: MessageOrigin? = null,
     val chat: Chat? = null,
-    val messageId: Long? = null,
+    val messageId: Int? = null,
     val linkPreviewOptions: LinkPreviewOptions? = null,
     val animation: Animation? = null,
     val audio: Audio? = null,
@@ -828,9 +828,9 @@ class ForceReply(
 
 /** [ForumTopic](https://core.telegram.org/bots/api#forumtopic). */
 class ForumTopic(
-    val messageThreadId: Long = 0,
+    val messageThreadId: Int = 0,
     val name: String = "",
-    val iconColor: Long = 0,
+    val iconColor: Int = 0,
     val iconCustomEmojiId: String? = null,
     val isNameImplicit: Boolean? = null,
 )
@@ -841,7 +841,7 @@ data object ForumTopicClosed
 /** [ForumTopicCreated](https://core.telegram.org/bots/api#forumtopiccreated). */
 class ForumTopicCreated(
     val name: String = "",
-    val iconColor: Long = 0,
+    val iconColor: Int = 0,
     val iconCustomEmojiId: String? = null,
     val isNameImplicit: Boolean? = null,
 )
@@ -867,9 +867,9 @@ class Game(
 
 /** [GameHighScore](https://core.telegram.org/bots/api#gamehighscore). */
 class GameHighScore(
-    val position: Long = 0,
+    val position: Int = 0,
     val user: User? = null,
-    val score: Long = 0,
+    val score: Int = 0,
 )
 
 /** [GeneralForumTopicHidden](https://core.telegram.org/bots/api#generalforumtopichidden). */
@@ -882,38 +882,38 @@ data object GeneralForumTopicUnhidden
 class Gift(
     val id: String = "",
     val sticker: Sticker? = null,
-    val starCount: Long = 0,
-    val upgradeStarCount: Long? = null,
+    val starCount: Int = 0,
+    val upgradeStarCount: Int? = null,
     val isPremium: Boolean? = null,
     val hasColors: Boolean? = null,
-    val totalCount: Long? = null,
-    val remainingCount: Long? = null,
-    val personalTotalCount: Long? = null,
-    val personalRemainingCount: Long? = null,
+    val totalCount: Int? = null,
+    val remainingCount: Int? = null,
+    val personalTotalCount: Int? = null,
+    val personalRemainingCount: Int? = null,
     val background: GiftBackground? = null,
-    val uniqueGiftVariantCount: Long? = null,
+    val uniqueGiftVariantCount: Int? = null,
     val publisherChat: Chat? = null,
 )
 
 /** [GiftBackground](https://core.telegram.org/bots/api#giftbackground). */
 class GiftBackground(
-    val centerColor: Long = 0,
-    val edgeColor: Long = 0,
-    val textColor: Long = 0,
+    val centerColor: Int = 0,
+    val edgeColor: Int = 0,
+    val textColor: Int = 0,
 )
 
 /** [GiftInfo](https://core.telegram.org/bots/api#giftinfo). */
 class GiftInfo(
     val gift: Gift? = null,
     val ownedGiftId: String? = null,
-    val convertStarCount: Long? = null,
-    val prepaidUpgradeStarCount: Long? = null,
+    val convertStarCount: Int? = null,
+    val prepaidUpgradeStarCount: Int? = null,
     val isUpgradeSeparate: Boolean? = null,
     val canBeUpgraded: Boolean? = null,
     val text: String? = null,
     val entities: List<MessageEntity>? = null,
     val isPrivate: Boolean? = null,
-    val uniqueGiftNumber: Long? = null,
+    val uniqueGiftNumber: Int? = null,
 )
 
 /** [Gifts](https://core.telegram.org/bots/api#gifts). */
@@ -924,40 +924,40 @@ class Gifts(
 /** [Giveaway](https://core.telegram.org/bots/api#giveaway). */
 class Giveaway(
     val chats: List<Chat> = emptyList(),
-    val winnersSelectionDate: Long = 0,
-    val winnerCount: Long = 0,
+    val winnersSelectionDate: Int = 0,
+    val winnerCount: Int = 0,
     val onlyNewMembers: Boolean? = null,
     val hasPublicWinners: Boolean? = null,
     val prizeDescription: String? = null,
     val countryCodes: List<String>? = null,
-    val prizeStarCount: Long? = null,
-    val premiumSubscriptionMonthCount: Long? = null,
+    val prizeStarCount: Int? = null,
+    val premiumSubscriptionMonthCount: Int? = null,
 )
 
 /** [GiveawayCompleted](https://core.telegram.org/bots/api#giveawaycompleted). */
 class GiveawayCompleted(
-    val winnerCount: Long = 0,
-    val unclaimedPrizeCount: Long? = null,
+    val winnerCount: Int = 0,
+    val unclaimedPrizeCount: Int? = null,
     val giveawayMessage: Message? = null,
     val isStarGiveaway: Boolean? = null,
 )
 
 /** [GiveawayCreated](https://core.telegram.org/bots/api#giveawaycreated). */
 class GiveawayCreated(
-    val prizeStarCount: Long? = null,
+    val prizeStarCount: Int? = null,
 )
 
 /** [GiveawayWinners](https://core.telegram.org/bots/api#giveawaywinners). */
 class GiveawayWinners(
     val chat: Chat? = null,
-    val giveawayMessageId: Long = 0,
-    val winnersSelectionDate: Long = 0,
-    val winnerCount: Long = 0,
+    val giveawayMessageId: Int = 0,
+    val winnersSelectionDate: Int = 0,
+    val winnerCount: Int = 0,
     val winners: List<User> = emptyList(),
-    val additionalChatCount: Long? = null,
-    val prizeStarCount: Long? = null,
-    val premiumSubscriptionMonthCount: Long? = null,
-    val unclaimedPrizeCount: Long? = null,
+    val additionalChatCount: Int? = null,
+    val prizeStarCount: Int? = null,
+    val premiumSubscriptionMonthCount: Int? = null,
+    val unclaimedPrizeCount: Int? = null,
     val onlyNewMembers: Boolean? = null,
     val wasRefunded: Boolean? = null,
     val prizeDescription: String? = null,
@@ -966,8 +966,8 @@ class GiveawayWinners(
 /** [InaccessibleMessage](https://core.telegram.org/bots/api#inaccessiblemessage). */
 class InaccessibleMessage(
     val chat: Chat? = null,
-    val messageId: Long = 0,
-    val date: Long = 0,
+    val messageId: Int = 0,
+    val date: Int = 0,
 ) : MaybeInaccessibleMessage
 
 /** [InlineKeyboardButton](https://core.telegram.org/bots/api#inlinekeyboardbutton). */
@@ -1014,8 +1014,8 @@ class InlineQueryResultArticle(
     val url: String? = null,
     val description: String? = null,
     val thumbnailUrl: String? = null,
-    val thumbnailWidth: Long? = null,
-    val thumbnailHeight: Long? = null,
+    val thumbnailWidth: Int? = null,
+    val thumbnailHeight: Int? = null,
 ) : InlineQueryResult
 
 /** [InlineQueryResultAudio](https://core.telegram.org/bots/api#inlinequeryresultaudio). */
@@ -1028,7 +1028,7 @@ class InlineQueryResultAudio(
     val parseMode: String? = null,
     val captionEntities: List<MessageEntity>? = null,
     val performer: String? = null,
-    val audioDuration: Long? = null,
+    val audioDuration: Int? = null,
     val replyMarkup: InlineKeyboardMarkup? = null,
     val inputMessageContent: InputMessageContent? = null,
 ) : InlineQueryResult
@@ -1150,8 +1150,8 @@ class InlineQueryResultContact(
     val replyMarkup: InlineKeyboardMarkup? = null,
     val inputMessageContent: InputMessageContent? = null,
     val thumbnailUrl: String? = null,
-    val thumbnailWidth: Long? = null,
-    val thumbnailHeight: Long? = null,
+    val thumbnailWidth: Int? = null,
+    val thumbnailHeight: Int? = null,
 ) : InlineQueryResult
 
 /** [InlineQueryResultDocument](https://core.telegram.org/bots/api#inlinequeryresultdocument). */
@@ -1168,8 +1168,8 @@ class InlineQueryResultDocument(
     val replyMarkup: InlineKeyboardMarkup? = null,
     val inputMessageContent: InputMessageContent? = null,
     val thumbnailUrl: String? = null,
-    val thumbnailWidth: Long? = null,
-    val thumbnailHeight: Long? = null,
+    val thumbnailWidth: Int? = null,
+    val thumbnailHeight: Int? = null,
 ) : InlineQueryResult
 
 /** [InlineQueryResultGame](https://core.telegram.org/bots/api#inlinequeryresultgame). */
@@ -1185,9 +1185,9 @@ class InlineQueryResultGif(
     val type: String = "",
     val id: String = "",
     val gifUrl: String = "",
-    val gifWidth: Long? = null,
-    val gifHeight: Long? = null,
-    val gifDuration: Long? = null,
+    val gifWidth: Int? = null,
+    val gifHeight: Int? = null,
+    val gifDuration: Int? = null,
     val thumbnailUrl: String = "",
     val thumbnailMimeType: String? = null,
     val title: String? = null,
@@ -1207,14 +1207,14 @@ class InlineQueryResultLocation(
     val longitude: Double = 0.0,
     val title: String = "",
     val horizontalAccuracy: Double? = null,
-    val livePeriod: Long? = null,
-    val heading: Long? = null,
-    val proximityAlertRadius: Long? = null,
+    val livePeriod: Int? = null,
+    val heading: Int? = null,
+    val proximityAlertRadius: Int? = null,
     val replyMarkup: InlineKeyboardMarkup? = null,
     val inputMessageContent: InputMessageContent? = null,
     val thumbnailUrl: String? = null,
-    val thumbnailWidth: Long? = null,
-    val thumbnailHeight: Long? = null,
+    val thumbnailWidth: Int? = null,
+    val thumbnailHeight: Int? = null,
 ) : InlineQueryResult
 
 /** [InlineQueryResultMpeg4Gif](https://core.telegram.org/bots/api#inlinequeryresultmpeg4gif). */
@@ -1222,9 +1222,9 @@ class InlineQueryResultMpeg4Gif(
     val type: String = "",
     val id: String = "",
     val mpeg4Url: String = "",
-    val mpeg4Width: Long? = null,
-    val mpeg4Height: Long? = null,
-    val mpeg4Duration: Long? = null,
+    val mpeg4Width: Int? = null,
+    val mpeg4Height: Int? = null,
+    val mpeg4Duration: Int? = null,
     val thumbnailUrl: String = "",
     val thumbnailMimeType: String? = null,
     val title: String? = null,
@@ -1242,8 +1242,8 @@ class InlineQueryResultPhoto(
     val id: String = "",
     val photoUrl: String = "",
     val thumbnailUrl: String = "",
-    val photoWidth: Long? = null,
-    val photoHeight: Long? = null,
+    val photoWidth: Int? = null,
+    val photoHeight: Int? = null,
     val title: String? = null,
     val description: String? = null,
     val caption: String? = null,
@@ -1269,8 +1269,8 @@ class InlineQueryResultVenue(
     val replyMarkup: InlineKeyboardMarkup? = null,
     val inputMessageContent: InputMessageContent? = null,
     val thumbnailUrl: String? = null,
-    val thumbnailWidth: Long? = null,
-    val thumbnailHeight: Long? = null,
+    val thumbnailWidth: Int? = null,
+    val thumbnailHeight: Int? = null,
 ) : InlineQueryResult
 
 /** [InlineQueryResultVideo](https://core.telegram.org/bots/api#inlinequeryresultvideo). */
@@ -1285,9 +1285,9 @@ class InlineQueryResultVideo(
     val parseMode: String? = null,
     val captionEntities: List<MessageEntity>? = null,
     val showCaptionAboveMedia: Boolean? = null,
-    val videoWidth: Long? = null,
-    val videoHeight: Long? = null,
-    val videoDuration: Long? = null,
+    val videoWidth: Int? = null,
+    val videoHeight: Int? = null,
+    val videoDuration: Int? = null,
     val description: String? = null,
     val replyMarkup: InlineKeyboardMarkup? = null,
     val inputMessageContent: InputMessageContent? = null,
@@ -1302,7 +1302,7 @@ class InlineQueryResultVoice(
     val caption: String? = null,
     val parseMode: String? = null,
     val captionEntities: List<MessageEntity>? = null,
-    val voiceDuration: Long? = null,
+    val voiceDuration: Int? = null,
     val replyMarkup: InlineKeyboardMarkup? = null,
     val inputMessageContent: InputMessageContent? = null,
 ) : InlineQueryResult
@@ -1326,7 +1326,7 @@ class InputChecklist(
 
 /** [InputChecklistTask](https://core.telegram.org/bots/api#inputchecklisttask). */
 class InputChecklistTask(
-    val id: Long = 0,
+    val id: Int = 0,
     val text: String = "",
     val parseMode: String? = null,
     val textEntities: List<MessageEntity>? = null,
@@ -1353,13 +1353,13 @@ class InputInvoiceMessageContent(
     val providerToken: String? = null,
     val currency: String = "",
     val prices: List<LabeledPrice> = emptyList(),
-    val maxTipAmount: Long? = null,
-    val suggestedTipAmounts: List<Long>? = null,
+    val maxTipAmount: Int? = null,
+    val suggestedTipAmounts: List<Int>? = null,
     val providerData: String? = null,
     val photoUrl: String? = null,
-    val photoSize: Long? = null,
-    val photoWidth: Long? = null,
-    val photoHeight: Long? = null,
+    val photoSize: Int? = null,
+    val photoWidth: Int? = null,
+    val photoHeight: Int? = null,
     val needName: Boolean? = null,
     val needPhoneNumber: Boolean? = null,
     val needEmail: Boolean? = null,
@@ -1374,9 +1374,9 @@ class InputLocationMessageContent(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val horizontalAccuracy: Double? = null,
-    val livePeriod: Long? = null,
-    val heading: Long? = null,
-    val proximityAlertRadius: Long? = null,
+    val livePeriod: Int? = null,
+    val heading: Int? = null,
+    val proximityAlertRadius: Int? = null,
 ) : InputMessageContent
 
 /** [InputMediaAnimation](https://core.telegram.org/bots/api#inputmediaanimation). */
@@ -1388,9 +1388,9 @@ class InputMediaAnimation(
     val parseMode: String? = null,
     val captionEntities: List<MessageEntity>? = null,
     val showCaptionAboveMedia: Boolean? = null,
-    val width: Long? = null,
-    val height: Long? = null,
-    val duration: Long? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val duration: Int? = null,
     val hasSpoiler: Boolean? = null,
 ) : InputPollMedia, InputPollOptionMedia, InputMedia, MediaOfInputRichMessageMedia
 
@@ -1402,7 +1402,7 @@ class InputMediaAudio(
     val caption: String? = null,
     val parseMode: String? = null,
     val captionEntities: List<MessageEntity>? = null,
-    val duration: Long? = null,
+    val duration: Int? = null,
     val performer: String? = null,
     val title: String? = null,
 ) : InputPollMedia, InputMedia, MediaOfInputRichMessageMedia
@@ -1481,14 +1481,14 @@ class InputMediaVideo(
     val media: String = "",
     val thumbnail: String? = null,
     val cover: String? = null,
-    val startTimestamp: Long? = null,
+    val startTimestamp: Int? = null,
     val caption: String? = null,
     val parseMode: String? = null,
     val captionEntities: List<MessageEntity>? = null,
     val showCaptionAboveMedia: Boolean? = null,
-    val width: Long? = null,
-    val height: Long? = null,
-    val duration: Long? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val duration: Int? = null,
     val supportsStreaming: Boolean? = null,
     val hasSpoiler: Boolean? = null,
 ) : InputPollMedia, InputPollOptionMedia, InputMedia, MediaOfInputRichMessageMedia
@@ -1500,7 +1500,7 @@ class InputMediaVoiceNote(
     val caption: String? = null,
     val parseMode: String? = null,
     val captionEntities: List<MessageEntity>? = null,
-    val duration: Long? = null,
+    val duration: Int? = null,
 ) : MediaOfInputRichMessageMedia
 
 /** [InputPaidMediaLivePhoto](https://core.telegram.org/bots/api#inputpaidmedialivephoto). */
@@ -1522,10 +1522,10 @@ class InputPaidMediaVideo(
     val media: String = "",
     val thumbnail: String? = null,
     val cover: String? = null,
-    val startTimestamp: Long? = null,
-    val width: Long? = null,
-    val height: Long? = null,
-    val duration: Long? = null,
+    val startTimestamp: Int? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val duration: Int? = null,
     val supportsStreaming: Boolean? = null,
 ) : InputPaidMedia
 
@@ -1635,7 +1635,7 @@ class InputRichBlockListItem(
     val blocks: List<InputRichBlock> = emptyList(),
     val hasCheckbox: Boolean? = null,
     val isChecked: Boolean? = null,
-    val value: Long? = null,
+    val value: Int? = null,
     val type: String? = null,
 )
 
@@ -1643,9 +1643,9 @@ class InputRichBlockListItem(
 class InputRichBlockMap(
     val type: String = "",
     val location: Location? = null,
-    val zoom: Long? = null,
-    val width: Long? = null,
-    val height: Long? = null,
+    val zoom: Int? = null,
+    val width: Int? = null,
+    val height: Int? = null,
     val caption: RichBlockCaption? = null,
 ) : InputRichBlock
 
@@ -1686,7 +1686,7 @@ class InputRichBlockPullQuotation(
 class InputRichBlockSectionHeading(
     val type: String = "",
     val text: RichText? = null,
-    val size: Long = 0,
+    val size: Int = 0,
 ) : InputRichBlock
 
 /** [InputRichBlockSlideshow](https://core.telegram.org/bots/api#inputrichblockslideshow). */
@@ -1797,7 +1797,7 @@ class Invoice(
     val description: String = "",
     val startParameter: String = "",
     val currency: String = "",
-    val totalAmount: Long = 0,
+    val totalAmount: Int = 0,
 )
 
 /** [KeyboardButton](https://core.telegram.org/bots/api#keyboardbutton). */
@@ -1821,7 +1821,7 @@ class KeyboardButtonPollType(
 
 /** [KeyboardButtonRequestChat](https://core.telegram.org/bots/api#keyboardbuttonrequestchat). */
 class KeyboardButtonRequestChat(
-    val requestId: Long = 0,
+    val requestId: Int = 0,
     val chatIsChannel: Boolean = false,
     val chatIsForum: Boolean? = null,
     val chatHasUsername: Boolean? = null,
@@ -1836,17 +1836,17 @@ class KeyboardButtonRequestChat(
 
 /** [KeyboardButtonRequestManagedBot](https://core.telegram.org/bots/api#keyboardbuttonrequestmanagedbot). */
 class KeyboardButtonRequestManagedBot(
-    val requestId: Long = 0,
+    val requestId: Int = 0,
     val suggestedName: String? = null,
     val suggestedUsername: String? = null,
 )
 
 /** [KeyboardButtonRequestUsers](https://core.telegram.org/bots/api#keyboardbuttonrequestusers). */
 class KeyboardButtonRequestUsers(
-    val requestId: Long = 0,
+    val requestId: Int = 0,
     val userIsBot: Boolean? = null,
     val userIsPremium: Boolean? = null,
-    val maxQuantity: Long? = null,
+    val maxQuantity: Int? = null,
     val requestName: Boolean? = null,
     val requestUsername: Boolean? = null,
     val requestPhoto: Boolean? = null,
@@ -1855,7 +1855,7 @@ class KeyboardButtonRequestUsers(
 /** [LabeledPrice](https://core.telegram.org/bots/api#labeledprice). */
 class LabeledPrice(
     val label: String = "",
-    val amount: Long = 0,
+    val amount: Int = 0,
 )
 
 /** [Link](https://core.telegram.org/bots/api#link). */
@@ -1877,9 +1877,9 @@ class LivePhoto(
     val photo: List<PhotoSize>? = null,
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val width: Long = 0,
-    val height: Long = 0,
-    val duration: Long = 0,
+    val width: Int = 0,
+    val height: Int = 0,
+    val duration: Int = 0,
     val mimeType: String? = null,
     val fileSize: Long? = null,
 )
@@ -1889,9 +1889,9 @@ class Location(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val horizontalAccuracy: Double? = null,
-    val livePeriod: Long? = null,
-    val heading: Long? = null,
-    val proximityAlertRadius: Long? = null,
+    val livePeriod: Int? = null,
+    val heading: Int? = null,
+    val proximityAlertRadius: Int? = null,
 )
 
 /** [LocationAddress](https://core.telegram.org/bots/api#locationaddress). */
@@ -1948,17 +1948,17 @@ class MenuButtonWebApp(
 
 /** [Message](https://core.telegram.org/bots/api#message). */
 class Message(
-    val messageId: Long = 0,
-    val messageThreadId: Long? = null,
+    val messageId: Int = 0,
+    val messageThreadId: Int? = null,
     val directMessagesTopic: DirectMessagesTopic? = null,
     val from: User? = null,
     val senderChat: Chat? = null,
-    val senderBoostCount: Long? = null,
+    val senderBoostCount: Int? = null,
     val senderBusinessBot: User? = null,
     val senderTag: String? = null,
     val receiverUser: User? = null,
-    val ephemeralMessageId: Long? = null,
-    val date: Long = 0,
+    val ephemeralMessageId: Int? = null,
+    val date: Int = 0,
     val guestQueryId: String? = null,
     val businessConnectionId: String? = null,
     val chat: Chat? = null,
@@ -1969,18 +1969,18 @@ class Message(
     val externalReply: ExternalReplyInfo? = null,
     val quote: TextQuote? = null,
     val replyToStory: Story? = null,
-    val replyToChecklistTaskId: Long? = null,
+    val replyToChecklistTaskId: Int? = null,
     val replyToPollOptionId: String? = null,
     val viaBot: User? = null,
     val guestBotCallerUser: User? = null,
     val guestBotCallerChat: Chat? = null,
-    val editDate: Long? = null,
+    val editDate: Int? = null,
     val hasProtectedContent: Boolean? = null,
     val isFromOffline: Boolean? = null,
     val isPaidPost: Boolean? = null,
     val mediaGroupId: String? = null,
     val authorSignature: String? = null,
-    val paidStarCount: Long? = null,
+    val paidStarCount: Int? = null,
     val text: String? = null,
     val entities: List<MessageEntity>? = null,
     val linkPreviewOptions: LinkPreviewOptions? = null,
@@ -2072,47 +2072,47 @@ class Message(
 
 /** [MessageAutoDeleteTimerChanged](https://core.telegram.org/bots/api#messageautodeletetimerchanged). */
 class MessageAutoDeleteTimerChanged(
-    val messageAutoDeleteTime: Long = 0,
+    val messageAutoDeleteTime: Int = 0,
 )
 
 /** [MessageEntity](https://core.telegram.org/bots/api#messageentity). */
 class MessageEntity(
     val type: String = "",
-    val offset: Long = 0,
-    val length: Long = 0,
+    val offset: Int = 0,
+    val length: Int = 0,
     val url: String? = null,
     val user: User? = null,
     val language: String? = null,
     val customEmojiId: String? = null,
-    val unixTime: Long? = null,
+    val unixTime: Int? = null,
     val dateTimeFormat: String? = null,
 )
 
 /** [MessageGenerationStopped](https://core.telegram.org/bots/api#messagegenerationstopped). */
 class MessageGenerationStopped(
     val chat: Chat? = null,
-    val messageThreadId: Long? = null,
-    val draftId: Long = 0,
+    val messageThreadId: Int? = null,
+    val draftId: Int = 0,
 )
 
 /** [MessageId](https://core.telegram.org/bots/api#messageid). */
 class MessageId(
-    val messageId: Long = 0,
+    val messageId: Int = 0,
 )
 
 /** [MessageOriginChannel](https://core.telegram.org/bots/api#messageoriginchannel). */
 class MessageOriginChannel(
     val type: String = "",
-    val date: Long = 0,
+    val date: Int = 0,
     val chat: Chat? = null,
-    val messageId: Long = 0,
+    val messageId: Int = 0,
     val authorSignature: String? = null,
 ) : MessageOrigin
 
 /** [MessageOriginChat](https://core.telegram.org/bots/api#messageoriginchat). */
 class MessageOriginChat(
     val type: String = "",
-    val date: Long = 0,
+    val date: Int = 0,
     val senderChat: Chat? = null,
     val authorSignature: String? = null,
 ) : MessageOrigin
@@ -2120,32 +2120,32 @@ class MessageOriginChat(
 /** [MessageOriginHiddenUser](https://core.telegram.org/bots/api#messageoriginhiddenuser). */
 class MessageOriginHiddenUser(
     val type: String = "",
-    val date: Long = 0,
+    val date: Int = 0,
     val senderUserName: String = "",
 ) : MessageOrigin
 
 /** [MessageOriginUser](https://core.telegram.org/bots/api#messageoriginuser). */
 class MessageOriginUser(
     val type: String = "",
-    val date: Long = 0,
+    val date: Int = 0,
     val senderUser: User? = null,
 ) : MessageOrigin
 
 /** [MessageReactionCountUpdated](https://core.telegram.org/bots/api#messagereactioncountupdated). */
 class MessageReactionCountUpdated(
     val chat: Chat? = null,
-    val messageId: Long = 0,
-    val date: Long = 0,
+    val messageId: Int = 0,
+    val date: Int = 0,
     val reactions: List<ReactionCount> = emptyList(),
 )
 
 /** [MessageReactionUpdated](https://core.telegram.org/bots/api#messagereactionupdated). */
 class MessageReactionUpdated(
     val chat: Chat? = null,
-    val messageId: Long = 0,
+    val messageId: Int = 0,
     val user: User? = null,
     val actorChat: Chat? = null,
-    val date: Long = 0,
+    val date: Int = 0,
     val oldReaction: List<ReactionType> = emptyList(),
     val newReaction: List<ReactionType> = emptyList(),
 )
@@ -2164,17 +2164,17 @@ class OwnedGiftRegular(
     val gift: Gift? = null,
     val ownedGiftId: String? = null,
     val senderUser: User? = null,
-    val sendDate: Long = 0,
+    val sendDate: Int = 0,
     val text: String? = null,
     val entities: List<MessageEntity>? = null,
     val isPrivate: Boolean? = null,
     val isSaved: Boolean? = null,
     val canBeUpgraded: Boolean? = null,
     val wasRefunded: Boolean? = null,
-    val convertStarCount: Long? = null,
-    val prepaidUpgradeStarCount: Long? = null,
+    val convertStarCount: Int? = null,
+    val prepaidUpgradeStarCount: Int? = null,
     val isUpgradeSeparate: Boolean? = null,
-    val uniqueGiftNumber: Long? = null,
+    val uniqueGiftNumber: Int? = null,
 ) : OwnedGift
 
 /** [OwnedGiftUnique](https://core.telegram.org/bots/api#ownedgiftunique). */
@@ -2183,23 +2183,23 @@ class OwnedGiftUnique(
     val gift: UniqueGift? = null,
     val ownedGiftId: String? = null,
     val senderUser: User? = null,
-    val sendDate: Long = 0,
+    val sendDate: Int = 0,
     val isSaved: Boolean? = null,
     val canBeTransferred: Boolean? = null,
-    val transferStarCount: Long? = null,
-    val nextTransferDate: Long? = null,
+    val transferStarCount: Int? = null,
+    val nextTransferDate: Int? = null,
 ) : OwnedGift
 
 /** [OwnedGifts](https://core.telegram.org/bots/api#ownedgifts). */
 class OwnedGifts(
-    val totalCount: Long = 0,
+    val totalCount: Int = 0,
     val gifts: List<OwnedGift> = emptyList(),
     val nextOffset: String? = null,
 )
 
 /** [PaidMediaInfo](https://core.telegram.org/bots/api#paidmediainfo). */
 class PaidMediaInfo(
-    val starCount: Long = 0,
+    val starCount: Int = 0,
     val paidMedia: List<PaidMedia> = emptyList(),
 )
 
@@ -2218,9 +2218,9 @@ class PaidMediaPhoto(
 /** [PaidMediaPreview](https://core.telegram.org/bots/api#paidmediapreview). */
 class PaidMediaPreview(
     val type: String = "",
-    val width: Long? = null,
-    val height: Long? = null,
-    val duration: Long? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val duration: Int? = null,
 ) : PaidMedia
 
 /** [PaidMediaPurchased](https://core.telegram.org/bots/api#paidmediapurchased). */
@@ -2237,7 +2237,7 @@ class PaidMediaVideo(
 
 /** [PaidMessagePriceChanged](https://core.telegram.org/bots/api#paidmessagepricechanged). */
 class PaidMessagePriceChanged(
-    val paidMessageStarCount: Long = 0,
+    val paidMessageStarCount: Int = 0,
 )
 
 /** [PassportData](https://core.telegram.org/bots/api#passportdata). */
@@ -2323,17 +2323,17 @@ class PassportElementErrorUnspecified(
 class PassportFile(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val fileSize: Long = 0,
-    val fileDate: Long = 0,
+    val fileSize: Int = 0,
+    val fileDate: Int = 0,
 )
 
 /** [PhotoSize](https://core.telegram.org/bots/api#photosize). */
 class PhotoSize(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val width: Long = 0,
-    val height: Long = 0,
-    val fileSize: Long? = null,
+    val width: Int = 0,
+    val height: Int = 0,
+    val fileSize: Int? = null,
 )
 
 /** [Poll](https://core.telegram.org/bots/api#poll). */
@@ -2342,7 +2342,7 @@ class Poll(
     val question: String = "",
     val questionEntities: List<MessageEntity>? = null,
     val options: List<PollOption> = emptyList(),
-    val totalVoterCount: Long = 0,
+    val totalVoterCount: Int = 0,
     val isClosed: Boolean = false,
     val isAnonymous: Boolean = false,
     val type: String = "",
@@ -2350,12 +2350,12 @@ class Poll(
     val allowsRevoting: Boolean = false,
     val membersOnly: Boolean = false,
     val countryCodes: List<String>? = null,
-    val correctOptionIds: List<Long>? = null,
+    val correctOptionIds: List<Int>? = null,
     val explanation: String? = null,
     val explanationEntities: List<MessageEntity>? = null,
     val explanationMedia: PollMedia? = null,
-    val openPeriod: Long? = null,
-    val closeDate: Long? = null,
+    val openPeriod: Int? = null,
+    val closeDate: Int? = null,
     val description: String? = null,
     val descriptionEntities: List<MessageEntity>? = null,
     val media: PollMedia? = null,
@@ -2366,7 +2366,7 @@ class PollAnswer(
     val pollId: String = "",
     val voterChat: Chat? = null,
     val user: User? = null,
-    val optionIds: List<Long> = emptyList(),
+    val optionIds: List<Int> = emptyList(),
     val optionPersistentIds: List<String> = emptyList(),
 )
 
@@ -2390,10 +2390,10 @@ class PollOption(
     val text: String = "",
     val textEntities: List<MessageEntity>? = null,
     val media: PollMedia? = null,
-    val voterCount: Long = 0,
+    val voterCount: Int = 0,
     val addedByUser: User? = null,
     val addedByChat: Chat? = null,
-    val additionDate: Long? = null,
+    val additionDate: Int? = null,
 )
 
 /** [PollOptionAdded](https://core.telegram.org/bots/api#polloptionadded). */
@@ -2417,7 +2417,7 @@ class PreCheckoutQuery(
     val id: String = "",
     val from: User? = null,
     val currency: String = "",
-    val totalAmount: Long = 0,
+    val totalAmount: Int = 0,
     val invoicePayload: String = "",
     val shippingOptionId: String? = null,
     val orderInfo: OrderInfo? = null,
@@ -2426,7 +2426,7 @@ class PreCheckoutQuery(
 /** [PreparedInlineMessage](https://core.telegram.org/bots/api#preparedinlinemessage). */
 class PreparedInlineMessage(
     val id: String = "",
-    val expirationDate: Long = 0,
+    val expirationDate: Int = 0,
 )
 
 /** [PreparedKeyboardButton](https://core.telegram.org/bots/api#preparedkeyboardbutton). */
@@ -2438,13 +2438,13 @@ class PreparedKeyboardButton(
 class ProximityAlertTriggered(
     val traveler: User? = null,
     val watcher: User? = null,
-    val distance: Long = 0,
+    val distance: Int = 0,
 )
 
 /** [ReactionCount](https://core.telegram.org/bots/api#reactioncount). */
 class ReactionCount(
     val type: ReactionType? = null,
-    val totalCount: Long = 0,
+    val totalCount: Int = 0,
 )
 
 /** [ReactionTypeCustomEmoji](https://core.telegram.org/bots/api#reactiontypecustomemoji). */
@@ -2467,7 +2467,7 @@ class ReactionTypePaid(
 /** [RefundedPayment](https://core.telegram.org/bots/api#refundedpayment). */
 class RefundedPayment(
     val currency: String = "",
-    val totalAmount: Long = 0,
+    val totalAmount: Int = 0,
     val invoicePayload: String = "",
     val telegramPaymentChargeId: String = "",
     val providerPaymentChargeId: String? = null,
@@ -2492,22 +2492,22 @@ class ReplyKeyboardRemove(
 
 /** [ReplyParameters](https://core.telegram.org/bots/api#replyparameters). */
 class ReplyParameters(
-    val messageId: Long? = null,
+    val messageId: Int? = null,
     val chatId: LongOrString? = null,
-    val ephemeralMessageId: Long? = null,
+    val ephemeralMessageId: Int? = null,
     val allowSendingWithoutReply: Boolean? = null,
     val quote: String? = null,
     val quoteParseMode: String? = null,
     val quoteEntities: List<MessageEntity>? = null,
-    val quotePosition: Long? = null,
-    val checklistTaskId: Long? = null,
+    val quotePosition: Int? = null,
+    val checklistTaskId: Int? = null,
     val pollOptionId: String? = null,
 )
 
 /** [ResponseParameters](https://core.telegram.org/bots/api#responseparameters). */
 class ResponseParameters(
     val migrateToChatId: Long? = null,
-    val retryAfter: Long? = null,
+    val retryAfter: Int? = null,
 )
 
 /** [RevenueWithdrawalStateFailed](https://core.telegram.org/bots/api#revenuewithdrawalstatefailed). */
@@ -2523,7 +2523,7 @@ class RevenueWithdrawalStatePending(
 /** [RevenueWithdrawalStateSucceeded](https://core.telegram.org/bots/api#revenuewithdrawalstatesucceeded). */
 class RevenueWithdrawalStateSucceeded(
     val type: String = "",
-    val date: Long = 0,
+    val date: Int = 0,
     val url: String = "",
 ) : RevenueWithdrawalState
 
@@ -2620,7 +2620,7 @@ class RichBlockListItem(
     val blocks: List<RichBlock> = emptyList(),
     val hasCheckbox: Boolean? = null,
     val isChecked: Boolean? = null,
-    val value: Long? = null,
+    val value: Int? = null,
     val type: String? = null,
 )
 
@@ -2628,9 +2628,9 @@ class RichBlockListItem(
 class RichBlockMap(
     val type: String = "",
     val location: Location? = null,
-    val zoom: Long = 0,
-    val width: Long = 0,
-    val height: Long = 0,
+    val zoom: Int = 0,
+    val width: Int = 0,
+    val height: Int = 0,
     val caption: RichBlockCaption? = null,
 ) : RichBlock
 
@@ -2672,7 +2672,7 @@ class RichBlockPullQuotation(
 class RichBlockSectionHeading(
     val type: String = "",
     val text: RichText? = null,
-    val size: Long = 0,
+    val size: Int = 0,
 ) : RichBlock
 
 /** [RichBlockSlideshow](https://core.telegram.org/bots/api#richblockslideshow). */
@@ -2696,8 +2696,8 @@ class RichBlockTable(
 class RichBlockTableCell(
     val text: RichText? = null,
     val isHeader: Boolean? = null,
-    val colspan: Long? = null,
-    val rowspan: Long? = null,
+    val colspan: Int? = null,
+    val rowspan: Int? = null,
     val align: String = "",
     val valign: String = "",
 )
@@ -2807,7 +2807,7 @@ class RichTextCustomEmoji(
 class RichTextDateTime(
     val type: String = "",
     val text: RichText? = null,
-    val unixTime: Long = 0,
+    val unixTime: Int = 0,
     val dateTimeFormat: String = "",
 ) : RichText
 
@@ -2961,16 +2961,16 @@ class ShippingQuery(
 
 /** [StarAmount](https://core.telegram.org/bots/api#staramount). */
 class StarAmount(
-    val amount: Long = 0,
-    val nanostarAmount: Long? = null,
+    val amount: Int = 0,
+    val nanostarAmount: Int? = null,
 )
 
 /** [StarTransaction](https://core.telegram.org/bots/api#startransaction). */
 class StarTransaction(
     val id: String = "",
-    val amount: Long = 0,
-    val nanostarAmount: Long? = null,
-    val date: Long = 0,
+    val amount: Int = 0,
+    val nanostarAmount: Int? = null,
+    val date: Int = 0,
     val source: TransactionPartner? = null,
     val receiver: TransactionPartner? = null,
 )
@@ -2985,8 +2985,8 @@ class Sticker(
     val fileId: String = "",
     val fileUniqueId: String = "",
     val type: String = "",
-    val width: Long = 0,
-    val height: Long = 0,
+    val width: Int = 0,
+    val height: Int = 0,
     val isAnimated: Boolean = false,
     val isVideo: Boolean = false,
     val thumbnail: PhotoSize? = null,
@@ -2996,7 +2996,7 @@ class Sticker(
     val maskPosition: MaskPosition? = null,
     val customEmojiId: String? = null,
     val needsRepainting: Boolean? = null,
-    val fileSize: Long? = null,
+    val fileSize: Int? = null,
 )
 
 /** [StickerSet](https://core.telegram.org/bots/api#stickerset). */
@@ -3011,7 +3011,7 @@ class StickerSet(
 /** [Story](https://core.telegram.org/bots/api#story). */
 class Story(
     val chat: Chat? = null,
-    val id: Long = 0,
+    val id: Int = 0,
 )
 
 /** [StoryArea](https://core.telegram.org/bots/api#storyarea). */
@@ -3063,15 +3063,15 @@ class StoryAreaTypeWeather(
     val type: String = "",
     val temperature: Double = 0.0,
     val emoji: String = "",
-    val backgroundColor: Long = 0,
+    val backgroundColor: Int = 0,
 ) : StoryAreaType
 
 /** [SuccessfulPayment](https://core.telegram.org/bots/api#successfulpayment). */
 class SuccessfulPayment(
     val currency: String = "",
-    val totalAmount: Long = 0,
+    val totalAmount: Int = 0,
     val invoicePayload: String = "",
-    val subscriptionExpirationDate: Long? = null,
+    val subscriptionExpirationDate: Int? = null,
     val isRecurring: Boolean? = null,
     val isFirstRecurring: Boolean? = null,
     val shippingOptionId: String? = null,
@@ -3090,7 +3090,7 @@ class SuggestedPostApprovalFailed(
 class SuggestedPostApproved(
     val suggestedPostMessage: Message? = null,
     val price: SuggestedPostPrice? = null,
-    val sendDate: Long = 0,
+    val sendDate: Int = 0,
 )
 
 /** [SuggestedPostDeclined](https://core.telegram.org/bots/api#suggestedpostdeclined). */
@@ -3103,27 +3103,27 @@ class SuggestedPostDeclined(
 class SuggestedPostInfo(
     val state: String = "",
     val price: SuggestedPostPrice? = null,
-    val sendDate: Long? = null,
+    val sendDate: Int? = null,
 )
 
 /** [SuggestedPostPaid](https://core.telegram.org/bots/api#suggestedpostpaid). */
 class SuggestedPostPaid(
     val suggestedPostMessage: Message? = null,
     val currency: String = "",
-    val amount: Long? = null,
+    val amount: Int? = null,
     val starAmount: StarAmount? = null,
 )
 
 /** [SuggestedPostParameters](https://core.telegram.org/bots/api#suggestedpostparameters). */
 class SuggestedPostParameters(
     val price: SuggestedPostPrice? = null,
-    val sendDate: Long? = null,
+    val sendDate: Int? = null,
 )
 
 /** [SuggestedPostPrice](https://core.telegram.org/bots/api#suggestedpostprice). */
 class SuggestedPostPrice(
     val currency: String = "",
-    val amount: Long = 0,
+    val amount: Int = 0,
 )
 
 /** [SuggestedPostRefunded](https://core.telegram.org/bots/api#suggestedpostrefunded). */
@@ -3145,7 +3145,7 @@ class SwitchInlineQueryChosenChat(
 class TextQuote(
     val text: String = "",
     val entities: List<MessageEntity>? = null,
-    val position: Long = 0,
+    val position: Int = 0,
     val isManual: Boolean? = null,
 )
 
@@ -3153,7 +3153,7 @@ class TextQuote(
 class TransactionPartnerAffiliateProgram(
     val type: String = "",
     val sponsorUser: User? = null,
-    val commissionPerMille: Long = 0,
+    val commissionPerMille: Int = 0,
 ) : TransactionPartner
 
 /** [TransactionPartnerChat](https://core.telegram.org/bots/api#transactionpartnerchat). */
@@ -3182,7 +3182,7 @@ class TransactionPartnerTelegramAds(
 /** [TransactionPartnerTelegramApi](https://core.telegram.org/bots/api#transactionpartnertelegramapi). */
 class TransactionPartnerTelegramApi(
     val type: String = "",
-    val requestCount: Long = 0,
+    val requestCount: Int = 0,
 ) : TransactionPartner
 
 /** [TransactionPartnerUser](https://core.telegram.org/bots/api#transactionpartneruser). */
@@ -3192,11 +3192,11 @@ class TransactionPartnerUser(
     val user: User? = null,
     val affiliate: AffiliateInfo? = null,
     val invoicePayload: String? = null,
-    val subscriptionPeriod: Long? = null,
+    val subscriptionPeriod: Int? = null,
     val paidMedia: List<PaidMedia>? = null,
     val paidMediaPayload: String? = null,
     val gift: Gift? = null,
-    val premiumSubscriptionDuration: Long? = null,
+    val premiumSubscriptionDuration: Int? = null,
 ) : TransactionPartner
 
 /** [UniqueGift](https://core.telegram.org/bots/api#uniquegift). */
@@ -3204,7 +3204,7 @@ class UniqueGift(
     val giftId: String = "",
     val baseName: String = "",
     val name: String = "",
-    val number: Long = 0,
+    val number: Int = 0,
     val model: UniqueGiftModel? = null,
     val symbol: UniqueGiftSymbol? = null,
     val backdrop: UniqueGiftBackdrop? = null,
@@ -3219,25 +3219,25 @@ class UniqueGift(
 class UniqueGiftBackdrop(
     val name: String = "",
     val colors: UniqueGiftBackdropColors? = null,
-    val rarityPerMille: Long = 0,
+    val rarityPerMille: Int = 0,
 )
 
 /** [UniqueGiftBackdropColors](https://core.telegram.org/bots/api#uniquegiftbackdropcolors). */
 class UniqueGiftBackdropColors(
-    val centerColor: Long = 0,
-    val edgeColor: Long = 0,
-    val symbolColor: Long = 0,
-    val textColor: Long = 0,
+    val centerColor: Int = 0,
+    val edgeColor: Int = 0,
+    val symbolColor: Int = 0,
+    val textColor: Int = 0,
 )
 
 /** [UniqueGiftColors](https://core.telegram.org/bots/api#uniquegiftcolors). */
 class UniqueGiftColors(
     val modelCustomEmojiId: String = "",
     val symbolCustomEmojiId: String = "",
-    val lightThemeMainColor: Long = 0,
-    val lightThemeOtherColors: List<Long> = emptyList(),
-    val darkThemeMainColor: Long = 0,
-    val darkThemeOtherColors: List<Long> = emptyList(),
+    val lightThemeMainColor: Int = 0,
+    val lightThemeOtherColors: List<Int> = emptyList(),
+    val darkThemeMainColor: Int = 0,
+    val darkThemeOtherColors: List<Int> = emptyList(),
 )
 
 /** [UniqueGiftInfo](https://core.telegram.org/bots/api#uniquegiftinfo). */
@@ -3248,17 +3248,17 @@ class UniqueGiftInfo(
     val entities: List<MessageEntity>? = null,
     val isPrivate: Boolean? = null,
     val lastResaleCurrency: String? = null,
-    val lastResaleAmount: Long? = null,
+    val lastResaleAmount: Int? = null,
     val ownedGiftId: String? = null,
-    val transferStarCount: Long? = null,
-    val nextTransferDate: Long? = null,
+    val transferStarCount: Int? = null,
+    val nextTransferDate: Int? = null,
 )
 
 /** [UniqueGiftModel](https://core.telegram.org/bots/api#uniquegiftmodel). */
 class UniqueGiftModel(
     val name: String = "",
     val sticker: Sticker? = null,
-    val rarityPerMille: Long = 0,
+    val rarityPerMille: Int = 0,
     val rarity: String? = null,
 )
 
@@ -3266,7 +3266,7 @@ class UniqueGiftModel(
 class UniqueGiftSymbol(
     val name: String = "",
     val sticker: Sticker? = null,
-    val rarityPerMille: Long = 0,
+    val rarityPerMille: Int = 0,
 )
 
 /** [Update](https://core.telegram.org/bots/api#update). */
@@ -3330,27 +3330,27 @@ class UserChatBoosts(
 
 /** [UserProfileAudios](https://core.telegram.org/bots/api#userprofileaudios). */
 class UserProfileAudios(
-    val totalCount: Long = 0,
+    val totalCount: Int = 0,
     val audios: List<Audio> = emptyList(),
 )
 
 /** [UserProfilePhotos](https://core.telegram.org/bots/api#userprofilephotos). */
 class UserProfilePhotos(
-    val totalCount: Long = 0,
+    val totalCount: Int = 0,
     val photos: List<List<PhotoSize>> = emptyList(),
 )
 
 /** [UserRating](https://core.telegram.org/bots/api#userrating). */
 class UserRating(
-    val level: Long = 0,
-    val rating: Long = 0,
-    val currentLevelRating: Long = 0,
-    val nextLevelRating: Long? = null,
+    val level: Int = 0,
+    val rating: Int = 0,
+    val currentLevelRating: Int = 0,
+    val nextLevelRating: Int? = null,
 )
 
 /** [UsersShared](https://core.telegram.org/bots/api#usersshared). */
 class UsersShared(
-    val requestId: Long = 0,
+    val requestId: Int = 0,
     val users: List<SharedUser> = emptyList(),
 )
 
@@ -3369,12 +3369,12 @@ class Venue(
 class Video(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val width: Long = 0,
-    val height: Long = 0,
-    val duration: Long = 0,
+    val width: Int = 0,
+    val height: Int = 0,
+    val duration: Int = 0,
     val thumbnail: PhotoSize? = null,
     val cover: List<PhotoSize>? = null,
-    val startTimestamp: Long? = null,
+    val startTimestamp: Int? = null,
     val qualities: List<VideoQuality>? = null,
     val fileName: String? = null,
     val mimeType: String? = null,
@@ -3383,7 +3383,7 @@ class Video(
 
 /** [VideoChatEnded](https://core.telegram.org/bots/api#videochatended). */
 class VideoChatEnded(
-    val duration: Long = 0,
+    val duration: Int = 0,
 )
 
 /** [VideoChatParticipantsInvited](https://core.telegram.org/bots/api#videochatparticipantsinvited). */
@@ -3393,7 +3393,7 @@ class VideoChatParticipantsInvited(
 
 /** [VideoChatScheduled](https://core.telegram.org/bots/api#videochatscheduled). */
 class VideoChatScheduled(
-    val startDate: Long = 0,
+    val startDate: Int = 0,
 )
 
 /** [VideoChatStarted](https://core.telegram.org/bots/api#videochatstarted). */
@@ -3403,18 +3403,18 @@ data object VideoChatStarted
 class VideoNote(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val length: Long = 0,
-    val duration: Long = 0,
+    val length: Int = 0,
+    val duration: Int = 0,
     val thumbnail: PhotoSize? = null,
-    val fileSize: Long? = null,
+    val fileSize: Int? = null,
 )
 
 /** [VideoQuality](https://core.telegram.org/bots/api#videoquality). */
 class VideoQuality(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val width: Long = 0,
-    val height: Long = 0,
+    val width: Int = 0,
+    val height: Int = 0,
     val codec: String = "",
     val fileSize: Long? = null,
 )
@@ -3423,7 +3423,7 @@ class VideoQuality(
 class Voice(
     val fileId: String = "",
     val fileUniqueId: String = "",
-    val duration: Long = 0,
+    val duration: Int = 0,
     val mimeType: String? = null,
     val fileSize: Long? = null,
 )
@@ -3443,12 +3443,12 @@ class WebAppInfo(
 class WebhookInfo(
     val url: String = "",
     val hasCustomCertificate: Boolean = false,
-    val pendingUpdateCount: Long = 0,
+    val pendingUpdateCount: Int = 0,
     val ipAddress: String? = null,
-    val lastErrorDate: Long? = null,
+    val lastErrorDate: Int? = null,
     val lastErrorMessage: String? = null,
-    val lastSynchronizationErrorDate: Long? = null,
-    val maxConnections: Long? = null,
+    val lastSynchronizationErrorDate: Int? = null,
+    val maxConnections: Int? = null,
     val allowedUpdates: List<String>? = null,
 )
 

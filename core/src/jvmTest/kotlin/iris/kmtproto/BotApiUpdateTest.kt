@@ -105,7 +105,7 @@ class BotApiUpdateTest {
         assertEquals("hello", direct?.message?.text)
         assertEquals(42L, direct?.message?.chat?.id)
         assertEquals("bold", direct?.message?.entities?.firstOrNull()?.type)
-        assertEquals(5L, direct?.message?.entities?.firstOrNull()?.length)
+        assertEquals(5, direct?.message?.entities?.firstOrNull()?.length)
     }
 
     @Test

@@ -91,11 +91,10 @@ fun main() {
         }
         val lines = mutableListOf("/** [$name]($href). */\nclass $name(")
         for (field in fields) {
-            val fname = field.getString("name")
-            val ktype = if (isUpdateId(fname)) "Int" else kotlinRef(field.typeNames(), unions)
+            val ktype = kotlinRef(field, unions)
             val decl = when {
-                isUpdateId(fname) || (isPrimitive(field.typeNames()) && field.getBoolean("required")) ->
-                    "$ktype = ${if (isUpdateId(fname)) "0" else scalarDefault(field.typeNames()[0])}"
+                isPrimitive(field.typeNames()) && field.getBoolean("required") ->
+                    "$ktype = ${scalarDefault(field.typeNames()[0])}"
                 isList(field.typeNames()) && field.getBoolean("required") ->
                     "$ktype = emptyList()"
                 else -> "$ktype? = null"
@@ -179,10 +178,9 @@ private fun emitStruct(
     }
     val args = fields.joinToString("\n") { field ->
         val raw = "m[\"${field.getString("name")}\"]"
-        var expr = if (isUpdateId(field.getString("name"))) "botInt($raw)" else decodeExpr(field.typeNames(), raw, unions)
+        var expr = decodeExpr(field, raw, unions)
         expr = when {
-            isUpdateId(field.getString("name")) || (isPrimitive(field.typeNames()) && field.getBoolean("required")) ->
-                "$expr ?: ${if (isUpdateId(field.getString("name"))) "0" else scalarDefault(field.typeNames()[0])}"
+            isPrimitive(field.typeNames()) && field.getBoolean("required") -> "$expr ?: ${scalarDefault(field.typeNames()[0])}"
             isList(field.typeNames()) && field.getBoolean("required") -> "$expr ?: emptyList()"
             else -> expr
         }
@@ -273,8 +271,23 @@ private fun emitParent(
     }
 }
 
-/** Bot API: a plain Integer is 32-bit unless the field text says otherwise. `update_id` has no such note. */
-private fun isUpdateId(name: String) = name == "update_id"
+/**
+ * Bot API: a plain Integer is 32-bit unless the field text says it may exceed that.
+ * A few user/chat ids omit that sentence; the name still makes them [Long].
+ */
+private val WIDE_INT = Regex(
+    """more than 32 significant bits|greater than 32 bits|bigger than 2\^31|52 significant bits""",
+    RegexOption.IGNORE_CASE,
+)
+
+private fun isWideInt(field: JSONObject): Boolean {
+    val desc = field.opt("description") as? String ?: ""
+    if (WIDE_INT.containsMatchIn(desc)) return true
+    val name = field.getString("name")
+    return name == "user_id" || name == "chat_id" ||
+        name.endsWith("_user_id") || name.endsWith("_chat_id") ||
+        name == "direct_messages_topic_id"
+}
 
 private fun camel(name: String): String {
     val parts = name.split("_")
@@ -300,32 +313,34 @@ private fun discOf(typeDef: JSONObject): Pair<String, String>? {
     return found.firstOrNull { it.first in setOf("type", "status", "source") } ?: found[0]
 }
 
-private fun kotlinRef(names: List<String>, unions: Map<List<String>, String>): String {
+private fun kotlinRef(field: JSONObject, unions: Map<List<String>, String>): String {
+    val names = field.typeNames()
     if (names == listOf("Integer", "String") || names == listOf("String", "Integer")) return "LongOrString"
     if (names.size > 1) return unions.getValue(names)
-    return kotlinOne(names[0], unions)
+    return kotlinOne(names[0], unions, isWideInt(field))
 }
 
-private fun kotlinOne(t: String, unions: Map<List<String>, String>): String = when {
-    t == "Integer" -> "Long"
+private fun kotlinOne(t: String, unions: Map<List<String>, String>, wide: Boolean): String = when {
+    t == "Integer" -> if (wide) "Long" else "Int"
     t == "Float" -> "Double"
     t == "String" || t == "Boolean" -> t
-    t.startsWith("Array of ") -> "List<${kotlinOne(t.removePrefix("Array of "), unions)}>"
+    t.startsWith("Array of ") -> "List<${kotlinOne(t.removePrefix("Array of "), unions, wide)}>"
     else -> t
 }
 
-private fun decodeOne(t: String, raw: String, unions: Map<List<String>, String>): String = when {
-    t == "Integer" -> "botLong($raw)"
+private fun decodeOne(t: String, raw: String, unions: Map<List<String>, String>, wide: Boolean): String = when {
+    t == "Integer" -> if (wide) "botLong($raw)" else "botInt($raw)"
     t == "String" -> "botString($raw)"
     t == "Boolean" -> "botBool($raw)"
     t == "Float" -> "botDouble($raw)"
-    t.startsWith("Array of ") -> "botList($raw) { ${decodeOne(t.removePrefix("Array of "), "it", unions)} }"
+    t.startsWith("Array of ") -> "botList($raw) { ${decodeOne(t.removePrefix("Array of "), "it", unions, wide)} }"
     else -> "${fn(t)}($raw)"
 }
 
-private fun decodeExpr(names: List<String>, raw: String, unions: Map<List<String>, String>): String {
+private fun decodeExpr(field: JSONObject, raw: String, unions: Map<List<String>, String>): String {
+    val names = field.typeNames()
     if (names == listOf("Integer", "String") || names == listOf("String", "Integer")) return "LongOrString.of($raw)"
-    if (names.size == 1) return decodeOne(names[0], raw, unions)
+    if (names.size == 1) return decodeOne(names[0], raw, unions, isWideInt(field))
     return "${fn(unions.getValue(names))}($raw)"
 }
 

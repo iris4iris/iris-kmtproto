@@ -334,7 +334,7 @@ suspend fun Update.toBotUpdate(w: BotApiWriter): BotUpdate? {
             deletedBusinessMessages = BusinessMessagesDeleted(
                 businessConnectionId = connectionId,
                 chat = w.botChat(peer),
-                messageIds = messages.map { it.toLong() },
+                messageIds = messages.map { it.toInt() },
             ),
         )
         is UpdateBotBusinessConnect -> BotUpdate(
@@ -343,7 +343,7 @@ suspend fun Update.toBotUpdate(w: BotApiWriter): BotUpdate? {
                 id = connection.connectionId,
                 user = w.botUser(connection.userId),
                 userChatId = connection.userId,
-                date = connection.date.toLong(),
+                date = connection.date.toInt(),
                 rights = BusinessBotRights(canReply = !connection.disabled),
                 isEnabled = !connection.disabled,
             ),
@@ -489,11 +489,11 @@ private suspend fun BotApiWriter.botMessage(
 }
 
 private class Head(
-    val date: Long,
+    val date: Int,
     val chat: BotChat,
     val from: BotUser?,
     val senderChat: BotChat?,
-    val messageThreadId: Long?,
+    val messageThreadId: Int?,
     val isTopicMessage: Boolean?,
     val replyToMessage: BotMessage?,
     val quote: TextQuote?,
@@ -530,13 +530,13 @@ private suspend fun BotApiWriter.head(
         else -> null
     }
     val rh = replyTo as? MessageReplyHeaderCtor
-    var thread: Long? = null
+    var thread: Int? = null
     var topic: Boolean? = null
     var reply: BotMessage? = null
     var quote: TextQuote? = null
     if (rh != null) {
         if (rh.forumTopic && rh.replyToTopId != 0) {
-            thread = rh.replyToTopId.toLong()
+            thread = rh.replyToTopId
             topic = true
         }
         if (withReply) {
@@ -553,13 +553,13 @@ private suspend fun BotApiWriter.head(
                 quote = TextQuote(
                     text = quoted,
                     entities = botEntities(rh.quoteEntities).ifEmpty { null },
-                    position = rh.quoteOffset.toLong(),
+                    position = rh.quoteOffset.toInt(),
                     isManual = true,
                 )
             }
         }
     }
-    return Head(date.toLong(), chat, from, senderChat, thread, topic, reply, quote)
+    return Head(date, chat, from, senderChat, thread, topic, reply, quote)
 }
 
 private fun BotApiWriter.replyStub(rh: MessageReplyHeaderCtor, peer: Peer, post: Boolean, fallbackDate: Int): BotMessage {
@@ -573,8 +573,8 @@ private fun BotApiWriter.replyStub(rh: MessageReplyHeaderCtor, peer: Peer, post:
     }
     val media = readMedia(rh.replyMedia, "", null, false)
     return BotMessage(
-        messageId = rh.replyToMsgId.toLong(),
-        date = (fwd?.date?.takeIf { it != 0 } ?: fallbackDate).toLong(),
+        messageId = rh.replyToMsgId.toInt(),
+        date = (fwd?.date?.takeIf { it != 0 } ?: fallbackDate).toInt(),
         chat = botChat(replyPeer, post),
         from = from,
         senderChat = sender,
@@ -619,11 +619,11 @@ private suspend fun BotApiWriter.regular(
     val media = readMedia(m.media, m.message, m.entities, m.invertMedia)
     val plain = m.media == null && m.message.isNotEmpty()
     return BotMessage(
-        messageId = m.id.toLong(),
+        messageId = m.id.toInt(),
         messageThreadId = h.messageThreadId,
         from = h.from,
         senderChat = h.senderChat,
-        senderBoostCount = m.fromBoostsApplied.takeIf { it != 0 }?.toLong(),
+        senderBoostCount = m.fromBoostsApplied.takeIf { it != 0 }?.toInt(),
         date = h.date,
         guestQueryId = guestQueryId,
         businessConnectionId = businessConnectionId,
@@ -633,12 +633,12 @@ private suspend fun BotApiWriter.regular(
         replyToMessage = h.replyToMessage,
         quote = h.quote,
         viaBot = m.viaBotId.takeIf { it != 0L }?.let { botUser(it, isBot = true) },
-        editDate = m.editDate.takeIf { it != 0 }?.toLong(),
+        editDate = m.editDate.takeIf { it != 0 }?.toInt(),
         hasProtectedContent = m.noforwards.takeIf { it },
         isFromOffline = m.offline.takeIf { it },
         mediaGroupId = m.groupedId.takeIf { it != 0L }?.toString(),
         authorSignature = m.postAuthor?.takeIf { it.isNotEmpty() },
-        paidStarCount = m.paidMessageStars.takeIf { it != 0L },
+        paidStarCount = m.paidMessageStars.takeIf { it != 0L }?.toInt(),
         text = if (plain) m.message else media.text,
         entities = if (plain) botEntities(m.entities).ifEmpty { null } else media.textEntities,
         effectId = m.effect.takeIf { it != 0L }?.toString(),
@@ -697,13 +697,13 @@ private suspend fun BotApiWriter.service(
         is MessageActionChannelMigrateFrom -> s.migrateFrom = PeerChat(a.chatId).botApiChatId()
         is MessageActionPinMessage -> {
             val id = (m.replyTo as? MessageReplyHeaderCtor)?.replyToMsgId ?: 0
-            s.pinned = BotMessage(messageId = id.toLong(), date = m.date.toLong(), chat = botChat(m.peerId, m.post))
+            s.pinned = BotMessage(messageId = id.toInt(), date = m.date.toInt(), chat = botChat(m.peerId, m.post))
         }
         is MessageActionPaymentSentMe -> s.paid = SuccessfulPayment(
             currency = a.currency,
-            totalAmount = a.totalAmount,
+            totalAmount = a.totalAmount.toInt(),
             invoicePayload = a.payload.utf8().orEmpty(),
-            subscriptionExpirationDate = a.subscriptionUntilDate.takeIf { it != 0 }?.toLong(),
+            subscriptionExpirationDate = a.subscriptionUntilDate.takeIf { it != 0 }?.toInt(),
             isRecurring = a.recurringUsed.takeIf { it },
             isFirstRecurring = a.recurringInit.takeIf { it },
             shippingOptionId = a.shippingOptionId?.takeIf { it.isNotEmpty() },
@@ -720,7 +720,7 @@ private suspend fun BotApiWriter.service(
         )
         is MessageActionPaymentRefunded -> s.refunded = RefundedPayment(
             currency = a.currency,
-            totalAmount = a.totalAmount,
+            totalAmount = a.totalAmount.toInt(),
             invoicePayload = a.payload.utf8().orEmpty(),
             telegramPaymentChargeId = a.charge.id,
             providerPaymentChargeId = a.charge.providerChargeId.takeIf { it.isNotEmpty() },
@@ -734,38 +734,38 @@ private suspend fun BotApiWriter.service(
         is MessageActionRequestedPeerSentMe -> sharedPeers(s, a)
         is MessageActionTopicCreate -> s.topic = ForumTopicCreated(
             name = a.title,
-            iconColor = a.iconColor.toLong(),
+            iconColor = a.iconColor.toInt(),
             iconCustomEmojiId = a.iconEmojiId.takeIf { it != 0L }?.toString(),
             isNameImplicit = a.titleMissing.takeIf { it },
         )
         is MessageActionTopicEdit -> topicEdit(s, a)
-        is MessageActionGroupCallScheduled -> s.scheduled = VideoChatScheduled(startDate = a.scheduleDate.toLong())
-        is MessageActionGroupCall -> if (a.duration != 0) s.ended = VideoChatEnded(a.duration.toLong()) else s.started = VideoChatStarted
+        is MessageActionGroupCallScheduled -> s.scheduled = VideoChatScheduled(startDate = a.scheduleDate.toInt())
+        is MessageActionGroupCall -> if (a.duration != 0) s.ended = VideoChatEnded(a.duration.toInt()) else s.started = VideoChatStarted
         is MessageActionInviteToGroupCall -> s.invited = VideoChatParticipantsInvited(a.users.map { botUser(it) })
         is MessageActionGeoProximityReached -> s.proximity = ProximityAlertTriggered(
             traveler = (a.fromId as? PeerUser)?.let { botUser(it.userId) },
             watcher = (a.toId as? PeerUser)?.let { botUser(it.userId) },
-            distance = a.distance.toLong(),
+            distance = a.distance.toInt(),
         )
-        is MessageActionSetMessagesTTL -> s.ttl = MessageAutoDeleteTimerChanged(a.period.toLong())
-        is MessageActionGiveawayLaunch -> s.giveawayCreated = GiveawayCreated(prizeStarCount = a.stars.takeIf { it != 0L })
+        is MessageActionSetMessagesTTL -> s.ttl = MessageAutoDeleteTimerChanged(a.period.toInt())
+        is MessageActionGiveawayLaunch -> s.giveawayCreated = GiveawayCreated(prizeStarCount = a.stars.takeIf { it != 0L }?.toInt())
         is MessageActionGiveawayResults -> s.giveawayCompleted = GiveawayCompleted(
-            winnerCount = a.winnersCount.toLong(),
-            unclaimedPrizeCount = a.unclaimedCount.takeIf { it != 0 }?.toLong(),
+            winnerCount = a.winnersCount.toInt(),
+            unclaimedPrizeCount = a.unclaimedCount.takeIf { it != 0 }?.toInt(),
             isStarGiveaway = a.stars.takeIf { it },
         )
-        is MessageActionBoostApply -> s.boost = ChatBoostAdded(a.boosts.toLong())
+        is MessageActionBoostApply -> s.boost = ChatBoostAdded(a.boosts.toInt())
         is MessageActionPaidMessagesPrice -> if (a.broadcastMessagesAllowed) {
             s.directPrice = DirectMessagePriceChanged(
                 areDirectMessagesEnabled = true,
-                directMessageStarCount = a.stars.takeIf { it != 0L },
+                directMessageStarCount = a.stars.takeIf { it != 0L }?.toInt(),
             )
         } else {
-            s.paidPrice = PaidMessagePriceChanged(paidMessageStarCount = a.stars)
+            s.paidPrice = PaidMessagePriceChanged(paidMessageStarCount = a.stars.toInt())
         }
         is MessageActionTodoCompletions -> s.tasksDone = ChecklistTasksDone(
-            markedAsDoneTaskIds = a.completed.takeIf { it.isNotEmpty() }?.map { it.toLong() },
-            markedAsNotDoneTaskIds = a.incompleted.takeIf { it.isNotEmpty() }?.map { it.toLong() },
+            markedAsDoneTaskIds = a.completed.takeIf { it.isNotEmpty() }?.map { it.toInt() },
+            markedAsNotDoneTaskIds = a.incompleted.takeIf { it.isNotEmpty() }?.map { it.toInt() },
         )
         is MessageActionTodoAppendTasks -> s.tasksAdded = ChecklistTasksAdded(tasks = a.list.map { checklistTask(it) })
         is MessageActionSuggestedPostApproval -> suggestedApproval(s, a)
@@ -793,7 +793,7 @@ private suspend fun BotApiWriter.service(
         else -> Unit
     }
     return BotMessage(
-        messageId = m.id.toLong(),
+        messageId = m.id.toInt(),
         messageThreadId = h.messageThreadId,
         from = h.from,
         senderChat = h.senderChat,
@@ -996,8 +996,8 @@ private fun BotApiWriter.botEntities(list: List<MessageEntity>?): List<BotEntity
         }
         BotEntity(
             type = type,
-            offset = e.entityOffset().toLong(),
-            length = e.entityLength().toLong(),
+            offset = e.entityOffset().toInt(),
+            length = e.entityLength().toInt(),
             url = (e as? MessageEntityTextUrl)?.url,
             user = (e as? MessageEntityMentionName)?.let { botUser(it.userId) },
             language = (e as? MessageEntityPre)?.language?.takeIf { it.isNotEmpty() },
@@ -1051,14 +1051,14 @@ private fun MessageEntity.entityLength(): Int = when (this) {
 }
 
 private fun BotApiWriter.origin(h: MessageFwdHeader): MessageOrigin? {
-    val date = h.date.toLong()
+    val date = h.date
     return when (val from = h.fromId) {
         is PeerUser -> MessageOriginUser(type = "user", date = date, senderUser = botUser(from.userId))
         is PeerChannel -> MessageOriginChannel(
             type = "channel",
             date = date,
             chat = botChat(from, post = true),
-            messageId = h.channelPost.toLong(),
+            messageId = h.channelPost.toInt(),
             authorSignature = h.postAuthor?.takeIf { it.isNotEmpty() },
         )
         is PeerChat -> MessageOriginChat(
@@ -1151,14 +1151,14 @@ private fun BotApiWriter.readMedia(
                 googlePlaceType = media.venueType.takeIf { media.provider == "gplaces" && it.isNotEmpty() },
             )
         }
-        is MessageMediaDice -> out.dice = Dice(emoji = media.emoticon, value = media.value.toLong())
+        is MessageMediaDice -> out.dice = Dice(emoji = media.emoticon, value = media.value.toInt())
         is MessageMediaPoll -> out.poll = botPoll(media.poll, media.results)
         is MessageMediaInvoice -> out.invoice = Invoice(
             title = media.title,
             description = media.description,
             startParameter = media.startParam,
             currency = media.currency,
-            totalAmount = media.totalAmount,
+            totalAmount = media.totalAmount.toInt(),
         )
         is MessageMediaGame -> out.game = Game(
             title = media.game.title,
@@ -1166,35 +1166,35 @@ private fun BotApiWriter.readMedia(
             photo = (media.game.photo as? PhotoCtor)?.let { photoSizes(it) }.orEmpty(),
         )
         is MessageMediaPaidMedia -> out.paidMedia = PaidMediaInfo(
-            starCount = media.starsAmount,
+            starCount = media.starsAmount.toInt(),
             paidMedia = media.extendedMedia.map { paidItem(it) },
         )
         is MessageMediaGiveaway -> out.giveaway = Giveaway(
             chats = media.channels.map { botChat(PeerChannel(it), post = true) },
-            winnersSelectionDate = media.untilDate.toLong(),
-            winnerCount = media.quantity.toLong(),
+            winnersSelectionDate = media.untilDate.toInt(),
+            winnerCount = media.quantity.toInt(),
             onlyNewMembers = media.onlyNewSubscribers.takeIf { it },
             hasPublicWinners = media.winnersAreVisible.takeIf { it },
             prizeDescription = media.prizeDescription?.takeIf { it.isNotEmpty() },
             countryCodes = media.countriesIso2?.takeIf { it.isNotEmpty() },
-            prizeStarCount = media.stars.takeIf { it != 0L },
-            premiumSubscriptionMonthCount = media.months.takeIf { it != 0 }?.toLong(),
+            prizeStarCount = media.stars.takeIf { it != 0L }?.toInt(),
+            premiumSubscriptionMonthCount = media.months.takeIf { it != 0 }?.toInt(),
         )
         is MessageMediaGiveawayResults -> out.giveawayWinners = GiveawayWinners(
             chat = botChat(PeerChannel(media.channelId), post = true),
-            giveawayMessageId = media.launchMsgId.toLong(),
-            winnersSelectionDate = media.untilDate.toLong(),
-            winnerCount = media.winnersCount.toLong(),
+            giveawayMessageId = media.launchMsgId.toInt(),
+            winnersSelectionDate = media.untilDate.toInt(),
+            winnerCount = media.winnersCount.toInt(),
             winners = media.winners.map { botUser(it) },
-            additionalChatCount = media.additionalPeersCount.takeIf { it != 0 }?.toLong(),
-            prizeStarCount = media.stars.takeIf { it != 0L },
-            premiumSubscriptionMonthCount = media.months.takeIf { it != 0 }?.toLong(),
-            unclaimedPrizeCount = media.unclaimedCount.takeIf { it != 0 }?.toLong(),
+            additionalChatCount = media.additionalPeersCount.takeIf { it != 0 }?.toInt(),
+            prizeStarCount = media.stars.takeIf { it != 0L }?.toInt(),
+            premiumSubscriptionMonthCount = media.months.takeIf { it != 0 }?.toInt(),
+            unclaimedPrizeCount = media.unclaimedCount.takeIf { it != 0 }?.toInt(),
             onlyNewMembers = media.onlyNewSubscribers.takeIf { it },
             wasRefunded = media.refunded.takeIf { it },
             prizeDescription = media.prizeDescription?.takeIf { it.isNotEmpty() },
         )
-        is MessageMediaStory -> out.story = Story(chat = botChat(media.peer), id = media.id.toLong())
+        is MessageMediaStory -> out.story = Story(chat = botChat(media.peer), id = media.id.toInt())
         is MessageMediaToDo -> out.checklist = checklist(media.todo, media.completions)
         else -> if (caption.isNotEmpty()) {
             out.text = caption
@@ -1228,17 +1228,17 @@ private fun BotApiWriter.putDocument(out: MediaFields, doc: DocumentCtor, media:
         media.voice || audio?.voice == true -> out.voice = Voice(
             fileId = fileId,
             fileUniqueId = unique,
-            duration = (audio?.duration ?: 0).toLong(),
+            duration = (audio?.duration ?: 0).toInt(),
             mimeType = mime,
             fileSize = size,
         )
         media.round || video?.roundMessage == true -> out.videoNote = VideoNote(
             fileId = fileId,
             fileUniqueId = unique,
-            length = (video?.w ?: 0).toLong(),
-            duration = video?.duration?.toLong() ?: 0L,
+            length = (video?.w ?: 0).toInt(),
+            duration = video?.duration?.toInt() ?: 0,
             thumbnail = thumb,
-            fileSize = size,
+            fileSize = size?.toInt(),
         )
         sticker != null || customEmoji -> out.sticker = Sticker(
             fileId = fileId,
@@ -1248,20 +1248,20 @@ private fun BotApiWriter.putDocument(out: MediaFields, doc: DocumentCtor, media:
                 sticker?.mask == true -> "mask"
                 else -> "regular"
             },
-            width = (video?.w ?: 0).toLong(),
-            height = (video?.h ?: 0).toLong(),
+            width = (video?.w ?: 0).toInt(),
+            height = (video?.h ?: 0).toInt(),
             isAnimated = animated && video == null,
             isVideo = video != null,
             thumbnail = thumb,
             emoji = sticker?.alt?.takeIf { it.isNotEmpty() },
-            fileSize = size,
+            fileSize = size?.toInt(),
         )
         animated && video != null -> out.animation = Animation(
             fileId = fileId,
             fileUniqueId = unique,
-            width = video.w.toLong(),
-            height = video.h.toLong(),
-            duration = video.duration.toLong(),
+            width = video.w.toInt(),
+            height = video.h.toInt(),
+            duration = video.duration.toInt(),
             thumbnail = thumb,
             fileName = fileName,
             mimeType = mime,
@@ -1270,7 +1270,7 @@ private fun BotApiWriter.putDocument(out: MediaFields, doc: DocumentCtor, media:
         audio != null -> out.audio = Audio(
             fileId = fileId,
             fileUniqueId = unique,
-            duration = audio.duration.toLong(),
+            duration = audio.duration.toInt(),
             performer = audio.performer?.takeIf { it.isNotEmpty() },
             title = audio.title?.takeIf { it.isNotEmpty() },
             fileName = fileName,
@@ -1281,9 +1281,9 @@ private fun BotApiWriter.putDocument(out: MediaFields, doc: DocumentCtor, media:
         video != null || media.video -> out.video = Video(
             fileId = fileId,
             fileUniqueId = unique,
-            width = (video?.w ?: 0).toLong(),
-            height = (video?.h ?: 0).toLong(),
-            duration = video?.duration?.toLong() ?: 0L,
+            width = (video?.w ?: 0).toInt(),
+            height = (video?.h ?: 0).toInt(),
+            duration = video?.duration?.toInt() ?: 0,
             thumbnail = thumb,
             fileName = fileName,
             mimeType = mime,
@@ -1314,9 +1314,9 @@ private fun thumbSizes(sizes: List<PhotoSize>?): List<BotPhotoSize> {
         BotPhotoSize(
             fileId = "photo:0:0:0:${w}x$h",
             fileUniqueId = "photo:0:${w}x$h",
-            width = w.toLong(),
-            height = h.toLong(),
-            fileSize = bytes.takeIf { it > 0 }?.toLong(),
+            width = w.toInt(),
+            height = h.toInt(),
+            fileSize = bytes.takeIf { it > 0 }?.toInt(),
         )
     }
 }
@@ -1327,18 +1327,18 @@ private fun point(geo: GeoPoint?, livePeriod: Int = 0, heading: Int = 0, proximi
         latitude = g.lat,
         longitude = g.`long`,
         horizontalAccuracy = g.accuracyRadius.takeIf { it != 0 }?.toDouble(),
-        livePeriod = livePeriod.takeIf { it != 0 }?.toLong(),
-        heading = heading.takeIf { it != 0 }?.toLong(),
-        proximityAlertRadius = proximity.takeIf { it != 0 }?.toLong(),
+        livePeriod = livePeriod.takeIf { it != 0 }?.toInt(),
+        heading = heading.takeIf { it != 0 }?.toInt(),
+        proximityAlertRadius = proximity.takeIf { it != 0 }?.toInt(),
     )
 }
 
 private fun BotApiWriter.paidItem(m: MessageExtendedMedia): PaidMedia = when (m) {
     is MessageExtendedMediaPreview -> PaidMediaPreview(
         type = "preview",
-        width = m.w.takeIf { it != 0 }?.toLong(),
-        height = m.h.takeIf { it != 0 }?.toLong(),
-        duration = m.videoDuration.takeIf { it != 0 }?.toLong(),
+        width = m.w.takeIf { it != 0 }?.toInt(),
+        height = m.h.takeIf { it != 0 }?.toInt(),
+        duration = m.videoDuration.takeIf { it != 0 }?.toInt(),
     )
     is MessageExtendedMediaCtor -> when (val inner = m.media) {
         is MessageMediaPhoto -> PaidMediaPhoto(
@@ -1366,7 +1366,7 @@ private fun BotApiWriter.checklist(todo: TodoList, completions: List<TodoComplet
 private fun BotApiWriter.checklistTask(item: TodoItem, done: TodoCompletion? = null): ChecklistTask {
     val by = done?.completedBy
     return ChecklistTask(
-        id = item.id.toLong(),
+        id = item.id.toInt(),
         text = item.title.text,
         textEntities = botEntities(item.title.entities).ifEmpty { null },
         completedByUser = (by as? PeerUser)?.let { botUser(it.userId) },
@@ -1374,7 +1374,7 @@ private fun BotApiWriter.checklistTask(item: TodoItem, done: TodoCompletion? = n
             is PeerChannel, is PeerChat -> botChat(by)
             else -> null
         },
-        completionDate = done?.date?.takeIf { it != 0 }?.toLong(),
+        completionDate = done?.date?.takeIf { it != 0 }?.toInt(),
     )
 }
 
@@ -1383,7 +1383,7 @@ private fun BotApiWriter.sharedPeers(out: ServiceFields, a: MessageActionRequest
     val chat = a.peers.firstOrNull { it is RequestedPeerChat || it is RequestedPeerChannel }
     if (users.isNotEmpty()) {
         out.usersShared = UsersShared(
-            requestId = a.buttonId.toLong(),
+            requestId = a.buttonId.toInt(),
             users = users.map { u ->
                 SharedUser(
                     userId = u.userId,
@@ -1396,12 +1396,12 @@ private fun BotApiWriter.sharedPeers(out: ServiceFields, a: MessageActionRequest
     }
     when (chat) {
         is RequestedPeerChat -> out.chatShared = ChatShared(
-            requestId = a.buttonId.toLong(),
+            requestId = a.buttonId.toInt(),
             chatId = PeerChat(chat.chatId).botApiChatId(),
             title = chat.title?.takeIf { it.isNotEmpty() },
         )
         is RequestedPeerChannel -> out.chatShared = ChatShared(
-            requestId = a.buttonId.toLong(),
+            requestId = a.buttonId.toInt(),
             chatId = PeerChannel(chat.channelId).botApiChatId(),
             title = chat.title?.takeIf { it.isNotEmpty() },
             username = chat.username?.takeIf { it.isNotEmpty() },
@@ -1429,14 +1429,14 @@ private fun BotApiWriter.suggestedApproval(out: ServiceFields, a: MessageActionS
         a.balanceTooLow -> out.suggestedFailed = SuggestedPostApprovalFailed(price = a.price?.let { starsPrice(it) })
         else -> out.suggestedApproved = SuggestedPostApproved(
             price = a.price?.let { starsPrice(it) },
-            sendDate = a.scheduleDate.toLong(),
+            sendDate = a.scheduleDate.toInt(),
         )
     }
 }
 
 private fun starsPrice(price: StarsAmount): SuggestedPostPrice = when (price) {
-    is StarsAmountCtor -> SuggestedPostPrice(currency = "XTR", amount = price.amount)
-    is StarsTonAmount -> SuggestedPostPrice(currency = "TON", amount = price.amount)
+    is StarsAmountCtor -> SuggestedPostPrice(currency = "XTR", amount = price.amount.toInt())
+    is StarsTonAmount -> SuggestedPostPrice(currency = "TON", amount = price.amount.toInt())
     else -> SuggestedPostPrice()
 }
 
@@ -1501,9 +1501,9 @@ private fun photoSizes(photo: PhotoCtor): List<BotPhotoSize> {
         BotPhotoSize(
             fileId = "photo:$dc:$id:$hash:${w}x$h",
             fileUniqueId = "photo:$id:${w}x$h",
-            width = w.toLong(),
-            height = h.toLong(),
-            fileSize = bytes.takeIf { it > 0 }?.toLong(),
+            width = w.toInt(),
+            height = h.toInt(),
+            fileSize = bytes.takeIf { it > 0 }?.toInt(),
         )
     }
 }
@@ -1511,7 +1511,7 @@ private fun photoSizes(photo: PhotoCtor): List<BotPhotoSize> {
 private fun BotApiWriter.callback(u: UpdateBotCallbackQuery) = CallbackQuery(
     id = u.queryId.toString(),
     from = botUser(u.userId),
-    message = BotMessage(messageId = u.msgId.toLong(), date = 0, chat = botChat(u.peer)),
+    message = BotMessage(messageId = u.msgId.toInt(), date = 0, chat = botChat(u.peer)),
     chatInstance = u.chatInstance.toString(),
     data = u.data.utf8(),
     gameShortName = u.gameShortName?.takeIf { it.isNotEmpty() },
@@ -1571,7 +1571,7 @@ private fun BotApiWriter.preCheckout(u: UpdateBotPrecheckoutQuery) = PreCheckout
     id = u.queryId.toString(),
     from = botUser(u.userId),
     currency = u.currency,
-    totalAmount = u.totalAmount.toLong(),
+    totalAmount = u.totalAmount.toInt(),
     invoicePayload = u.payload.utf8().orEmpty(),
     shippingOptionId = u.shippingOptionId?.takeIf { it.isNotEmpty() },
     orderInfo = u.info?.let { info ->
@@ -1597,7 +1597,7 @@ private fun BotApiWriter.joinRequest(u: UpdateBotChatInviteRequester) = ChatJoin
     chat = botChat(u.peer),
     from = botUser(u.userId),
     userChatId = u.userId,
-    date = u.date.toLong(),
+    date = u.date.toInt(),
     bio = u.about?.takeIf { it.isNotEmpty() },
 )
 
@@ -1615,19 +1615,19 @@ private fun BotApiWriter.botPoll(p: Poll, results: PollResults?): BotPoll {
             PollOption(
                 text = a.text.text,
                 textEntities = botEntities(a.text.entities).ifEmpty { null },
-                voterCount = (voters?.voters ?: 0).toLong(),
+                voterCount = (voters?.voters ?: 0).toInt(),
             )
         },
-        totalVoterCount = (results?.totalVoters ?: 0).toLong(),
+        totalVoterCount = (results?.totalVoters ?: 0).toInt(),
         isClosed = p.closed,
         isAnonymous = !p.publicVoters,
         type = if (p.quiz) "quiz" else "regular",
         allowsMultipleAnswers = p.multipleChoice,
-        correctOptionIds = correct?.let { listOf(it.toLong()) },
+        correctOptionIds = correct?.let { listOf(it.toInt()) },
         explanation = results?.solution?.takeIf { it.isNotEmpty() },
         explanationEntities = botEntities(results?.solutionEntities).ifEmpty { null },
-        openPeriod = p.closePeriod.takeIf { it != 0 }?.toLong(),
-        closeDate = p.closeDate.takeIf { it != 0 }?.toLong(),
+        openPeriod = p.closePeriod.takeIf { it != 0 }?.toInt(),
+        closeDate = p.closeDate.takeIf { it != 0 }?.toInt(),
     )
 }
 
@@ -1635,7 +1635,7 @@ private fun BotApiWriter.pollAnswer(u: UpdateMessagePollVote) = BotPollAnswer(
     pollId = u.pollId.toString(),
     user = (u.peer as? PeerUser)?.let { botUser(it.userId) },
     voterChat = if (u.peer is PeerUser) null else botChat(u.peer),
-    optionIds = u.positions.map { it.toLong() },
+    optionIds = u.positions.map { it.toInt() },
 )
 
 private fun BotApiWriter.botStopped(u: UpdateBotStopped): ChatMemberUpdated {
@@ -1644,7 +1644,7 @@ private fun BotApiWriter.botStopped(u: UpdateBotStopped): ChatMemberUpdated {
     return ChatMemberUpdated(
         chat = botChat(PeerUser(u.userId)),
         from = from,
-        date = u.date.toLong(),
+        date = u.date.toInt(),
         oldChatMember = from.asStatus(if (stopped) "member" else "kicked"),
         newChatMember = from.asStatus(if (stopped) "kicked" else "member"),
     )
@@ -1660,7 +1660,7 @@ private fun BotApiWriter.memberUpdate(
 ) = ChatMemberUpdated(
     chat = botChat(chatPeer),
     from = botUser(actorId),
-    date = date.toLong(),
+    date = date.toInt(),
     oldChatMember = oldMember,
     newChatMember = newMember,
     viaChatFolderInviteLink = viaChatlist.takeIf { it },
@@ -1680,12 +1680,12 @@ private fun BotApiWriter.channelMember(userId: Long, p: ChannelParticipant?): Ch
         is ChannelParticipantCtor -> ChatMemberMember(
             status = "member",
             user = u,
-            untilDate = p.subscriptionUntilDate.takeIf { it != 0 }?.toLong(),
+            untilDate = p.subscriptionUntilDate.takeIf { it != 0 }?.toInt(),
         )
         is ChannelParticipantSelf -> ChatMemberMember(
             status = "member",
             user = u,
-            untilDate = p.subscriptionUntilDate.takeIf { it != 0 }?.toLong(),
+            untilDate = p.subscriptionUntilDate.takeIf { it != 0 }?.toInt(),
         )
         is ChannelParticipantCreator -> ChatMemberOwner(
             status = "creator",
@@ -1733,7 +1733,7 @@ private fun adminMember(u: BotUser, r: ChatAdminRights, canEdit: Boolean, rank: 
 
 private fun restricted(u: BotUser, r: ChatBannedRights, member: Boolean): ChatMember =
     if (r.viewMessages) {
-        ChatMemberBanned(status = "kicked", user = u, untilDate = r.untilDate.toLong())
+        ChatMemberBanned(status = "kicked", user = u, untilDate = r.untilDate.toInt())
     } else {
         ChatMemberRestricted(
             status = "restricted",
@@ -1753,7 +1753,7 @@ private fun restricted(u: BotUser, r: ChatBannedRights, member: Boolean): ChatMe
             canInviteUsers = !r.inviteUsers,
             canPinMessages = !r.pinMessages,
             canManageTopics = !r.manageTopics,
-            untilDate = r.untilDate.toLong(),
+            untilDate = r.untilDate.toInt(),
         )
     }
 
@@ -1772,19 +1772,19 @@ private fun BotApiWriter.reactionType(r: Reaction): ReactionType? = when (r) {
 
 private fun BotApiWriter.reactionCount(u: UpdateBotMessageReactions) = MessageReactionCountUpdated(
     chat = botChat(u.peer),
-    messageId = u.msgId.toLong(),
-    date = u.date.toLong(),
+    messageId = u.msgId.toInt(),
+    date = u.date.toInt(),
     reactions = u.reactions.mapNotNull { c ->
-        reactionType(c.reaction)?.let { BotReactionCount(type = it, totalCount = c.count.toLong()) }
+        reactionType(c.reaction)?.let { BotReactionCount(type = it, totalCount = c.count.toInt()) }
     },
 )
 
 private fun BotApiWriter.reaction(u: UpdateBotMessageReaction) = MessageReactionUpdated(
     chat = botChat(u.peer),
-    messageId = u.msgId.toLong(),
+    messageId = u.msgId.toInt(),
     user = (u.actor as? PeerUser)?.let { botUser(it.userId) },
     actorChat = if (u.actor is PeerUser) null else botChat(u.actor),
-    date = u.date.toLong(),
+    date = u.date.toInt(),
     oldReaction = u.oldReactions.mapNotNull { reactionType(it) },
     newReaction = u.newReactions.mapNotNull { reactionType(it) },
 )
@@ -1799,7 +1799,7 @@ private fun BotApiWriter.chatBoost(updateId: Int, u: UpdateBotChatBoost): BotUpd
             removedChatBoost = ChatBoostRemoved(
                 chat = chat,
                 boostId = b.id,
-                removeDate = b.date.toLong(),
+                removeDate = b.date.toInt(),
                 source = source,
             ),
         )
@@ -1810,8 +1810,8 @@ private fun BotApiWriter.chatBoost(updateId: Int, u: UpdateBotChatBoost): BotUpd
                 chat = chat,
                 boost = ChatBoost(
                     boostId = b.id,
-                    addDate = b.date.toLong(),
-                    expirationDate = b.expires.toLong(),
+                    addDate = b.date.toInt(),
+                    expirationDate = b.expires.toInt(),
                     source = source,
                 ),
             ),
@@ -1822,9 +1822,9 @@ private fun BotApiWriter.chatBoost(updateId: Int, u: UpdateBotChatBoost): BotUpd
 private fun BotApiWriter.boostSource(b: iris.kmtproto.tl.gen.Boost): ChatBoostSource = when {
     b.giveaway -> ChatBoostSourceGiveaway(
         source = "giveaway",
-        giveawayMessageId = b.giveawayMsgId.toLong(),
+        giveawayMessageId = b.giveawayMsgId.toInt(),
         user = b.userId.takeIf { it != 0L }?.let { botUser(it) },
-        prizeStarCount = b.stars.takeIf { it > 0L },
+        prizeStarCount = b.stars.takeIf { it > 0L }?.toInt(),
         isUnclaimed = (b.userId == 0L && b.unclaimed).takeIf { it },
     )
     b.gift -> ChatBoostSourceGiftCode(source = "gift_code", user = b.userId.takeIf { it != 0L }?.let { botUser(it) })

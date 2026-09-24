@@ -18,9 +18,9 @@ fun affiliateInfoFromMap(raw: Any?): AffiliateInfo? {
     return AffiliateInfo(
         affiliateUser = userFromMap(m["affiliate_user"]),
         affiliateChat = chatFromMap(m["affiliate_chat"]),
-        commissionPerMille = botLong(m["commission_per_mille"]) ?: 0,
-        amount = botLong(m["amount"]) ?: 0,
-        nanostarAmount = botLong(m["nanostar_amount"]),
+        commissionPerMille = botInt(m["commission_per_mille"]) ?: 0,
+        amount = botInt(m["amount"]) ?: 0,
+        nanostarAmount = botInt(m["nanostar_amount"]),
     )
 }
 
@@ -29,9 +29,9 @@ fun animationFromMap(raw: Any?): Animation? {
     return Animation(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        width = botLong(m["width"]) ?: 0,
-        height = botLong(m["height"]) ?: 0,
-        duration = botLong(m["duration"]) ?: 0,
+        width = botInt(m["width"]) ?: 0,
+        height = botInt(m["height"]) ?: 0,
+        duration = botInt(m["duration"]) ?: 0,
         thumbnail = photoSizeFromMap(m["thumbnail"]),
         fileName = botString(m["file_name"]),
         mimeType = botString(m["mime_type"]),
@@ -44,7 +44,7 @@ fun audioFromMap(raw: Any?): Audio? {
     return Audio(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        duration = botLong(m["duration"]) ?: 0,
+        duration = botInt(m["duration"]) ?: 0,
         performer = botString(m["performer"]),
         title = botString(m["title"]),
         fileName = botString(m["file_name"]),
@@ -58,7 +58,7 @@ fun backgroundFillFreeformGradientFromMap(raw: Any?): BackgroundFillFreeformGrad
     val m = raw as? Map<*, *> ?: return null
     return BackgroundFillFreeformGradient(
         type = botString(m["type"]) ?: "",
-        colors = botList(m["colors"]) { botLong(it) } ?: emptyList(),
+        colors = botList(m["colors"]) { botInt(it) } ?: emptyList(),
     )
 }
 
@@ -66,9 +66,9 @@ fun backgroundFillGradientFromMap(raw: Any?): BackgroundFillGradient? {
     val m = raw as? Map<*, *> ?: return null
     return BackgroundFillGradient(
         type = botString(m["type"]) ?: "",
-        topColor = botLong(m["top_color"]) ?: 0,
-        bottomColor = botLong(m["bottom_color"]) ?: 0,
-        rotationAngle = botLong(m["rotation_angle"]) ?: 0,
+        topColor = botInt(m["top_color"]) ?: 0,
+        bottomColor = botInt(m["bottom_color"]) ?: 0,
+        rotationAngle = botInt(m["rotation_angle"]) ?: 0,
     )
 }
 
@@ -76,7 +76,7 @@ fun backgroundFillSolidFromMap(raw: Any?): BackgroundFillSolid? {
     val m = raw as? Map<*, *> ?: return null
     return BackgroundFillSolid(
         type = botString(m["type"]) ?: "",
-        color = botLong(m["color"]) ?: 0,
+        color = botInt(m["color"]) ?: 0,
     )
 }
 
@@ -93,7 +93,7 @@ fun backgroundTypeFillFromMap(raw: Any?): BackgroundTypeFill? {
     return BackgroundTypeFill(
         type = botString(m["type"]) ?: "",
         fill = backgroundFillFromMap(m["fill"]),
-        darkThemeDimming = botLong(m["dark_theme_dimming"]) ?: 0,
+        darkThemeDimming = botInt(m["dark_theme_dimming"]) ?: 0,
     )
 }
 
@@ -103,7 +103,7 @@ fun backgroundTypePatternFromMap(raw: Any?): BackgroundTypePattern? {
         type = botString(m["type"]) ?: "",
         document = documentFromMap(m["document"]),
         fill = backgroundFillFromMap(m["fill"]),
-        intensity = botLong(m["intensity"]) ?: 0,
+        intensity = botInt(m["intensity"]) ?: 0,
         isInverted = botBool(m["is_inverted"]),
         isMoving = botBool(m["is_moving"]),
     )
@@ -114,7 +114,7 @@ fun backgroundTypeWallpaperFromMap(raw: Any?): BackgroundTypeWallpaper? {
     return BackgroundTypeWallpaper(
         type = botString(m["type"]) ?: "",
         document = documentFromMap(m["document"]),
-        darkThemeDimming = botLong(m["dark_theme_dimming"]) ?: 0,
+        darkThemeDimming = botInt(m["dark_theme_dimming"]) ?: 0,
         isBlurred = botBool(m["is_blurred"]),
         isMoving = botBool(m["is_moving"]),
     )
@@ -123,9 +123,9 @@ fun backgroundTypeWallpaperFromMap(raw: Any?): BackgroundTypeWallpaper? {
 fun birthdateFromMap(raw: Any?): Birthdate? {
     val m = raw as? Map<*, *> ?: return null
     return Birthdate(
-        day = botLong(m["day"]) ?: 0,
-        month = botLong(m["month"]) ?: 0,
-        year = botLong(m["year"]),
+        day = botInt(m["day"]) ?: 0,
+        month = botInt(m["month"]) ?: 0,
+        year = botInt(m["year"]),
     )
 }
 
@@ -255,7 +255,7 @@ fun businessConnectionFromMap(raw: Any?): BusinessConnection? {
         id = botString(m["id"]) ?: "",
         user = userFromMap(m["user"]),
         userChatId = botLong(m["user_chat_id"]) ?: 0,
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         rights = businessBotRightsFromMap(m["rights"]),
         isEnabled = botBool(m["is_enabled"]) ?: false,
     )
@@ -283,7 +283,7 @@ fun businessMessagesDeletedFromMap(raw: Any?): BusinessMessagesDeleted? {
     return BusinessMessagesDeleted(
         businessConnectionId = botString(m["business_connection_id"]) ?: "",
         chat = chatFromMap(m["chat"]),
-        messageIds = botList(m["message_ids"]) { botLong(it) } ?: emptyList(),
+        messageIds = botList(m["message_ids"]) { botInt(it) } ?: emptyList(),
     )
 }
 
@@ -298,8 +298,8 @@ fun businessOpeningHoursFromMap(raw: Any?): BusinessOpeningHours? {
 fun businessOpeningHoursIntervalFromMap(raw: Any?): BusinessOpeningHoursInterval? {
     val m = raw as? Map<*, *> ?: return null
     return BusinessOpeningHoursInterval(
-        openingMinute = botLong(m["opening_minute"]) ?: 0,
-        closingMinute = botLong(m["closing_minute"]) ?: 0,
+        openingMinute = botInt(m["opening_minute"]) ?: 0,
+        closingMinute = botInt(m["closing_minute"]) ?: 0,
     )
 }
 
@@ -368,8 +368,8 @@ fun chatBoostFromMap(raw: Any?): ChatBoost? {
     val m = raw as? Map<*, *> ?: return null
     return ChatBoost(
         boostId = botString(m["boost_id"]) ?: "",
-        addDate = botLong(m["add_date"]) ?: 0,
-        expirationDate = botLong(m["expiration_date"]) ?: 0,
+        addDate = botInt(m["add_date"]) ?: 0,
+        expirationDate = botInt(m["expiration_date"]) ?: 0,
         source = chatBoostSourceFromMap(m["source"]),
     )
 }
@@ -377,7 +377,7 @@ fun chatBoostFromMap(raw: Any?): ChatBoost? {
 fun chatBoostAddedFromMap(raw: Any?): ChatBoostAdded? {
     val m = raw as? Map<*, *> ?: return null
     return ChatBoostAdded(
-        boostCount = botLong(m["boost_count"]) ?: 0,
+        boostCount = botInt(m["boost_count"]) ?: 0,
     )
 }
 
@@ -386,7 +386,7 @@ fun chatBoostRemovedFromMap(raw: Any?): ChatBoostRemoved? {
     return ChatBoostRemoved(
         chat = chatFromMap(m["chat"]),
         boostId = botString(m["boost_id"]) ?: "",
-        removeDate = botLong(m["remove_date"]) ?: 0,
+        removeDate = botInt(m["remove_date"]) ?: 0,
         source = chatBoostSourceFromMap(m["source"]),
     )
 }
@@ -403,9 +403,9 @@ fun chatBoostSourceGiveawayFromMap(raw: Any?): ChatBoostSourceGiveaway? {
     val m = raw as? Map<*, *> ?: return null
     return ChatBoostSourceGiveaway(
         source = botString(m["source"]) ?: "",
-        giveawayMessageId = botLong(m["giveaway_message_id"]) ?: 0,
+        giveawayMessageId = botInt(m["giveaway_message_id"]) ?: 0,
         user = userFromMap(m["user"]),
-        prizeStarCount = botLong(m["prize_star_count"]),
+        prizeStarCount = botInt(m["prize_star_count"]),
         isUnclaimed = botBool(m["is_unclaimed"]),
     )
 }
@@ -437,8 +437,8 @@ fun chatFullInfoFromMap(raw: Any?): ChatFullInfo? {
         lastName = botString(m["last_name"]),
         isForum = botBool(m["is_forum"]),
         isDirectMessages = botBool(m["is_direct_messages"]),
-        accentColorId = botLong(m["accent_color_id"]) ?: 0,
-        maxReactionCount = botLong(m["max_reaction_count"]) ?: 0,
+        accentColorId = botInt(m["accent_color_id"]) ?: 0,
+        maxReactionCount = botInt(m["max_reaction_count"]) ?: 0,
         photo = chatPhotoFromMap(m["photo"]),
         activeUsernames = botList(m["active_usernames"]) { botString(it) },
         birthdate = birthdateFromMap(m["birthdate"]),
@@ -449,10 +449,10 @@ fun chatFullInfoFromMap(raw: Any?): ChatFullInfo? {
         parentChat = chatFromMap(m["parent_chat"]),
         availableReactions = botList(m["available_reactions"]) { reactionTypeFromMap(it) },
         backgroundCustomEmojiId = botString(m["background_custom_emoji_id"]),
-        profileAccentColorId = botLong(m["profile_accent_color_id"]),
+        profileAccentColorId = botInt(m["profile_accent_color_id"]),
         profileBackgroundCustomEmojiId = botString(m["profile_background_custom_emoji_id"]),
         emojiStatusCustomEmojiId = botString(m["emoji_status_custom_emoji_id"]),
-        emojiStatusExpirationDate = botLong(m["emoji_status_expiration_date"]),
+        emojiStatusExpirationDate = botInt(m["emoji_status_expiration_date"]),
         bio = botString(m["bio"]),
         hasPrivateForwards = botBool(m["has_private_forwards"]),
         hasRestrictedVoiceAndVideoMessages = botBool(m["has_restricted_voice_and_video_messages"]),
@@ -464,9 +464,9 @@ fun chatFullInfoFromMap(raw: Any?): ChatFullInfo? {
         permissions = chatPermissionsFromMap(m["permissions"]),
         acceptedGiftTypes = acceptedGiftTypesFromMap(m["accepted_gift_types"]),
         canSendPaidMedia = botBool(m["can_send_paid_media"]),
-        slowModeDelay = botLong(m["slow_mode_delay"]),
-        unrestrictBoostCount = botLong(m["unrestrict_boost_count"]),
-        messageAutoDeleteTime = botLong(m["message_auto_delete_time"]),
+        slowModeDelay = botInt(m["slow_mode_delay"]),
+        unrestrictBoostCount = botInt(m["unrestrict_boost_count"]),
+        messageAutoDeleteTime = botInt(m["message_auto_delete_time"]),
         hasAggressiveAntiSpamEnabled = botBool(m["has_aggressive_anti_spam_enabled"]),
         hasHiddenMembers = botBool(m["has_hidden_members"]),
         hasProtectedContent = botBool(m["has_protected_content"]),
@@ -479,7 +479,7 @@ fun chatFullInfoFromMap(raw: Any?): ChatFullInfo? {
         rating = userRatingFromMap(m["rating"]),
         firstProfileAudio = audioFromMap(m["first_profile_audio"]),
         uniqueGiftColors = uniqueGiftColorsFromMap(m["unique_gift_colors"]),
-        paidMessageStarCount = botLong(m["paid_message_star_count"]),
+        paidMessageStarCount = botInt(m["paid_message_star_count"]),
         guardBot = userFromMap(m["guard_bot"]),
         community = communityFromMap(m["community"]),
     )
@@ -494,11 +494,11 @@ fun chatInviteLinkFromMap(raw: Any?): ChatInviteLink? {
         isPrimary = botBool(m["is_primary"]) ?: false,
         isRevoked = botBool(m["is_revoked"]) ?: false,
         name = botString(m["name"]),
-        expireDate = botLong(m["expire_date"]),
-        memberLimit = botLong(m["member_limit"]),
-        pendingJoinRequestCount = botLong(m["pending_join_request_count"]),
-        subscriptionPeriod = botLong(m["subscription_period"]),
-        subscriptionPrice = botLong(m["subscription_price"]),
+        expireDate = botInt(m["expire_date"]),
+        memberLimit = botInt(m["member_limit"]),
+        pendingJoinRequestCount = botInt(m["pending_join_request_count"]),
+        subscriptionPeriod = botInt(m["subscription_period"]),
+        subscriptionPrice = botInt(m["subscription_price"]),
     )
 }
 
@@ -508,7 +508,7 @@ fun chatJoinRequestFromMap(raw: Any?): ChatJoinRequest? {
         chat = chatFromMap(m["chat"]),
         from = userFromMap(m["from"]),
         userChatId = botLong(m["user_chat_id"]) ?: 0,
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         bio = botString(m["bio"]),
         inviteLink = chatInviteLinkFromMap(m["invite_link"]),
         queryId = botString(m["query_id"]),
@@ -556,7 +556,7 @@ fun chatMemberBannedFromMap(raw: Any?): ChatMemberBanned? {
     return ChatMemberBanned(
         status = botString(m["status"]) ?: "",
         user = userFromMap(m["user"]),
-        untilDate = botLong(m["until_date"]) ?: 0,
+        untilDate = botInt(m["until_date"]) ?: 0,
     )
 }
 
@@ -574,7 +574,7 @@ fun chatMemberMemberFromMap(raw: Any?): ChatMemberMember? {
         status = botString(m["status"]) ?: "",
         tag = botString(m["tag"]),
         user = userFromMap(m["user"]),
-        untilDate = botLong(m["until_date"]),
+        untilDate = botInt(m["until_date"]),
     )
 }
 
@@ -611,7 +611,7 @@ fun chatMemberRestrictedFromMap(raw: Any?): ChatMemberRestricted? {
         canInviteUsers = botBool(m["can_invite_users"]) ?: false,
         canPinMessages = botBool(m["can_pin_messages"]) ?: false,
         canManageTopics = botBool(m["can_manage_topics"]) ?: false,
-        untilDate = botLong(m["until_date"]) ?: 0,
+        untilDate = botInt(m["until_date"]) ?: 0,
     )
 }
 
@@ -620,7 +620,7 @@ fun chatMemberUpdatedFromMap(raw: Any?): ChatMemberUpdated? {
     return ChatMemberUpdated(
         chat = chatFromMap(m["chat"]),
         from = userFromMap(m["from"]),
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         oldChatMember = chatMemberFromMap(m["old_chat_member"]),
         newChatMember = chatMemberFromMap(m["new_chat_member"]),
         inviteLink = chatInviteLinkFromMap(m["invite_link"]),
@@ -678,7 +678,7 @@ fun chatPhotoFromMap(raw: Any?): ChatPhoto? {
 fun chatSharedFromMap(raw: Any?): ChatShared? {
     val m = raw as? Map<*, *> ?: return null
     return ChatShared(
-        requestId = botLong(m["request_id"]) ?: 0,
+        requestId = botInt(m["request_id"]) ?: 0,
         chatId = botLong(m["chat_id"]) ?: 0,
         title = botString(m["title"]),
         username = botString(m["username"]),
@@ -700,12 +700,12 @@ fun checklistFromMap(raw: Any?): Checklist? {
 fun checklistTaskFromMap(raw: Any?): ChecklistTask? {
     val m = raw as? Map<*, *> ?: return null
     return ChecklistTask(
-        id = botLong(m["id"]) ?: 0,
+        id = botInt(m["id"]) ?: 0,
         text = botString(m["text"]) ?: "",
         textEntities = botList(m["text_entities"]) { messageEntityFromMap(it) },
         completedByUser = userFromMap(m["completed_by_user"]),
         completedByChat = chatFromMap(m["completed_by_chat"]),
-        completionDate = botLong(m["completion_date"]),
+        completionDate = botInt(m["completion_date"]),
     )
 }
 
@@ -721,8 +721,8 @@ fun checklistTasksDoneFromMap(raw: Any?): ChecklistTasksDone? {
     val m = raw as? Map<*, *> ?: return null
     return ChecklistTasksDone(
         checklistMessage = messageFromMap(m["checklist_message"]),
-        markedAsDoneTaskIds = botList(m["marked_as_done_task_ids"]) { botLong(it) },
-        markedAsNotDoneTaskIds = botList(m["marked_as_not_done_task_ids"]) { botLong(it) },
+        markedAsDoneTaskIds = botList(m["marked_as_done_task_ids"]) { botInt(it) },
+        markedAsNotDoneTaskIds = botList(m["marked_as_not_done_task_ids"]) { botInt(it) },
     )
 }
 
@@ -784,7 +784,7 @@ fun diceFromMap(raw: Any?): Dice? {
     val m = raw as? Map<*, *> ?: return null
     return Dice(
         emoji = botString(m["emoji"]) ?: "",
-        value = botLong(m["value"]) ?: 0,
+        value = botInt(m["value"]) ?: 0,
     )
 }
 
@@ -792,7 +792,7 @@ fun directMessagePriceChangedFromMap(raw: Any?): DirectMessagePriceChanged? {
     val m = raw as? Map<*, *> ?: return null
     return DirectMessagePriceChanged(
         areDirectMessagesEnabled = botBool(m["are_direct_messages_enabled"]) ?: false,
-        directMessageStarCount = botLong(m["direct_message_star_count"]),
+        directMessageStarCount = botInt(m["direct_message_star_count"]),
     )
 }
 
@@ -858,7 +858,7 @@ fun externalReplyInfoFromMap(raw: Any?): ExternalReplyInfo? {
     return ExternalReplyInfo(
         origin = messageOriginFromMap(m["origin"]),
         chat = chatFromMap(m["chat"]),
-        messageId = botLong(m["message_id"]),
+        messageId = botInt(m["message_id"]),
         linkPreviewOptions = linkPreviewOptionsFromMap(m["link_preview_options"]),
         animation = animationFromMap(m["animation"]),
         audio = audioFromMap(m["audio"]),
@@ -907,9 +907,9 @@ fun forceReplyFromMap(raw: Any?): ForceReply? {
 fun forumTopicFromMap(raw: Any?): ForumTopic? {
     val m = raw as? Map<*, *> ?: return null
     return ForumTopic(
-        messageThreadId = botLong(m["message_thread_id"]) ?: 0,
+        messageThreadId = botInt(m["message_thread_id"]) ?: 0,
         name = botString(m["name"]) ?: "",
-        iconColor = botLong(m["icon_color"]) ?: 0,
+        iconColor = botInt(m["icon_color"]) ?: 0,
         iconCustomEmojiId = botString(m["icon_custom_emoji_id"]),
         isNameImplicit = botBool(m["is_name_implicit"]),
     )
@@ -922,7 +922,7 @@ fun forumTopicCreatedFromMap(raw: Any?): ForumTopicCreated? {
     val m = raw as? Map<*, *> ?: return null
     return ForumTopicCreated(
         name = botString(m["name"]) ?: "",
-        iconColor = botLong(m["icon_color"]) ?: 0,
+        iconColor = botInt(m["icon_color"]) ?: 0,
         iconCustomEmojiId = botString(m["icon_custom_emoji_id"]),
         isNameImplicit = botBool(m["is_name_implicit"]),
     )
@@ -954,9 +954,9 @@ fun gameFromMap(raw: Any?): Game? {
 fun gameHighScoreFromMap(raw: Any?): GameHighScore? {
     val m = raw as? Map<*, *> ?: return null
     return GameHighScore(
-        position = botLong(m["position"]) ?: 0,
+        position = botInt(m["position"]) ?: 0,
         user = userFromMap(m["user"]),
-        score = botLong(m["score"]) ?: 0,
+        score = botInt(m["score"]) ?: 0,
     )
 }
 
@@ -971,16 +971,16 @@ fun giftFromMap(raw: Any?): Gift? {
     return Gift(
         id = botString(m["id"]) ?: "",
         sticker = stickerFromMap(m["sticker"]),
-        starCount = botLong(m["star_count"]) ?: 0,
-        upgradeStarCount = botLong(m["upgrade_star_count"]),
+        starCount = botInt(m["star_count"]) ?: 0,
+        upgradeStarCount = botInt(m["upgrade_star_count"]),
         isPremium = botBool(m["is_premium"]),
         hasColors = botBool(m["has_colors"]),
-        totalCount = botLong(m["total_count"]),
-        remainingCount = botLong(m["remaining_count"]),
-        personalTotalCount = botLong(m["personal_total_count"]),
-        personalRemainingCount = botLong(m["personal_remaining_count"]),
+        totalCount = botInt(m["total_count"]),
+        remainingCount = botInt(m["remaining_count"]),
+        personalTotalCount = botInt(m["personal_total_count"]),
+        personalRemainingCount = botInt(m["personal_remaining_count"]),
         background = giftBackgroundFromMap(m["background"]),
-        uniqueGiftVariantCount = botLong(m["unique_gift_variant_count"]),
+        uniqueGiftVariantCount = botInt(m["unique_gift_variant_count"]),
         publisherChat = chatFromMap(m["publisher_chat"]),
     )
 }
@@ -988,9 +988,9 @@ fun giftFromMap(raw: Any?): Gift? {
 fun giftBackgroundFromMap(raw: Any?): GiftBackground? {
     val m = raw as? Map<*, *> ?: return null
     return GiftBackground(
-        centerColor = botLong(m["center_color"]) ?: 0,
-        edgeColor = botLong(m["edge_color"]) ?: 0,
-        textColor = botLong(m["text_color"]) ?: 0,
+        centerColor = botInt(m["center_color"]) ?: 0,
+        edgeColor = botInt(m["edge_color"]) ?: 0,
+        textColor = botInt(m["text_color"]) ?: 0,
     )
 }
 
@@ -999,14 +999,14 @@ fun giftInfoFromMap(raw: Any?): GiftInfo? {
     return GiftInfo(
         gift = giftFromMap(m["gift"]),
         ownedGiftId = botString(m["owned_gift_id"]),
-        convertStarCount = botLong(m["convert_star_count"]),
-        prepaidUpgradeStarCount = botLong(m["prepaid_upgrade_star_count"]),
+        convertStarCount = botInt(m["convert_star_count"]),
+        prepaidUpgradeStarCount = botInt(m["prepaid_upgrade_star_count"]),
         isUpgradeSeparate = botBool(m["is_upgrade_separate"]),
         canBeUpgraded = botBool(m["can_be_upgraded"]),
         text = botString(m["text"]),
         entities = botList(m["entities"]) { messageEntityFromMap(it) },
         isPrivate = botBool(m["is_private"]),
-        uniqueGiftNumber = botLong(m["unique_gift_number"]),
+        uniqueGiftNumber = botInt(m["unique_gift_number"]),
     )
 }
 
@@ -1021,22 +1021,22 @@ fun giveawayFromMap(raw: Any?): Giveaway? {
     val m = raw as? Map<*, *> ?: return null
     return Giveaway(
         chats = botList(m["chats"]) { chatFromMap(it) } ?: emptyList(),
-        winnersSelectionDate = botLong(m["winners_selection_date"]) ?: 0,
-        winnerCount = botLong(m["winner_count"]) ?: 0,
+        winnersSelectionDate = botInt(m["winners_selection_date"]) ?: 0,
+        winnerCount = botInt(m["winner_count"]) ?: 0,
         onlyNewMembers = botBool(m["only_new_members"]),
         hasPublicWinners = botBool(m["has_public_winners"]),
         prizeDescription = botString(m["prize_description"]),
         countryCodes = botList(m["country_codes"]) { botString(it) },
-        prizeStarCount = botLong(m["prize_star_count"]),
-        premiumSubscriptionMonthCount = botLong(m["premium_subscription_month_count"]),
+        prizeStarCount = botInt(m["prize_star_count"]),
+        premiumSubscriptionMonthCount = botInt(m["premium_subscription_month_count"]),
     )
 }
 
 fun giveawayCompletedFromMap(raw: Any?): GiveawayCompleted? {
     val m = raw as? Map<*, *> ?: return null
     return GiveawayCompleted(
-        winnerCount = botLong(m["winner_count"]) ?: 0,
-        unclaimedPrizeCount = botLong(m["unclaimed_prize_count"]),
+        winnerCount = botInt(m["winner_count"]) ?: 0,
+        unclaimedPrizeCount = botInt(m["unclaimed_prize_count"]),
         giveawayMessage = messageFromMap(m["giveaway_message"]),
         isStarGiveaway = botBool(m["is_star_giveaway"]),
     )
@@ -1045,7 +1045,7 @@ fun giveawayCompletedFromMap(raw: Any?): GiveawayCompleted? {
 fun giveawayCreatedFromMap(raw: Any?): GiveawayCreated? {
     val m = raw as? Map<*, *> ?: return null
     return GiveawayCreated(
-        prizeStarCount = botLong(m["prize_star_count"]),
+        prizeStarCount = botInt(m["prize_star_count"]),
     )
 }
 
@@ -1053,14 +1053,14 @@ fun giveawayWinnersFromMap(raw: Any?): GiveawayWinners? {
     val m = raw as? Map<*, *> ?: return null
     return GiveawayWinners(
         chat = chatFromMap(m["chat"]),
-        giveawayMessageId = botLong(m["giveaway_message_id"]) ?: 0,
-        winnersSelectionDate = botLong(m["winners_selection_date"]) ?: 0,
-        winnerCount = botLong(m["winner_count"]) ?: 0,
+        giveawayMessageId = botInt(m["giveaway_message_id"]) ?: 0,
+        winnersSelectionDate = botInt(m["winners_selection_date"]) ?: 0,
+        winnerCount = botInt(m["winner_count"]) ?: 0,
         winners = botList(m["winners"]) { userFromMap(it) } ?: emptyList(),
-        additionalChatCount = botLong(m["additional_chat_count"]),
-        prizeStarCount = botLong(m["prize_star_count"]),
-        premiumSubscriptionMonthCount = botLong(m["premium_subscription_month_count"]),
-        unclaimedPrizeCount = botLong(m["unclaimed_prize_count"]),
+        additionalChatCount = botInt(m["additional_chat_count"]),
+        prizeStarCount = botInt(m["prize_star_count"]),
+        premiumSubscriptionMonthCount = botInt(m["premium_subscription_month_count"]),
+        unclaimedPrizeCount = botInt(m["unclaimed_prize_count"]),
         onlyNewMembers = botBool(m["only_new_members"]),
         wasRefunded = botBool(m["was_refunded"]),
         prizeDescription = botString(m["prize_description"]),
@@ -1071,8 +1071,8 @@ fun inaccessibleMessageFromMap(raw: Any?): InaccessibleMessage? {
     val m = raw as? Map<*, *> ?: return null
     return InaccessibleMessage(
         chat = chatFromMap(m["chat"]),
-        messageId = botLong(m["message_id"]) ?: 0,
-        date = botLong(m["date"]) ?: 0,
+        messageId = botInt(m["message_id"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
     )
 }
 
@@ -1127,8 +1127,8 @@ fun inlineQueryResultArticleFromMap(raw: Any?): InlineQueryResultArticle? {
         url = botString(m["url"]),
         description = botString(m["description"]),
         thumbnailUrl = botString(m["thumbnail_url"]),
-        thumbnailWidth = botLong(m["thumbnail_width"]),
-        thumbnailHeight = botLong(m["thumbnail_height"]),
+        thumbnailWidth = botInt(m["thumbnail_width"]),
+        thumbnailHeight = botInt(m["thumbnail_height"]),
     )
 }
 
@@ -1143,7 +1143,7 @@ fun inlineQueryResultAudioFromMap(raw: Any?): InlineQueryResultAudio? {
         parseMode = botString(m["parse_mode"]),
         captionEntities = botList(m["caption_entities"]) { messageEntityFromMap(it) },
         performer = botString(m["performer"]),
-        audioDuration = botLong(m["audio_duration"]),
+        audioDuration = botInt(m["audio_duration"]),
         replyMarkup = inlineKeyboardMarkupFromMap(m["reply_markup"]),
         inputMessageContent = inputMessageContentFromMap(m["input_message_content"]),
     )
@@ -1283,8 +1283,8 @@ fun inlineQueryResultContactFromMap(raw: Any?): InlineQueryResultContact? {
         replyMarkup = inlineKeyboardMarkupFromMap(m["reply_markup"]),
         inputMessageContent = inputMessageContentFromMap(m["input_message_content"]),
         thumbnailUrl = botString(m["thumbnail_url"]),
-        thumbnailWidth = botLong(m["thumbnail_width"]),
-        thumbnailHeight = botLong(m["thumbnail_height"]),
+        thumbnailWidth = botInt(m["thumbnail_width"]),
+        thumbnailHeight = botInt(m["thumbnail_height"]),
     )
 }
 
@@ -1303,8 +1303,8 @@ fun inlineQueryResultDocumentFromMap(raw: Any?): InlineQueryResultDocument? {
         replyMarkup = inlineKeyboardMarkupFromMap(m["reply_markup"]),
         inputMessageContent = inputMessageContentFromMap(m["input_message_content"]),
         thumbnailUrl = botString(m["thumbnail_url"]),
-        thumbnailWidth = botLong(m["thumbnail_width"]),
-        thumbnailHeight = botLong(m["thumbnail_height"]),
+        thumbnailWidth = botInt(m["thumbnail_width"]),
+        thumbnailHeight = botInt(m["thumbnail_height"]),
     )
 }
 
@@ -1324,9 +1324,9 @@ fun inlineQueryResultGifFromMap(raw: Any?): InlineQueryResultGif? {
         type = botString(m["type"]) ?: "",
         id = botString(m["id"]) ?: "",
         gifUrl = botString(m["gif_url"]) ?: "",
-        gifWidth = botLong(m["gif_width"]),
-        gifHeight = botLong(m["gif_height"]),
-        gifDuration = botLong(m["gif_duration"]),
+        gifWidth = botInt(m["gif_width"]),
+        gifHeight = botInt(m["gif_height"]),
+        gifDuration = botInt(m["gif_duration"]),
         thumbnailUrl = botString(m["thumbnail_url"]) ?: "",
         thumbnailMimeType = botString(m["thumbnail_mime_type"]),
         title = botString(m["title"]),
@@ -1348,14 +1348,14 @@ fun inlineQueryResultLocationFromMap(raw: Any?): InlineQueryResultLocation? {
         longitude = botDouble(m["longitude"]) ?: 0.0,
         title = botString(m["title"]) ?: "",
         horizontalAccuracy = botDouble(m["horizontal_accuracy"]),
-        livePeriod = botLong(m["live_period"]),
-        heading = botLong(m["heading"]),
-        proximityAlertRadius = botLong(m["proximity_alert_radius"]),
+        livePeriod = botInt(m["live_period"]),
+        heading = botInt(m["heading"]),
+        proximityAlertRadius = botInt(m["proximity_alert_radius"]),
         replyMarkup = inlineKeyboardMarkupFromMap(m["reply_markup"]),
         inputMessageContent = inputMessageContentFromMap(m["input_message_content"]),
         thumbnailUrl = botString(m["thumbnail_url"]),
-        thumbnailWidth = botLong(m["thumbnail_width"]),
-        thumbnailHeight = botLong(m["thumbnail_height"]),
+        thumbnailWidth = botInt(m["thumbnail_width"]),
+        thumbnailHeight = botInt(m["thumbnail_height"]),
     )
 }
 
@@ -1365,9 +1365,9 @@ fun inlineQueryResultMpeg4GifFromMap(raw: Any?): InlineQueryResultMpeg4Gif? {
         type = botString(m["type"]) ?: "",
         id = botString(m["id"]) ?: "",
         mpeg4Url = botString(m["mpeg4_url"]) ?: "",
-        mpeg4Width = botLong(m["mpeg4_width"]),
-        mpeg4Height = botLong(m["mpeg4_height"]),
-        mpeg4Duration = botLong(m["mpeg4_duration"]),
+        mpeg4Width = botInt(m["mpeg4_width"]),
+        mpeg4Height = botInt(m["mpeg4_height"]),
+        mpeg4Duration = botInt(m["mpeg4_duration"]),
         thumbnailUrl = botString(m["thumbnail_url"]) ?: "",
         thumbnailMimeType = botString(m["thumbnail_mime_type"]),
         title = botString(m["title"]),
@@ -1387,8 +1387,8 @@ fun inlineQueryResultPhotoFromMap(raw: Any?): InlineQueryResultPhoto? {
         id = botString(m["id"]) ?: "",
         photoUrl = botString(m["photo_url"]) ?: "",
         thumbnailUrl = botString(m["thumbnail_url"]) ?: "",
-        photoWidth = botLong(m["photo_width"]),
-        photoHeight = botLong(m["photo_height"]),
+        photoWidth = botInt(m["photo_width"]),
+        photoHeight = botInt(m["photo_height"]),
         title = botString(m["title"]),
         description = botString(m["description"]),
         caption = botString(m["caption"]),
@@ -1416,8 +1416,8 @@ fun inlineQueryResultVenueFromMap(raw: Any?): InlineQueryResultVenue? {
         replyMarkup = inlineKeyboardMarkupFromMap(m["reply_markup"]),
         inputMessageContent = inputMessageContentFromMap(m["input_message_content"]),
         thumbnailUrl = botString(m["thumbnail_url"]),
-        thumbnailWidth = botLong(m["thumbnail_width"]),
-        thumbnailHeight = botLong(m["thumbnail_height"]),
+        thumbnailWidth = botInt(m["thumbnail_width"]),
+        thumbnailHeight = botInt(m["thumbnail_height"]),
     )
 }
 
@@ -1434,9 +1434,9 @@ fun inlineQueryResultVideoFromMap(raw: Any?): InlineQueryResultVideo? {
         parseMode = botString(m["parse_mode"]),
         captionEntities = botList(m["caption_entities"]) { messageEntityFromMap(it) },
         showCaptionAboveMedia = botBool(m["show_caption_above_media"]),
-        videoWidth = botLong(m["video_width"]),
-        videoHeight = botLong(m["video_height"]),
-        videoDuration = botLong(m["video_duration"]),
+        videoWidth = botInt(m["video_width"]),
+        videoHeight = botInt(m["video_height"]),
+        videoDuration = botInt(m["video_duration"]),
         description = botString(m["description"]),
         replyMarkup = inlineKeyboardMarkupFromMap(m["reply_markup"]),
         inputMessageContent = inputMessageContentFromMap(m["input_message_content"]),
@@ -1453,7 +1453,7 @@ fun inlineQueryResultVoiceFromMap(raw: Any?): InlineQueryResultVoice? {
         caption = botString(m["caption"]),
         parseMode = botString(m["parse_mode"]),
         captionEntities = botList(m["caption_entities"]) { messageEntityFromMap(it) },
-        voiceDuration = botLong(m["voice_duration"]),
+        voiceDuration = botInt(m["voice_duration"]),
         replyMarkup = inlineKeyboardMarkupFromMap(m["reply_markup"]),
         inputMessageContent = inputMessageContentFromMap(m["input_message_content"]),
     )
@@ -1483,7 +1483,7 @@ fun inputChecklistFromMap(raw: Any?): InputChecklist? {
 fun inputChecklistTaskFromMap(raw: Any?): InputChecklistTask? {
     val m = raw as? Map<*, *> ?: return null
     return InputChecklistTask(
-        id = botLong(m["id"]) ?: 0,
+        id = botInt(m["id"]) ?: 0,
         text = botString(m["text"]) ?: "",
         parseMode = botString(m["parse_mode"]),
         textEntities = botList(m["text_entities"]) { messageEntityFromMap(it) },
@@ -1515,13 +1515,13 @@ fun inputInvoiceMessageContentFromMap(raw: Any?): InputInvoiceMessageContent? {
         providerToken = botString(m["provider_token"]),
         currency = botString(m["currency"]) ?: "",
         prices = botList(m["prices"]) { labeledPriceFromMap(it) } ?: emptyList(),
-        maxTipAmount = botLong(m["max_tip_amount"]),
-        suggestedTipAmounts = botList(m["suggested_tip_amounts"]) { botLong(it) },
+        maxTipAmount = botInt(m["max_tip_amount"]),
+        suggestedTipAmounts = botList(m["suggested_tip_amounts"]) { botInt(it) },
         providerData = botString(m["provider_data"]),
         photoUrl = botString(m["photo_url"]),
-        photoSize = botLong(m["photo_size"]),
-        photoWidth = botLong(m["photo_width"]),
-        photoHeight = botLong(m["photo_height"]),
+        photoSize = botInt(m["photo_size"]),
+        photoWidth = botInt(m["photo_width"]),
+        photoHeight = botInt(m["photo_height"]),
         needName = botBool(m["need_name"]),
         needPhoneNumber = botBool(m["need_phone_number"]),
         needEmail = botBool(m["need_email"]),
@@ -1538,9 +1538,9 @@ fun inputLocationMessageContentFromMap(raw: Any?): InputLocationMessageContent? 
         latitude = botDouble(m["latitude"]) ?: 0.0,
         longitude = botDouble(m["longitude"]) ?: 0.0,
         horizontalAccuracy = botDouble(m["horizontal_accuracy"]),
-        livePeriod = botLong(m["live_period"]),
-        heading = botLong(m["heading"]),
-        proximityAlertRadius = botLong(m["proximity_alert_radius"]),
+        livePeriod = botInt(m["live_period"]),
+        heading = botInt(m["heading"]),
+        proximityAlertRadius = botInt(m["proximity_alert_radius"]),
     )
 }
 
@@ -1554,9 +1554,9 @@ fun inputMediaAnimationFromMap(raw: Any?): InputMediaAnimation? {
         parseMode = botString(m["parse_mode"]),
         captionEntities = botList(m["caption_entities"]) { messageEntityFromMap(it) },
         showCaptionAboveMedia = botBool(m["show_caption_above_media"]),
-        width = botLong(m["width"]),
-        height = botLong(m["height"]),
-        duration = botLong(m["duration"]),
+        width = botInt(m["width"]),
+        height = botInt(m["height"]),
+        duration = botInt(m["duration"]),
         hasSpoiler = botBool(m["has_spoiler"]),
     )
 }
@@ -1570,7 +1570,7 @@ fun inputMediaAudioFromMap(raw: Any?): InputMediaAudio? {
         caption = botString(m["caption"]),
         parseMode = botString(m["parse_mode"]),
         captionEntities = botList(m["caption_entities"]) { messageEntityFromMap(it) },
-        duration = botLong(m["duration"]),
+        duration = botInt(m["duration"]),
         performer = botString(m["performer"]),
         title = botString(m["title"]),
     )
@@ -1665,14 +1665,14 @@ fun inputMediaVideoFromMap(raw: Any?): InputMediaVideo? {
         media = botString(m["media"]) ?: "",
         thumbnail = botString(m["thumbnail"]),
         cover = botString(m["cover"]),
-        startTimestamp = botLong(m["start_timestamp"]),
+        startTimestamp = botInt(m["start_timestamp"]),
         caption = botString(m["caption"]),
         parseMode = botString(m["parse_mode"]),
         captionEntities = botList(m["caption_entities"]) { messageEntityFromMap(it) },
         showCaptionAboveMedia = botBool(m["show_caption_above_media"]),
-        width = botLong(m["width"]),
-        height = botLong(m["height"]),
-        duration = botLong(m["duration"]),
+        width = botInt(m["width"]),
+        height = botInt(m["height"]),
+        duration = botInt(m["duration"]),
         supportsStreaming = botBool(m["supports_streaming"]),
         hasSpoiler = botBool(m["has_spoiler"]),
     )
@@ -1686,7 +1686,7 @@ fun inputMediaVoiceNoteFromMap(raw: Any?): InputMediaVoiceNote? {
         caption = botString(m["caption"]),
         parseMode = botString(m["parse_mode"]),
         captionEntities = botList(m["caption_entities"]) { messageEntityFromMap(it) },
-        duration = botLong(m["duration"]),
+        duration = botInt(m["duration"]),
     )
 }
 
@@ -1714,10 +1714,10 @@ fun inputPaidMediaVideoFromMap(raw: Any?): InputPaidMediaVideo? {
         media = botString(m["media"]) ?: "",
         thumbnail = botString(m["thumbnail"]),
         cover = botString(m["cover"]),
-        startTimestamp = botLong(m["start_timestamp"]),
-        width = botLong(m["width"]),
-        height = botLong(m["height"]),
-        duration = botLong(m["duration"]),
+        startTimestamp = botInt(m["start_timestamp"]),
+        width = botInt(m["width"]),
+        height = botInt(m["height"]),
+        duration = botInt(m["duration"]),
         supportsStreaming = botBool(m["supports_streaming"]),
     )
 }
@@ -1859,7 +1859,7 @@ fun inputRichBlockListItemFromMap(raw: Any?): InputRichBlockListItem? {
         blocks = botList(m["blocks"]) { inputRichBlockFromMap(it) } ?: emptyList(),
         hasCheckbox = botBool(m["has_checkbox"]),
         isChecked = botBool(m["is_checked"]),
-        value = botLong(m["value"]),
+        value = botInt(m["value"]),
         type = botString(m["type"]),
     )
 }
@@ -1869,9 +1869,9 @@ fun inputRichBlockMapFromMap(raw: Any?): InputRichBlockMap? {
     return InputRichBlockMap(
         type = botString(m["type"]) ?: "",
         location = locationFromMap(m["location"]),
-        zoom = botLong(m["zoom"]),
-        width = botLong(m["width"]),
-        height = botLong(m["height"]),
+        zoom = botInt(m["zoom"]),
+        width = botInt(m["width"]),
+        height = botInt(m["height"]),
         caption = richBlockCaptionFromMap(m["caption"]),
     )
 }
@@ -1924,7 +1924,7 @@ fun inputRichBlockSectionHeadingFromMap(raw: Any?): InputRichBlockSectionHeading
     return InputRichBlockSectionHeading(
         type = botString(m["type"]) ?: "",
         text = richTextFromMap(m["text"]),
-        size = botLong(m["size"]) ?: 0,
+        size = botInt(m["size"]) ?: 0,
     )
 }
 
@@ -2063,7 +2063,7 @@ fun invoiceFromMap(raw: Any?): Invoice? {
         description = botString(m["description"]) ?: "",
         startParameter = botString(m["start_parameter"]) ?: "",
         currency = botString(m["currency"]) ?: "",
-        totalAmount = botLong(m["total_amount"]) ?: 0,
+        totalAmount = botInt(m["total_amount"]) ?: 0,
     )
 }
 
@@ -2093,7 +2093,7 @@ fun keyboardButtonPollTypeFromMap(raw: Any?): KeyboardButtonPollType? {
 fun keyboardButtonRequestChatFromMap(raw: Any?): KeyboardButtonRequestChat? {
     val m = raw as? Map<*, *> ?: return null
     return KeyboardButtonRequestChat(
-        requestId = botLong(m["request_id"]) ?: 0,
+        requestId = botInt(m["request_id"]) ?: 0,
         chatIsChannel = botBool(m["chat_is_channel"]) ?: false,
         chatIsForum = botBool(m["chat_is_forum"]),
         chatHasUsername = botBool(m["chat_has_username"]),
@@ -2110,7 +2110,7 @@ fun keyboardButtonRequestChatFromMap(raw: Any?): KeyboardButtonRequestChat? {
 fun keyboardButtonRequestManagedBotFromMap(raw: Any?): KeyboardButtonRequestManagedBot? {
     val m = raw as? Map<*, *> ?: return null
     return KeyboardButtonRequestManagedBot(
-        requestId = botLong(m["request_id"]) ?: 0,
+        requestId = botInt(m["request_id"]) ?: 0,
         suggestedName = botString(m["suggested_name"]),
         suggestedUsername = botString(m["suggested_username"]),
     )
@@ -2119,10 +2119,10 @@ fun keyboardButtonRequestManagedBotFromMap(raw: Any?): KeyboardButtonRequestMana
 fun keyboardButtonRequestUsersFromMap(raw: Any?): KeyboardButtonRequestUsers? {
     val m = raw as? Map<*, *> ?: return null
     return KeyboardButtonRequestUsers(
-        requestId = botLong(m["request_id"]) ?: 0,
+        requestId = botInt(m["request_id"]) ?: 0,
         userIsBot = botBool(m["user_is_bot"]),
         userIsPremium = botBool(m["user_is_premium"]),
-        maxQuantity = botLong(m["max_quantity"]),
+        maxQuantity = botInt(m["max_quantity"]),
         requestName = botBool(m["request_name"]),
         requestUsername = botBool(m["request_username"]),
         requestPhoto = botBool(m["request_photo"]),
@@ -2133,7 +2133,7 @@ fun labeledPriceFromMap(raw: Any?): LabeledPrice? {
     val m = raw as? Map<*, *> ?: return null
     return LabeledPrice(
         label = botString(m["label"]) ?: "",
-        amount = botLong(m["amount"]) ?: 0,
+        amount = botInt(m["amount"]) ?: 0,
     )
 }
 
@@ -2161,9 +2161,9 @@ fun livePhotoFromMap(raw: Any?): LivePhoto? {
         photo = botList(m["photo"]) { photoSizeFromMap(it) },
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        width = botLong(m["width"]) ?: 0,
-        height = botLong(m["height"]) ?: 0,
-        duration = botLong(m["duration"]) ?: 0,
+        width = botInt(m["width"]) ?: 0,
+        height = botInt(m["height"]) ?: 0,
+        duration = botInt(m["duration"]) ?: 0,
         mimeType = botString(m["mime_type"]),
         fileSize = botLong(m["file_size"]),
     )
@@ -2175,9 +2175,9 @@ fun locationFromMap(raw: Any?): Location? {
         latitude = botDouble(m["latitude"]) ?: 0.0,
         longitude = botDouble(m["longitude"]) ?: 0.0,
         horizontalAccuracy = botDouble(m["horizontal_accuracy"]),
-        livePeriod = botLong(m["live_period"]),
-        heading = botLong(m["heading"]),
-        proximityAlertRadius = botLong(m["proximity_alert_radius"]),
+        livePeriod = botInt(m["live_period"]),
+        heading = botInt(m["heading"]),
+        proximityAlertRadius = botInt(m["proximity_alert_radius"]),
     )
 }
 
@@ -2252,17 +2252,17 @@ fun menuButtonWebAppFromMap(raw: Any?): MenuButtonWebApp? {
 fun messageFromMap(raw: Any?): Message? {
     val m = raw as? Map<*, *> ?: return null
     return Message(
-        messageId = botLong(m["message_id"]) ?: 0,
-        messageThreadId = botLong(m["message_thread_id"]),
+        messageId = botInt(m["message_id"]) ?: 0,
+        messageThreadId = botInt(m["message_thread_id"]),
         directMessagesTopic = directMessagesTopicFromMap(m["direct_messages_topic"]),
         from = userFromMap(m["from"]),
         senderChat = chatFromMap(m["sender_chat"]),
-        senderBoostCount = botLong(m["sender_boost_count"]),
+        senderBoostCount = botInt(m["sender_boost_count"]),
         senderBusinessBot = userFromMap(m["sender_business_bot"]),
         senderTag = botString(m["sender_tag"]),
         receiverUser = userFromMap(m["receiver_user"]),
-        ephemeralMessageId = botLong(m["ephemeral_message_id"]),
-        date = botLong(m["date"]) ?: 0,
+        ephemeralMessageId = botInt(m["ephemeral_message_id"]),
+        date = botInt(m["date"]) ?: 0,
         guestQueryId = botString(m["guest_query_id"]),
         businessConnectionId = botString(m["business_connection_id"]),
         chat = chatFromMap(m["chat"]),
@@ -2273,18 +2273,18 @@ fun messageFromMap(raw: Any?): Message? {
         externalReply = externalReplyInfoFromMap(m["external_reply"]),
         quote = textQuoteFromMap(m["quote"]),
         replyToStory = storyFromMap(m["reply_to_story"]),
-        replyToChecklistTaskId = botLong(m["reply_to_checklist_task_id"]),
+        replyToChecklistTaskId = botInt(m["reply_to_checklist_task_id"]),
         replyToPollOptionId = botString(m["reply_to_poll_option_id"]),
         viaBot = userFromMap(m["via_bot"]),
         guestBotCallerUser = userFromMap(m["guest_bot_caller_user"]),
         guestBotCallerChat = chatFromMap(m["guest_bot_caller_chat"]),
-        editDate = botLong(m["edit_date"]),
+        editDate = botInt(m["edit_date"]),
         hasProtectedContent = botBool(m["has_protected_content"]),
         isFromOffline = botBool(m["is_from_offline"]),
         isPaidPost = botBool(m["is_paid_post"]),
         mediaGroupId = botString(m["media_group_id"]),
         authorSignature = botString(m["author_signature"]),
-        paidStarCount = botLong(m["paid_star_count"]),
+        paidStarCount = botInt(m["paid_star_count"]),
         text = botString(m["text"]),
         entities = botList(m["entities"]) { messageEntityFromMap(it) },
         linkPreviewOptions = linkPreviewOptionsFromMap(m["link_preview_options"]),
@@ -2378,7 +2378,7 @@ fun messageFromMap(raw: Any?): Message? {
 fun messageAutoDeleteTimerChangedFromMap(raw: Any?): MessageAutoDeleteTimerChanged? {
     val m = raw as? Map<*, *> ?: return null
     return MessageAutoDeleteTimerChanged(
-        messageAutoDeleteTime = botLong(m["message_auto_delete_time"]) ?: 0,
+        messageAutoDeleteTime = botInt(m["message_auto_delete_time"]) ?: 0,
     )
 }
 
@@ -2386,13 +2386,13 @@ fun messageEntityFromMap(raw: Any?): MessageEntity? {
     val m = raw as? Map<*, *> ?: return null
     return MessageEntity(
         type = botString(m["type"]) ?: "",
-        offset = botLong(m["offset"]) ?: 0,
-        length = botLong(m["length"]) ?: 0,
+        offset = botInt(m["offset"]) ?: 0,
+        length = botInt(m["length"]) ?: 0,
         url = botString(m["url"]),
         user = userFromMap(m["user"]),
         language = botString(m["language"]),
         customEmojiId = botString(m["custom_emoji_id"]),
-        unixTime = botLong(m["unix_time"]),
+        unixTime = botInt(m["unix_time"]),
         dateTimeFormat = botString(m["date_time_format"]),
     )
 }
@@ -2401,15 +2401,15 @@ fun messageGenerationStoppedFromMap(raw: Any?): MessageGenerationStopped? {
     val m = raw as? Map<*, *> ?: return null
     return MessageGenerationStopped(
         chat = chatFromMap(m["chat"]),
-        messageThreadId = botLong(m["message_thread_id"]),
-        draftId = botLong(m["draft_id"]) ?: 0,
+        messageThreadId = botInt(m["message_thread_id"]),
+        draftId = botInt(m["draft_id"]) ?: 0,
     )
 }
 
 fun messageIdFromMap(raw: Any?): MessageId? {
     val m = raw as? Map<*, *> ?: return null
     return MessageId(
-        messageId = botLong(m["message_id"]) ?: 0,
+        messageId = botInt(m["message_id"]) ?: 0,
     )
 }
 
@@ -2417,9 +2417,9 @@ fun messageOriginChannelFromMap(raw: Any?): MessageOriginChannel? {
     val m = raw as? Map<*, *> ?: return null
     return MessageOriginChannel(
         type = botString(m["type"]) ?: "",
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         chat = chatFromMap(m["chat"]),
-        messageId = botLong(m["message_id"]) ?: 0,
+        messageId = botInt(m["message_id"]) ?: 0,
         authorSignature = botString(m["author_signature"]),
     )
 }
@@ -2428,7 +2428,7 @@ fun messageOriginChatFromMap(raw: Any?): MessageOriginChat? {
     val m = raw as? Map<*, *> ?: return null
     return MessageOriginChat(
         type = botString(m["type"]) ?: "",
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         senderChat = chatFromMap(m["sender_chat"]),
         authorSignature = botString(m["author_signature"]),
     )
@@ -2438,7 +2438,7 @@ fun messageOriginHiddenUserFromMap(raw: Any?): MessageOriginHiddenUser? {
     val m = raw as? Map<*, *> ?: return null
     return MessageOriginHiddenUser(
         type = botString(m["type"]) ?: "",
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         senderUserName = botString(m["sender_user_name"]) ?: "",
     )
 }
@@ -2447,7 +2447,7 @@ fun messageOriginUserFromMap(raw: Any?): MessageOriginUser? {
     val m = raw as? Map<*, *> ?: return null
     return MessageOriginUser(
         type = botString(m["type"]) ?: "",
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         senderUser = userFromMap(m["sender_user"]),
     )
 }
@@ -2456,8 +2456,8 @@ fun messageReactionCountUpdatedFromMap(raw: Any?): MessageReactionCountUpdated? 
     val m = raw as? Map<*, *> ?: return null
     return MessageReactionCountUpdated(
         chat = chatFromMap(m["chat"]),
-        messageId = botLong(m["message_id"]) ?: 0,
-        date = botLong(m["date"]) ?: 0,
+        messageId = botInt(m["message_id"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         reactions = botList(m["reactions"]) { reactionCountFromMap(it) } ?: emptyList(),
     )
 }
@@ -2466,10 +2466,10 @@ fun messageReactionUpdatedFromMap(raw: Any?): MessageReactionUpdated? {
     val m = raw as? Map<*, *> ?: return null
     return MessageReactionUpdated(
         chat = chatFromMap(m["chat"]),
-        messageId = botLong(m["message_id"]) ?: 0,
+        messageId = botInt(m["message_id"]) ?: 0,
         user = userFromMap(m["user"]),
         actorChat = chatFromMap(m["actor_chat"]),
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         oldReaction = botList(m["old_reaction"]) { reactionTypeFromMap(it) } ?: emptyList(),
         newReaction = botList(m["new_reaction"]) { reactionTypeFromMap(it) } ?: emptyList(),
     )
@@ -2492,17 +2492,17 @@ fun ownedGiftRegularFromMap(raw: Any?): OwnedGiftRegular? {
         gift = giftFromMap(m["gift"]),
         ownedGiftId = botString(m["owned_gift_id"]),
         senderUser = userFromMap(m["sender_user"]),
-        sendDate = botLong(m["send_date"]) ?: 0,
+        sendDate = botInt(m["send_date"]) ?: 0,
         text = botString(m["text"]),
         entities = botList(m["entities"]) { messageEntityFromMap(it) },
         isPrivate = botBool(m["is_private"]),
         isSaved = botBool(m["is_saved"]),
         canBeUpgraded = botBool(m["can_be_upgraded"]),
         wasRefunded = botBool(m["was_refunded"]),
-        convertStarCount = botLong(m["convert_star_count"]),
-        prepaidUpgradeStarCount = botLong(m["prepaid_upgrade_star_count"]),
+        convertStarCount = botInt(m["convert_star_count"]),
+        prepaidUpgradeStarCount = botInt(m["prepaid_upgrade_star_count"]),
         isUpgradeSeparate = botBool(m["is_upgrade_separate"]),
-        uniqueGiftNumber = botLong(m["unique_gift_number"]),
+        uniqueGiftNumber = botInt(m["unique_gift_number"]),
     )
 }
 
@@ -2513,18 +2513,18 @@ fun ownedGiftUniqueFromMap(raw: Any?): OwnedGiftUnique? {
         gift = uniqueGiftFromMap(m["gift"]),
         ownedGiftId = botString(m["owned_gift_id"]),
         senderUser = userFromMap(m["sender_user"]),
-        sendDate = botLong(m["send_date"]) ?: 0,
+        sendDate = botInt(m["send_date"]) ?: 0,
         isSaved = botBool(m["is_saved"]),
         canBeTransferred = botBool(m["can_be_transferred"]),
-        transferStarCount = botLong(m["transfer_star_count"]),
-        nextTransferDate = botLong(m["next_transfer_date"]),
+        transferStarCount = botInt(m["transfer_star_count"]),
+        nextTransferDate = botInt(m["next_transfer_date"]),
     )
 }
 
 fun ownedGiftsFromMap(raw: Any?): OwnedGifts? {
     val m = raw as? Map<*, *> ?: return null
     return OwnedGifts(
-        totalCount = botLong(m["total_count"]) ?: 0,
+        totalCount = botInt(m["total_count"]) ?: 0,
         gifts = botList(m["gifts"]) { ownedGiftFromMap(it) } ?: emptyList(),
         nextOffset = botString(m["next_offset"]),
     )
@@ -2533,7 +2533,7 @@ fun ownedGiftsFromMap(raw: Any?): OwnedGifts? {
 fun paidMediaInfoFromMap(raw: Any?): PaidMediaInfo? {
     val m = raw as? Map<*, *> ?: return null
     return PaidMediaInfo(
-        starCount = botLong(m["star_count"]) ?: 0,
+        starCount = botInt(m["star_count"]) ?: 0,
         paidMedia = botList(m["paid_media"]) { paidMediaFromMap(it) } ?: emptyList(),
     )
 }
@@ -2558,9 +2558,9 @@ fun paidMediaPreviewFromMap(raw: Any?): PaidMediaPreview? {
     val m = raw as? Map<*, *> ?: return null
     return PaidMediaPreview(
         type = botString(m["type"]) ?: "",
-        width = botLong(m["width"]),
-        height = botLong(m["height"]),
-        duration = botLong(m["duration"]),
+        width = botInt(m["width"]),
+        height = botInt(m["height"]),
+        duration = botInt(m["duration"]),
     )
 }
 
@@ -2583,7 +2583,7 @@ fun paidMediaVideoFromMap(raw: Any?): PaidMediaVideo? {
 fun paidMessagePriceChangedFromMap(raw: Any?): PaidMessagePriceChanged? {
     val m = raw as? Map<*, *> ?: return null
     return PaidMessagePriceChanged(
-        paidMessageStarCount = botLong(m["paid_message_star_count"]) ?: 0,
+        paidMessageStarCount = botInt(m["paid_message_star_count"]) ?: 0,
     )
 }
 
@@ -2691,8 +2691,8 @@ fun passportFileFromMap(raw: Any?): PassportFile? {
     return PassportFile(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        fileSize = botLong(m["file_size"]) ?: 0,
-        fileDate = botLong(m["file_date"]) ?: 0,
+        fileSize = botInt(m["file_size"]) ?: 0,
+        fileDate = botInt(m["file_date"]) ?: 0,
     )
 }
 
@@ -2701,9 +2701,9 @@ fun photoSizeFromMap(raw: Any?): PhotoSize? {
     return PhotoSize(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        width = botLong(m["width"]) ?: 0,
-        height = botLong(m["height"]) ?: 0,
-        fileSize = botLong(m["file_size"]),
+        width = botInt(m["width"]) ?: 0,
+        height = botInt(m["height"]) ?: 0,
+        fileSize = botInt(m["file_size"]),
     )
 }
 
@@ -2714,7 +2714,7 @@ fun pollFromMap(raw: Any?): Poll? {
         question = botString(m["question"]) ?: "",
         questionEntities = botList(m["question_entities"]) { messageEntityFromMap(it) },
         options = botList(m["options"]) { pollOptionFromMap(it) } ?: emptyList(),
-        totalVoterCount = botLong(m["total_voter_count"]) ?: 0,
+        totalVoterCount = botInt(m["total_voter_count"]) ?: 0,
         isClosed = botBool(m["is_closed"]) ?: false,
         isAnonymous = botBool(m["is_anonymous"]) ?: false,
         type = botString(m["type"]) ?: "",
@@ -2722,12 +2722,12 @@ fun pollFromMap(raw: Any?): Poll? {
         allowsRevoting = botBool(m["allows_revoting"]) ?: false,
         membersOnly = botBool(m["members_only"]) ?: false,
         countryCodes = botList(m["country_codes"]) { botString(it) },
-        correctOptionIds = botList(m["correct_option_ids"]) { botLong(it) },
+        correctOptionIds = botList(m["correct_option_ids"]) { botInt(it) },
         explanation = botString(m["explanation"]),
         explanationEntities = botList(m["explanation_entities"]) { messageEntityFromMap(it) },
         explanationMedia = pollMediaFromMap(m["explanation_media"]),
-        openPeriod = botLong(m["open_period"]),
-        closeDate = botLong(m["close_date"]),
+        openPeriod = botInt(m["open_period"]),
+        closeDate = botInt(m["close_date"]),
         description = botString(m["description"]),
         descriptionEntities = botList(m["description_entities"]) { messageEntityFromMap(it) },
         media = pollMediaFromMap(m["media"]),
@@ -2740,7 +2740,7 @@ fun pollAnswerFromMap(raw: Any?): PollAnswer? {
         pollId = botString(m["poll_id"]) ?: "",
         voterChat = chatFromMap(m["voter_chat"]),
         user = userFromMap(m["user"]),
-        optionIds = botList(m["option_ids"]) { botLong(it) } ?: emptyList(),
+        optionIds = botList(m["option_ids"]) { botInt(it) } ?: emptyList(),
         optionPersistentIds = botList(m["option_persistent_ids"]) { botString(it) } ?: emptyList(),
     )
 }
@@ -2768,10 +2768,10 @@ fun pollOptionFromMap(raw: Any?): PollOption? {
         text = botString(m["text"]) ?: "",
         textEntities = botList(m["text_entities"]) { messageEntityFromMap(it) },
         media = pollMediaFromMap(m["media"]),
-        voterCount = botLong(m["voter_count"]) ?: 0,
+        voterCount = botInt(m["voter_count"]) ?: 0,
         addedByUser = userFromMap(m["added_by_user"]),
         addedByChat = chatFromMap(m["added_by_chat"]),
-        additionDate = botLong(m["addition_date"]),
+        additionDate = botInt(m["addition_date"]),
     )
 }
 
@@ -2801,7 +2801,7 @@ fun preCheckoutQueryFromMap(raw: Any?): PreCheckoutQuery? {
         id = botString(m["id"]) ?: "",
         from = userFromMap(m["from"]),
         currency = botString(m["currency"]) ?: "",
-        totalAmount = botLong(m["total_amount"]) ?: 0,
+        totalAmount = botInt(m["total_amount"]) ?: 0,
         invoicePayload = botString(m["invoice_payload"]) ?: "",
         shippingOptionId = botString(m["shipping_option_id"]),
         orderInfo = orderInfoFromMap(m["order_info"]),
@@ -2812,7 +2812,7 @@ fun preparedInlineMessageFromMap(raw: Any?): PreparedInlineMessage? {
     val m = raw as? Map<*, *> ?: return null
     return PreparedInlineMessage(
         id = botString(m["id"]) ?: "",
-        expirationDate = botLong(m["expiration_date"]) ?: 0,
+        expirationDate = botInt(m["expiration_date"]) ?: 0,
     )
 }
 
@@ -2828,7 +2828,7 @@ fun proximityAlertTriggeredFromMap(raw: Any?): ProximityAlertTriggered? {
     return ProximityAlertTriggered(
         traveler = userFromMap(m["traveler"]),
         watcher = userFromMap(m["watcher"]),
-        distance = botLong(m["distance"]) ?: 0,
+        distance = botInt(m["distance"]) ?: 0,
     )
 }
 
@@ -2836,7 +2836,7 @@ fun reactionCountFromMap(raw: Any?): ReactionCount? {
     val m = raw as? Map<*, *> ?: return null
     return ReactionCount(
         type = reactionTypeFromMap(m["type"]),
-        totalCount = botLong(m["total_count"]) ?: 0,
+        totalCount = botInt(m["total_count"]) ?: 0,
     )
 }
 
@@ -2867,7 +2867,7 @@ fun refundedPaymentFromMap(raw: Any?): RefundedPayment? {
     val m = raw as? Map<*, *> ?: return null
     return RefundedPayment(
         currency = botString(m["currency"]) ?: "",
-        totalAmount = botLong(m["total_amount"]) ?: 0,
+        totalAmount = botInt(m["total_amount"]) ?: 0,
         invoicePayload = botString(m["invoice_payload"]) ?: "",
         telegramPaymentChargeId = botString(m["telegram_payment_charge_id"]) ?: "",
         providerPaymentChargeId = botString(m["provider_payment_charge_id"]),
@@ -2898,15 +2898,15 @@ fun replyKeyboardRemoveFromMap(raw: Any?): ReplyKeyboardRemove? {
 fun replyParametersFromMap(raw: Any?): ReplyParameters? {
     val m = raw as? Map<*, *> ?: return null
     return ReplyParameters(
-        messageId = botLong(m["message_id"]),
+        messageId = botInt(m["message_id"]),
         chatId = LongOrString.of(m["chat_id"]),
-        ephemeralMessageId = botLong(m["ephemeral_message_id"]),
+        ephemeralMessageId = botInt(m["ephemeral_message_id"]),
         allowSendingWithoutReply = botBool(m["allow_sending_without_reply"]),
         quote = botString(m["quote"]),
         quoteParseMode = botString(m["quote_parse_mode"]),
         quoteEntities = botList(m["quote_entities"]) { messageEntityFromMap(it) },
-        quotePosition = botLong(m["quote_position"]),
-        checklistTaskId = botLong(m["checklist_task_id"]),
+        quotePosition = botInt(m["quote_position"]),
+        checklistTaskId = botInt(m["checklist_task_id"]),
         pollOptionId = botString(m["poll_option_id"]),
     )
 }
@@ -2915,7 +2915,7 @@ fun responseParametersFromMap(raw: Any?): ResponseParameters? {
     val m = raw as? Map<*, *> ?: return null
     return ResponseParameters(
         migrateToChatId = botLong(m["migrate_to_chat_id"]),
-        retryAfter = botLong(m["retry_after"]),
+        retryAfter = botInt(m["retry_after"]),
     )
 }
 
@@ -2937,7 +2937,7 @@ fun revenueWithdrawalStateSucceededFromMap(raw: Any?): RevenueWithdrawalStateSuc
     val m = raw as? Map<*, *> ?: return null
     return RevenueWithdrawalStateSucceeded(
         type = botString(m["type"]) ?: "",
-        date = botLong(m["date"]) ?: 0,
+        date = botInt(m["date"]) ?: 0,
         url = botString(m["url"]) ?: "",
     )
 }
@@ -3062,7 +3062,7 @@ fun richBlockListItemFromMap(raw: Any?): RichBlockListItem? {
         blocks = botList(m["blocks"]) { richBlockFromMap(it) } ?: emptyList(),
         hasCheckbox = botBool(m["has_checkbox"]),
         isChecked = botBool(m["is_checked"]),
-        value = botLong(m["value"]),
+        value = botInt(m["value"]),
         type = botString(m["type"]),
     )
 }
@@ -3072,9 +3072,9 @@ fun richBlockMapFromMap(raw: Any?): RichBlockMap? {
     return RichBlockMap(
         type = botString(m["type"]) ?: "",
         location = locationFromMap(m["location"]),
-        zoom = botLong(m["zoom"]) ?: 0,
-        width = botLong(m["width"]) ?: 0,
-        height = botLong(m["height"]) ?: 0,
+        zoom = botInt(m["zoom"]) ?: 0,
+        width = botInt(m["width"]) ?: 0,
+        height = botInt(m["height"]) ?: 0,
         caption = richBlockCaptionFromMap(m["caption"]),
     )
 }
@@ -3128,7 +3128,7 @@ fun richBlockSectionHeadingFromMap(raw: Any?): RichBlockSectionHeading? {
     return RichBlockSectionHeading(
         type = botString(m["type"]) ?: "",
         text = richTextFromMap(m["text"]),
-        size = botLong(m["size"]) ?: 0,
+        size = botInt(m["size"]) ?: 0,
     )
 }
 
@@ -3158,8 +3158,8 @@ fun richBlockTableCellFromMap(raw: Any?): RichBlockTableCell? {
     return RichBlockTableCell(
         text = richTextFromMap(m["text"]),
         isHeader = botBool(m["is_header"]),
-        colspan = botLong(m["colspan"]),
-        rowspan = botLong(m["rowspan"]),
+        colspan = botInt(m["colspan"]),
+        rowspan = botInt(m["rowspan"]),
         align = botString(m["align"]) ?: "",
         valign = botString(m["valign"]) ?: "",
     )
@@ -3299,7 +3299,7 @@ fun richTextDateTimeFromMap(raw: Any?): RichTextDateTime? {
     return RichTextDateTime(
         type = botString(m["type"]) ?: "",
         text = richTextFromMap(m["text"]),
-        unixTime = botLong(m["unix_time"]) ?: 0,
+        unixTime = botInt(m["unix_time"]) ?: 0,
         dateTimeFormat = botString(m["date_time_format"]) ?: "",
     )
 }
@@ -3499,8 +3499,8 @@ fun shippingQueryFromMap(raw: Any?): ShippingQuery? {
 fun starAmountFromMap(raw: Any?): StarAmount? {
     val m = raw as? Map<*, *> ?: return null
     return StarAmount(
-        amount = botLong(m["amount"]) ?: 0,
-        nanostarAmount = botLong(m["nanostar_amount"]),
+        amount = botInt(m["amount"]) ?: 0,
+        nanostarAmount = botInt(m["nanostar_amount"]),
     )
 }
 
@@ -3508,9 +3508,9 @@ fun starTransactionFromMap(raw: Any?): StarTransaction? {
     val m = raw as? Map<*, *> ?: return null
     return StarTransaction(
         id = botString(m["id"]) ?: "",
-        amount = botLong(m["amount"]) ?: 0,
-        nanostarAmount = botLong(m["nanostar_amount"]),
-        date = botLong(m["date"]) ?: 0,
+        amount = botInt(m["amount"]) ?: 0,
+        nanostarAmount = botInt(m["nanostar_amount"]),
+        date = botInt(m["date"]) ?: 0,
         source = transactionPartnerFromMap(m["source"]),
         receiver = transactionPartnerFromMap(m["receiver"]),
     )
@@ -3529,8 +3529,8 @@ fun stickerFromMap(raw: Any?): Sticker? {
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
         type = botString(m["type"]) ?: "",
-        width = botLong(m["width"]) ?: 0,
-        height = botLong(m["height"]) ?: 0,
+        width = botInt(m["width"]) ?: 0,
+        height = botInt(m["height"]) ?: 0,
         isAnimated = botBool(m["is_animated"]) ?: false,
         isVideo = botBool(m["is_video"]) ?: false,
         thumbnail = photoSizeFromMap(m["thumbnail"]),
@@ -3540,7 +3540,7 @@ fun stickerFromMap(raw: Any?): Sticker? {
         maskPosition = maskPositionFromMap(m["mask_position"]),
         customEmojiId = botString(m["custom_emoji_id"]),
         needsRepainting = botBool(m["needs_repainting"]),
-        fileSize = botLong(m["file_size"]),
+        fileSize = botInt(m["file_size"]),
     )
 }
 
@@ -3559,7 +3559,7 @@ fun storyFromMap(raw: Any?): Story? {
     val m = raw as? Map<*, *> ?: return null
     return Story(
         chat = chatFromMap(m["chat"]),
-        id = botLong(m["id"]) ?: 0,
+        id = botInt(m["id"]) ?: 0,
     )
 }
 
@@ -3625,7 +3625,7 @@ fun storyAreaTypeWeatherFromMap(raw: Any?): StoryAreaTypeWeather? {
         type = botString(m["type"]) ?: "",
         temperature = botDouble(m["temperature"]) ?: 0.0,
         emoji = botString(m["emoji"]) ?: "",
-        backgroundColor = botLong(m["background_color"]) ?: 0,
+        backgroundColor = botInt(m["background_color"]) ?: 0,
     )
 }
 
@@ -3633,9 +3633,9 @@ fun successfulPaymentFromMap(raw: Any?): SuccessfulPayment? {
     val m = raw as? Map<*, *> ?: return null
     return SuccessfulPayment(
         currency = botString(m["currency"]) ?: "",
-        totalAmount = botLong(m["total_amount"]) ?: 0,
+        totalAmount = botInt(m["total_amount"]) ?: 0,
         invoicePayload = botString(m["invoice_payload"]) ?: "",
-        subscriptionExpirationDate = botLong(m["subscription_expiration_date"]),
+        subscriptionExpirationDate = botInt(m["subscription_expiration_date"]),
         isRecurring = botBool(m["is_recurring"]),
         isFirstRecurring = botBool(m["is_first_recurring"]),
         shippingOptionId = botString(m["shipping_option_id"]),
@@ -3658,7 +3658,7 @@ fun suggestedPostApprovedFromMap(raw: Any?): SuggestedPostApproved? {
     return SuggestedPostApproved(
         suggestedPostMessage = messageFromMap(m["suggested_post_message"]),
         price = suggestedPostPriceFromMap(m["price"]),
-        sendDate = botLong(m["send_date"]) ?: 0,
+        sendDate = botInt(m["send_date"]) ?: 0,
     )
 }
 
@@ -3675,7 +3675,7 @@ fun suggestedPostInfoFromMap(raw: Any?): SuggestedPostInfo? {
     return SuggestedPostInfo(
         state = botString(m["state"]) ?: "",
         price = suggestedPostPriceFromMap(m["price"]),
-        sendDate = botLong(m["send_date"]),
+        sendDate = botInt(m["send_date"]),
     )
 }
 
@@ -3684,7 +3684,7 @@ fun suggestedPostPaidFromMap(raw: Any?): SuggestedPostPaid? {
     return SuggestedPostPaid(
         suggestedPostMessage = messageFromMap(m["suggested_post_message"]),
         currency = botString(m["currency"]) ?: "",
-        amount = botLong(m["amount"]),
+        amount = botInt(m["amount"]),
         starAmount = starAmountFromMap(m["star_amount"]),
     )
 }
@@ -3693,7 +3693,7 @@ fun suggestedPostParametersFromMap(raw: Any?): SuggestedPostParameters? {
     val m = raw as? Map<*, *> ?: return null
     return SuggestedPostParameters(
         price = suggestedPostPriceFromMap(m["price"]),
-        sendDate = botLong(m["send_date"]),
+        sendDate = botInt(m["send_date"]),
     )
 }
 
@@ -3701,7 +3701,7 @@ fun suggestedPostPriceFromMap(raw: Any?): SuggestedPostPrice? {
     val m = raw as? Map<*, *> ?: return null
     return SuggestedPostPrice(
         currency = botString(m["currency"]) ?: "",
-        amount = botLong(m["amount"]) ?: 0,
+        amount = botInt(m["amount"]) ?: 0,
     )
 }
 
@@ -3729,7 +3729,7 @@ fun textQuoteFromMap(raw: Any?): TextQuote? {
     return TextQuote(
         text = botString(m["text"]) ?: "",
         entities = botList(m["entities"]) { messageEntityFromMap(it) },
-        position = botLong(m["position"]) ?: 0,
+        position = botInt(m["position"]) ?: 0,
         isManual = botBool(m["is_manual"]),
     )
 }
@@ -3739,7 +3739,7 @@ fun transactionPartnerAffiliateProgramFromMap(raw: Any?): TransactionPartnerAffi
     return TransactionPartnerAffiliateProgram(
         type = botString(m["type"]) ?: "",
         sponsorUser = userFromMap(m["sponsor_user"]),
-        commissionPerMille = botLong(m["commission_per_mille"]) ?: 0,
+        commissionPerMille = botInt(m["commission_per_mille"]) ?: 0,
     )
 }
 
@@ -3778,7 +3778,7 @@ fun transactionPartnerTelegramApiFromMap(raw: Any?): TransactionPartnerTelegramA
     val m = raw as? Map<*, *> ?: return null
     return TransactionPartnerTelegramApi(
         type = botString(m["type"]) ?: "",
-        requestCount = botLong(m["request_count"]) ?: 0,
+        requestCount = botInt(m["request_count"]) ?: 0,
     )
 }
 
@@ -3790,11 +3790,11 @@ fun transactionPartnerUserFromMap(raw: Any?): TransactionPartnerUser? {
         user = userFromMap(m["user"]),
         affiliate = affiliateInfoFromMap(m["affiliate"]),
         invoicePayload = botString(m["invoice_payload"]),
-        subscriptionPeriod = botLong(m["subscription_period"]),
+        subscriptionPeriod = botInt(m["subscription_period"]),
         paidMedia = botList(m["paid_media"]) { paidMediaFromMap(it) },
         paidMediaPayload = botString(m["paid_media_payload"]),
         gift = giftFromMap(m["gift"]),
-        premiumSubscriptionDuration = botLong(m["premium_subscription_duration"]),
+        premiumSubscriptionDuration = botInt(m["premium_subscription_duration"]),
     )
 }
 
@@ -3804,7 +3804,7 @@ fun uniqueGiftFromMap(raw: Any?): UniqueGift? {
         giftId = botString(m["gift_id"]) ?: "",
         baseName = botString(m["base_name"]) ?: "",
         name = botString(m["name"]) ?: "",
-        number = botLong(m["number"]) ?: 0,
+        number = botInt(m["number"]) ?: 0,
         model = uniqueGiftModelFromMap(m["model"]),
         symbol = uniqueGiftSymbolFromMap(m["symbol"]),
         backdrop = uniqueGiftBackdropFromMap(m["backdrop"]),
@@ -3821,17 +3821,17 @@ fun uniqueGiftBackdropFromMap(raw: Any?): UniqueGiftBackdrop? {
     return UniqueGiftBackdrop(
         name = botString(m["name"]) ?: "",
         colors = uniqueGiftBackdropColorsFromMap(m["colors"]),
-        rarityPerMille = botLong(m["rarity_per_mille"]) ?: 0,
+        rarityPerMille = botInt(m["rarity_per_mille"]) ?: 0,
     )
 }
 
 fun uniqueGiftBackdropColorsFromMap(raw: Any?): UniqueGiftBackdropColors? {
     val m = raw as? Map<*, *> ?: return null
     return UniqueGiftBackdropColors(
-        centerColor = botLong(m["center_color"]) ?: 0,
-        edgeColor = botLong(m["edge_color"]) ?: 0,
-        symbolColor = botLong(m["symbol_color"]) ?: 0,
-        textColor = botLong(m["text_color"]) ?: 0,
+        centerColor = botInt(m["center_color"]) ?: 0,
+        edgeColor = botInt(m["edge_color"]) ?: 0,
+        symbolColor = botInt(m["symbol_color"]) ?: 0,
+        textColor = botInt(m["text_color"]) ?: 0,
     )
 }
 
@@ -3840,10 +3840,10 @@ fun uniqueGiftColorsFromMap(raw: Any?): UniqueGiftColors? {
     return UniqueGiftColors(
         modelCustomEmojiId = botString(m["model_custom_emoji_id"]) ?: "",
         symbolCustomEmojiId = botString(m["symbol_custom_emoji_id"]) ?: "",
-        lightThemeMainColor = botLong(m["light_theme_main_color"]) ?: 0,
-        lightThemeOtherColors = botList(m["light_theme_other_colors"]) { botLong(it) } ?: emptyList(),
-        darkThemeMainColor = botLong(m["dark_theme_main_color"]) ?: 0,
-        darkThemeOtherColors = botList(m["dark_theme_other_colors"]) { botLong(it) } ?: emptyList(),
+        lightThemeMainColor = botInt(m["light_theme_main_color"]) ?: 0,
+        lightThemeOtherColors = botList(m["light_theme_other_colors"]) { botInt(it) } ?: emptyList(),
+        darkThemeMainColor = botInt(m["dark_theme_main_color"]) ?: 0,
+        darkThemeOtherColors = botList(m["dark_theme_other_colors"]) { botInt(it) } ?: emptyList(),
     )
 }
 
@@ -3856,10 +3856,10 @@ fun uniqueGiftInfoFromMap(raw: Any?): UniqueGiftInfo? {
         entities = botList(m["entities"]) { messageEntityFromMap(it) },
         isPrivate = botBool(m["is_private"]),
         lastResaleCurrency = botString(m["last_resale_currency"]),
-        lastResaleAmount = botLong(m["last_resale_amount"]),
+        lastResaleAmount = botInt(m["last_resale_amount"]),
         ownedGiftId = botString(m["owned_gift_id"]),
-        transferStarCount = botLong(m["transfer_star_count"]),
-        nextTransferDate = botLong(m["next_transfer_date"]),
+        transferStarCount = botInt(m["transfer_star_count"]),
+        nextTransferDate = botInt(m["next_transfer_date"]),
     )
 }
 
@@ -3868,7 +3868,7 @@ fun uniqueGiftModelFromMap(raw: Any?): UniqueGiftModel? {
     return UniqueGiftModel(
         name = botString(m["name"]) ?: "",
         sticker = stickerFromMap(m["sticker"]),
-        rarityPerMille = botLong(m["rarity_per_mille"]) ?: 0,
+        rarityPerMille = botInt(m["rarity_per_mille"]) ?: 0,
         rarity = botString(m["rarity"]),
     )
 }
@@ -3878,7 +3878,7 @@ fun uniqueGiftSymbolFromMap(raw: Any?): UniqueGiftSymbol? {
     return UniqueGiftSymbol(
         name = botString(m["name"]) ?: "",
         sticker = stickerFromMap(m["sticker"]),
-        rarityPerMille = botLong(m["rarity_per_mille"]) ?: 0,
+        rarityPerMille = botInt(m["rarity_per_mille"]) ?: 0,
     )
 }
 
@@ -3950,7 +3950,7 @@ fun userChatBoostsFromMap(raw: Any?): UserChatBoosts? {
 fun userProfileAudiosFromMap(raw: Any?): UserProfileAudios? {
     val m = raw as? Map<*, *> ?: return null
     return UserProfileAudios(
-        totalCount = botLong(m["total_count"]) ?: 0,
+        totalCount = botInt(m["total_count"]) ?: 0,
         audios = botList(m["audios"]) { audioFromMap(it) } ?: emptyList(),
     )
 }
@@ -3958,7 +3958,7 @@ fun userProfileAudiosFromMap(raw: Any?): UserProfileAudios? {
 fun userProfilePhotosFromMap(raw: Any?): UserProfilePhotos? {
     val m = raw as? Map<*, *> ?: return null
     return UserProfilePhotos(
-        totalCount = botLong(m["total_count"]) ?: 0,
+        totalCount = botInt(m["total_count"]) ?: 0,
         photos = botList(m["photos"]) { botList(it) { photoSizeFromMap(it) } } ?: emptyList(),
     )
 }
@@ -3966,17 +3966,17 @@ fun userProfilePhotosFromMap(raw: Any?): UserProfilePhotos? {
 fun userRatingFromMap(raw: Any?): UserRating? {
     val m = raw as? Map<*, *> ?: return null
     return UserRating(
-        level = botLong(m["level"]) ?: 0,
-        rating = botLong(m["rating"]) ?: 0,
-        currentLevelRating = botLong(m["current_level_rating"]) ?: 0,
-        nextLevelRating = botLong(m["next_level_rating"]),
+        level = botInt(m["level"]) ?: 0,
+        rating = botInt(m["rating"]) ?: 0,
+        currentLevelRating = botInt(m["current_level_rating"]) ?: 0,
+        nextLevelRating = botInt(m["next_level_rating"]),
     )
 }
 
 fun usersSharedFromMap(raw: Any?): UsersShared? {
     val m = raw as? Map<*, *> ?: return null
     return UsersShared(
-        requestId = botLong(m["request_id"]) ?: 0,
+        requestId = botInt(m["request_id"]) ?: 0,
         users = botList(m["users"]) { sharedUserFromMap(it) } ?: emptyList(),
     )
 }
@@ -3999,12 +3999,12 @@ fun videoFromMap(raw: Any?): Video? {
     return Video(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        width = botLong(m["width"]) ?: 0,
-        height = botLong(m["height"]) ?: 0,
-        duration = botLong(m["duration"]) ?: 0,
+        width = botInt(m["width"]) ?: 0,
+        height = botInt(m["height"]) ?: 0,
+        duration = botInt(m["duration"]) ?: 0,
         thumbnail = photoSizeFromMap(m["thumbnail"]),
         cover = botList(m["cover"]) { photoSizeFromMap(it) },
-        startTimestamp = botLong(m["start_timestamp"]),
+        startTimestamp = botInt(m["start_timestamp"]),
         qualities = botList(m["qualities"]) { videoQualityFromMap(it) },
         fileName = botString(m["file_name"]),
         mimeType = botString(m["mime_type"]),
@@ -4015,7 +4015,7 @@ fun videoFromMap(raw: Any?): Video? {
 fun videoChatEndedFromMap(raw: Any?): VideoChatEnded? {
     val m = raw as? Map<*, *> ?: return null
     return VideoChatEnded(
-        duration = botLong(m["duration"]) ?: 0,
+        duration = botInt(m["duration"]) ?: 0,
     )
 }
 
@@ -4029,7 +4029,7 @@ fun videoChatParticipantsInvitedFromMap(raw: Any?): VideoChatParticipantsInvited
 fun videoChatScheduledFromMap(raw: Any?): VideoChatScheduled? {
     val m = raw as? Map<*, *> ?: return null
     return VideoChatScheduled(
-        startDate = botLong(m["start_date"]) ?: 0,
+        startDate = botInt(m["start_date"]) ?: 0,
     )
 }
 
@@ -4041,10 +4041,10 @@ fun videoNoteFromMap(raw: Any?): VideoNote? {
     return VideoNote(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        length = botLong(m["length"]) ?: 0,
-        duration = botLong(m["duration"]) ?: 0,
+        length = botInt(m["length"]) ?: 0,
+        duration = botInt(m["duration"]) ?: 0,
         thumbnail = photoSizeFromMap(m["thumbnail"]),
-        fileSize = botLong(m["file_size"]),
+        fileSize = botInt(m["file_size"]),
     )
 }
 
@@ -4053,8 +4053,8 @@ fun videoQualityFromMap(raw: Any?): VideoQuality? {
     return VideoQuality(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        width = botLong(m["width"]) ?: 0,
-        height = botLong(m["height"]) ?: 0,
+        width = botInt(m["width"]) ?: 0,
+        height = botInt(m["height"]) ?: 0,
         codec = botString(m["codec"]) ?: "",
         fileSize = botLong(m["file_size"]),
     )
@@ -4065,7 +4065,7 @@ fun voiceFromMap(raw: Any?): Voice? {
     return Voice(
         fileId = botString(m["file_id"]) ?: "",
         fileUniqueId = botString(m["file_unique_id"]) ?: "",
-        duration = botLong(m["duration"]) ?: 0,
+        duration = botInt(m["duration"]) ?: 0,
         mimeType = botString(m["mime_type"]),
         fileSize = botLong(m["file_size"]),
     )
@@ -4091,12 +4091,12 @@ fun webhookInfoFromMap(raw: Any?): WebhookInfo? {
     return WebhookInfo(
         url = botString(m["url"]) ?: "",
         hasCustomCertificate = botBool(m["has_custom_certificate"]) ?: false,
-        pendingUpdateCount = botLong(m["pending_update_count"]) ?: 0,
+        pendingUpdateCount = botInt(m["pending_update_count"]) ?: 0,
         ipAddress = botString(m["ip_address"]),
-        lastErrorDate = botLong(m["last_error_date"]),
+        lastErrorDate = botInt(m["last_error_date"]),
         lastErrorMessage = botString(m["last_error_message"]),
-        lastSynchronizationErrorDate = botLong(m["last_synchronization_error_date"]),
-        maxConnections = botLong(m["max_connections"]),
+        lastSynchronizationErrorDate = botInt(m["last_synchronization_error_date"]),
+        maxConnections = botInt(m["max_connections"]),
         allowedUpdates = botList(m["allowed_updates"]) { botString(it) },
     )
 }
