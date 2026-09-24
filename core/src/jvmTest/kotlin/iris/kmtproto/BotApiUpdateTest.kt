@@ -4,6 +4,7 @@ import iris.kmtproto.LongIntPair
 import iris.kmtproto.api.bot.BotApiMapFactory
 import iris.kmtproto.api.bot.BotApiWriter
 import iris.kmtproto.api.bot.toBotApiMap
+import iris.kmtproto.api.bot.toBotUpdate
 import iris.kmtproto.bot.toBotUpdate
 import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.storage.MemoryStorage
@@ -100,6 +101,11 @@ class BotApiUpdateTest {
         assertEquals("bold", bold["type"])
         assertEquals(0, bold["offset"])
         assertEquals(5, bold["length"])
+        val direct = runBlocking { raw.toBotUpdate(BotApiWriter(selfId = 0)) }
+        assertEquals("hello", direct?.message?.text)
+        assertEquals(42L, direct?.message?.chat?.id)
+        assertEquals("bold", direct?.message?.entities?.firstOrNull()?.type)
+        assertEquals(5L, direct?.message?.entities?.firstOrNull()?.length)
     }
 
     @Test

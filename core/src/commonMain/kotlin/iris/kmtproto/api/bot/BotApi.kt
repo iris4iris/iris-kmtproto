@@ -32,7 +32,6 @@ import iris.kmtproto.tl.gen.SuggestedPost
 import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.bot.Update as BotUpdate
 import iris.kmtproto.bot.hasPayload
-import iris.kmtproto.bot.toBotUpdate
 import iris.kmtproto.tl.gen.User
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
@@ -100,13 +99,19 @@ class BotApi(val client: TelegramClient) {
         collector: suspend (BotUpdate) -> Unit,
     ): Job = client.startPolling(incomingBotUpdates(writer), collector)
 
-    /** Bot API [Update](https://core.telegram.org/bots/api#update) objects. */
+    /** Bot API [Update](https://core.telegram.org/bots/api#update) objects, decoded straight from MTProto. */
     fun incomingBotUpdates(
         writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage),
-    ): Flow<BotUpdate> = incomingBotUpdatesToMap(writer).mapNotNull { map ->
-        val update = map.toBotUpdate() ?: return@mapNotNull null
-        // A map key the spec does not know (custom_event, …) would otherwise become an empty Update.
-        if (!update.hasPayload()) null else update
+    ): Flow<BotUpdate> = client.incomingUpdates().mapNotNull {
+        try {
+            val update = it.toBotUpdate(writer) ?: return@mapNotNull null
+            if (!update.hasPayload()) null else update
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logCaught("bot-api", e)
+            null
+        }
     }
 
     /** Same updates as [incomingBotUpdates], kept as `Map<String, Any?>`. */
