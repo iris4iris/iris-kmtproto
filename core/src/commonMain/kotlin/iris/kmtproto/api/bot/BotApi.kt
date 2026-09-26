@@ -56,7 +56,7 @@ class BotApi(val client: TelegramClient) {
     fun incomingMessages(writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage)
     ): Flow<BotUpdate> = client.incomingUpdates().mapNotNull {
         try {
-            if (it !is UpdateNewMessage) return@mapNotNull null
+            val raw = it.incomingUserMessage() ?: return@mapNotNull null
             val update = it.toBotUpdate(writer) ?: return@mapNotNull null
             if (!update.hasPayload()) null else update
         } catch (e: CancellationException) {
@@ -228,4 +228,20 @@ class BotApi(val client: TelegramClient) {
 
     suspend fun sendGif(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): RpcResponse<SentMessage> =
         user.messages.sendGif(peer, source, caption, fileName, duration, width, height, spoiler = spoiler, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
+}
+
+/** Private chat, basic group, or supergroup/channel message that is not the bot's own send. */
+internal fun Update.incomingUserMessage(): Message? {
+    val raw = when (this) {
+        is UpdateNewMessage -> message
+        is UpdateNewChannelMessage -> message
+        else -> return null
+    }
+    return raw.takeUnless { it.isOutgoing() }
+}
+
+private fun Message.isOutgoing(): Boolean = when (this) {
+    is MessageCtor -> out
+    is MessageService -> out
+    else -> false
 }

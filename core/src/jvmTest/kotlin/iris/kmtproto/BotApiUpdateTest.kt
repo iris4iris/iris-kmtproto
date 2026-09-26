@@ -41,6 +41,8 @@ import iris.kmtproto.tl.gen.UpdateChannel
 import iris.kmtproto.tl.gen.UpdateChannelParticipant
 import iris.kmtproto.tl.gen.UpdateManagedBot
 import iris.kmtproto.tl.gen.UpdateMessageID
+import iris.kmtproto.api.bot.incomingUserMessage
+import iris.kmtproto.tl.gen.UpdateEditMessage
 import iris.kmtproto.tl.gen.UpdateNewChannelMessage
 import iris.kmtproto.tl.gen.UpdateNewMessage
 import iris.kmtproto.tl.gen.UpdateUserStatus
@@ -686,6 +688,19 @@ class BotApiUpdateTest {
         assertEquals("от другого бота", typed?.message?.replyToMessage?.text)
         assertEquals(113, typed?.message?.replyToMessage?.messageId)
     }
+
+    @Test
+    fun incomingUserMessageKeepsChatsAndDropsOwnSend() {
+        val dm = MessageCtor(id = 1, peerId = PeerUser(5), date = 1, message = "hi")
+        val basic = MessageCtor(id = 2, peerId = PeerChat(7), date = 1, message = "group")
+        val superGroup = MessageCtor(id = 3, peerId = PeerChannel(9), date = 1, message = "super")
+        val own = MessageCtor(id = 4, peerId = PeerChannel(9), date = 1, message = "echo", out = true)
+        assertEquals(dm, UpdateNewMessage(dm, pts = 1, ptsCount = 1).incomingUserMessage())
+        assertEquals(basic, UpdateNewMessage(basic, pts = 1, ptsCount = 1).incomingUserMessage())
+        assertEquals(superGroup, UpdateNewChannelMessage(superGroup, pts = 1, ptsCount = 1).incomingUserMessage())
+        assertNull(UpdateNewChannelMessage(own, pts = 1, ptsCount = 1).incomingUserMessage())
+        assertNull(UpdateEditMessage(dm, pts = 1, ptsCount = 1).incomingUserMessage())
+    }
 }
 
 fun main() {
@@ -716,6 +731,7 @@ fun main() {
         replyToMessageUsesFetchedOriginal()
         replyToMessageNestedWithoutFromIdInfersPeer()
         replyToMessageFromOtherBotUsesTheReplyId()
+        incomingUserMessageKeepsChatsAndDropsOwnSend()
     }
     println("BotApiUpdateTest ok")
 }
