@@ -306,9 +306,8 @@ class TelegramClient(
     }
 
     /**
-     * New MTProto session after rebind does not receive API updates until
-     * `initConnection` + `updates.getDifference`. Must run on [apiScope] so
-     * [SocketLink.readerLoop] can start [EncryptedConnection.runReader] first.
+     * Fill the pts gap after rebind. Runs on [apiScope] so the socket reader
+     * is already up. The difference itself goes through [invoke] on the rpc link.
      */
     private fun scheduleUpdatesResubscribe() {
         apiScope.launch {
@@ -465,7 +464,6 @@ class TelegramClient(
 
     suspend fun <T : TlObject> invoke(method: TlMethod<T>): RpcResponse<T> {
         val link = when {
-            isUpdatesMethod(method) -> updatesLink ?: error("call connect() first")
             isMediaMethod(method) -> ensureMedia()
             else -> rpcLink ?: error("call connect() first")
         }
@@ -569,9 +567,6 @@ class TelegramClient(
             ),
         )
     }
-
-    private fun isUpdatesMethod(method: TlObject): Boolean =
-        method is UpdatesGetState || method is UpdatesGetDifference || method is UpdatesGetChannelDifference
 
     private fun isMediaMethod(method: TlObject): Boolean =
         method is UploadSaveFilePart ||
