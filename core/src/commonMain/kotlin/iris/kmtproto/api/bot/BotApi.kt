@@ -5,52 +5,22 @@ import iris.kmtproto.client.ClientInfo
 import iris.kmtproto.client.RpcResponse
 import iris.kmtproto.client.SentMessage
 import iris.kmtproto.client.TelegramClient
-import iris.kmtproto.client.botApiChatId
 import iris.kmtproto.client.storage.MemoryStorage
 import iris.kmtproto.client.storage.Storage
 import iris.kmtproto.io.ByteArrayByteSource
 import iris.kmtproto.io.ByteSource
 import iris.kmtproto.logCaught
 import iris.kmtproto.tl.API_LAYER
-import iris.kmtproto.tl.gen.ContactsResolvedPeer
-import iris.kmtproto.tl.gen.InputSavedStarGift
-import iris.kmtproto.tl.gen.PaymentsSavedStarGifts
-import iris.kmtproto.tl.gen.PaymentsStarGifts
-import iris.kmtproto.tl.gen.PaymentsUniqueStarGift
-import iris.kmtproto.tl.gen.PaymentsUniqueStarGiftValueInfo
-import iris.kmtproto.tl.gen.InputPeer
-import iris.kmtproto.tl.gen.InputQuickReplyShortcut
-import iris.kmtproto.tl.gen.InputReplyTo
-import iris.kmtproto.tl.gen.InputRichMessage
-import iris.kmtproto.tl.gen.MessageCtor
-import iris.kmtproto.tl.gen.MessageEntity
-import iris.kmtproto.tl.gen.PeerChannel
-import iris.kmtproto.tl.gen.PeerChat
-import iris.kmtproto.tl.gen.PeerUser
-import iris.kmtproto.tl.gen.ReplyMarkup
-import iris.kmtproto.tl.gen.SuggestedPost
-import iris.kmtproto.tl.gen.Update
 import iris.kmtproto.bot.Update as BotUpdate
 import iris.kmtproto.bot.hasPayload
-import iris.kmtproto.tl.gen.User
+import iris.kmtproto.tl.gen.*
 import iris.kmtproto.transport.Datacenter
 import iris.kmtproto.transport.Proxy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
-
-data class BotMessage(
-    val messageId: Int,
-    val chatId: Long,
-    val fromId: Long,
-    val text: String,
-    val date: Int,
-    val out: Boolean,
-)
 
 class BotApi(val client: TelegramClient) {
     val user = UserApi(client)
@@ -83,15 +53,26 @@ class BotApi(val client: TelegramClient) {
         return me
     }
 
-    fun incomingMessages(): Flow<BotMessage> =
-        client.incomingMessages().filter { !it.out }.map { it.toBotMessage() }
+    fun incomingMessages(writer: BotApiWriter = BotApiWriter(selfId = client.selfUserId(), storage = client.storage)
+    ): Flow<BotUpdate> = client.incomingUpdates().mapNotNull {
+        try {
+            if (it !is UpdateNewMessage) return@mapNotNull null
+            val update = it.toBotUpdate(writer) ?: return@mapNotNull null
+            if (!update.hasPayload()) null else update
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logCaught("bot-api", e)
+            null
+        }
+    }
 
     fun incomingUpdates(): Flow<Update> = client.incomingUpdates()
 
     fun startPolling(collector: suspend (Update) -> Unit): Job =
         client.startPolling(collector)
 
-    fun startPollingMessages(collector: suspend (BotMessage) -> Unit): Job =
+    fun startPollingMessages(collector: suspend (BotUpdate) -> Unit): Job =
         client.startPolling(incomingMessages(), collector)
 
     fun startPollingBotUpdates(
@@ -248,12 +229,3 @@ class BotApi(val client: TelegramClient) {
     suspend fun sendGif(peer: InputPeer, source: ByteSource, caption: String = "", fileName: String = "animation.mp4", duration: Double = 0.0, width: Int = 0, height: Int = 0, spoiler: Boolean = false, silent: Boolean = false, replyTo: InputReplyTo? = null, replyMarkup: ReplyMarkup? = null): RpcResponse<SentMessage> =
         user.messages.sendGif(peer, source, caption, fileName, duration, width, height, spoiler = spoiler, silent = silent, replyTo = replyTo, replyMarkup = replyMarkup)
 }
-
-fun MessageCtor.toBotMessage(): BotMessage = BotMessage(
-    messageId = id,
-    chatId = peerId.botApiChatId(),
-    fromId = fromId?.botApiChatId() ?: 0,
-    text = message,
-    date = date,
-    out = out,
-)

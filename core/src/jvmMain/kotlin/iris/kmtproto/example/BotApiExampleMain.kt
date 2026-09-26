@@ -53,9 +53,10 @@ private suspend fun runBotApiExample() {
         }
 
         println("listening (Ctrl+C to stop)")
-        bot.incomingMessages().collect { msg ->
-            println("in #${msg.messageId} chat=${msg.chatId} from=${msg.fromId}: ${msg.text}")
-            bot.sendMessageAsync(msg.chatId, "echo: ${msg.text.take(400)}")
+        bot.incomingMessages().collect { upd ->
+            val msg = upd.message ?: return@collect
+            println("in #${msg.messageId} chat=${msg.chat?.id} from=${msg.from?.id}: ${msg.text}")
+            bot.sendMessageAsync(msg.chat?.id ?: 0L, "echo: ${msg.text?.take(400)}")
         }
     } finally {
         client.close()
