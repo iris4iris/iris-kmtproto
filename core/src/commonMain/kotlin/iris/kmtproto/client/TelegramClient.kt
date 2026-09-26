@@ -142,6 +142,7 @@ class TelegramClient(
     private val mediaMutex = Mutex()
     private var mediaLastUse = 0L
     private val fileDcMutex = Mutex()
+    private val reviveMutex = Mutex()
     private val fileDcs = mutableMapOf<Int, SocketLink>()
 
     var user: User? = null
@@ -580,8 +581,15 @@ class TelegramClient(
             method is UploadGetWebFile ||
             method is UploadGetCdnFile
 
-    private suspend fun <T : TlObject> invokeRaw(link: SocketLink, method: TlMethod<T>): RpcResponse<T> {
-        when (val raw = link.sendRpc(method)) {
+    private suspend fun <T : TlObject> invokeRaw(link: SocketLink, method: TlMethod<T>, revived: Boolean = false): RpcResponse<T> {
+        val raw = try {
+            link.sendRpc(method)
+        } catch (e: IllegalStateException) {
+            if (revived || e.message != "call connect() first") throw e
+            val current = revive(link)
+            return invokeRaw(current, withInit(current, method), revived = true)
+        }
+        when (raw) {
             is RpcError -> return RpcResponse(null, raw)
             is RpcResult -> {
                 val r = raw.result
@@ -597,6 +605,55 @@ class TelegramClient(
             is BadMsgNotification -> error("bad_msg_notification code=${raw.errorCode} msg=${raw.badMsgId}")
             else -> error("no rpc_result for $method (got $raw)")
         }
+    }
+
+    /**
+     * `sendRpc` throws while a link is unbound, including the gap inside [SocketLink.rebind].
+     * Wait for the reader to reconnect. If it does not, rebind this socket.
+     * [connect] is only for a client whose links are already gone: it calls [close]
+     * and would drop pts, the logged-in user and the entity cache.
+     */
+    private suspend fun revive(link: SocketLink): SocketLink {
+        if (link.isBound && !link.stop) return link
+        var wait = 50L
+        repeat(6) {
+            delay(wait)
+            if (link.isBound && !link.stop) return link
+            wait = (wait * 2).coerceAtMost(400L)
+        }
+        return reviveMutex.withLock {
+            if (link.isBound && !link.stop) return link
+            val snap = session() ?: error("call connect() first")
+            if (updatesLink == null || rpcLink == null) {
+                connect(session = snap)
+                return when (link.name) {
+                    "updates" -> updatesLink
+                    "media" -> mediaLink
+                    else -> rpcLink
+                } ?: error("call connect() first")
+            }
+            if (link.stop) error("call connect() first")
+            rebindLink(link)
+            if (!link.isBound) error("call connect() first")
+            link
+        }
+    }
+
+    private fun <T : TlObject> withInit(link: SocketLink, method: TlMethod<T>): TlMethod<T> {
+        if (link.layerReady || method is InvokeWithLayer<*>) return method
+        return InvokeWithLayer(
+            layer = layer,
+            query = InitConnection(
+                apiId = apiId,
+                deviceModel = info.deviceModel,
+                systemVersion = info.systemVersion,
+                appVersion = info.appVersion,
+                systemLangCode = info.systemLangCode,
+                langPack = info.langPack,
+                langCode = info.langCode,
+                query = method,
+            ),
+        )
     }
 
     private fun dispatch(obj: TlObject) {
