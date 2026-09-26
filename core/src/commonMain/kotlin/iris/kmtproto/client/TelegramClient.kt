@@ -306,8 +306,10 @@ class TelegramClient(
     }
 
     /**
-     * Fill the pts gap after rebind. Runs on [apiScope] so the socket reader
-     * is already up. The difference itself goes through [invoke] on the rpc link.
+     * Re-arm the updates socket with `updates.getState`, then fill the pts gap.
+     * The state call stays on this socket so the server keeps pushing here.
+     * The difference goes through [invoke] on the rpc link and does not replace
+     * a pts we already have: otherwise the gap would be skipped.
      */
     private fun scheduleUpdatesResubscribe() {
         apiScope.launch {
@@ -320,6 +322,8 @@ class TelegramClient(
                     return@repeat
                 }
                 try {
+                    val fresh = invoke(UpdatesGetState).orThrow()
+                    if (updatesState == null) updatesState = fresh
                     catchUpCommon()
                     println("kmtproto [updates] resubscribed pts=${updatesState?.pts}")
                     return@launch
@@ -464,6 +468,7 @@ class TelegramClient(
 
     suspend fun <T : TlObject> invoke(method: TlMethod<T>): RpcResponse<T> {
         val link = when {
+            method is UpdatesGetState -> updatesLink ?: error("call connect() first")
             isMediaMethod(method) -> ensureMedia()
             else -> rpcLink ?: error("call connect() first")
         }
