@@ -421,7 +421,7 @@ class BotApiWriter(
     private suspend fun regularMessage(m: MessageCtor, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
-        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
+        fillHeader(out, m.id, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
         if (m.fromBoostsApplied != 0) out["sender_boost_count"] = m.fromBoostsApplied
         out.opt("author_signature", m.postAuthor)
         if (m.editDate != 0) out["edit_date"] = m.editDate
@@ -444,7 +444,7 @@ class BotApiWriter(
     private suspend fun serviceMessage(m: MessageService, replyTo: Message?, withReply: Boolean): MutableMap<String, Any?> {
         val out = map()
         out["message_id"] = m.id
-        fillHeader(out, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
+        fillHeader(out, m.id, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
         when (val a = m.action) {
             is MessageActionChatAddUser -> out["new_chat_members"] = a.users.map { user(it) }
             is MessageActionChatJoinedByLink, is MessageActionChatJoinedByRequest ->
@@ -777,6 +777,7 @@ class BotApiWriter(
 
     private suspend fun fillHeader(
         out: MutableMap<String, Any?>,
+        id: Int,
         peer: Peer,
         fromId: Peer?,
         date: Int,
@@ -812,14 +813,17 @@ class BotApiWriter(
                 out["is_topic_message"] = true
             }
             if (withReply) {
+                val parentId = rh.replyToMsgId
                 val replyMsg = nestedReply?.let { message(it, withReply = false) }
-                    ?: rh.replyToMsgId.takeIf { it != 0 }?.let { id ->
-                        val replyPeer = rh.replyToPeerId ?: peer
-                        storage.getMessage(replyPeer.botApiChatId(), id)?.let { message(it, withReply = false) }
+                    ?: parentId.takeIf { it != 0 }?.let { pid ->
+                        val replyPeer = (rh.replyToPeerId ?: peer).botApiChatId()
+                        val found = storage.getMessage(replyPeer, pid)
+                            ?: if (id != 0) storage.getReplyMessage(peer.botApiChatId(), id) else null
+                        found?.let { message(it, withReply = false) }
                     }
                 if (replyMsg != null) {
                     out["reply_to_message"] = replyMsg
-                } else if (rh.replyToMsgId != 0) {
+                } else if (parentId != 0) {
                     out["reply_to_message"] = replyStub(rh, peer, post, date)
                 }
             }

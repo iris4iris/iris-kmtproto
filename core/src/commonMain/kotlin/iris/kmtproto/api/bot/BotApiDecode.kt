@@ -500,6 +500,7 @@ private class Head(
 )
 
 private suspend fun BotApiWriter.head(
+    id: Int,
     peer: Peer,
     fromId: Peer?,
     date: Int,
@@ -540,12 +541,15 @@ private suspend fun BotApiWriter.head(
             topic = true
         }
         if (withReply) {
+            val parentId = rh.replyToMsgId
             reply = nestedReply?.let { botMessage(it, withReply = false) }
-                ?: rh.replyToMsgId.takeIf { it != 0 }?.let { id ->
-                    val replyPeer = rh.replyToPeerId ?: peer
-                    storage.getMessage(replyPeer.botApiChatId(), id)?.let { botMessage(it, withReply = false) }
+                ?: parentId.takeIf { it != 0 }?.let { pid ->
+                    val replyPeer = (rh.replyToPeerId ?: peer).botApiChatId()
+                    val found = storage.getMessage(replyPeer, pid)
+                        ?: if (id != 0) storage.getReplyMessage(peer.botApiChatId(), id) else null
+                    found?.let { botMessage(it, withReply = false) }
                 }
-                ?: if (rh.replyToMsgId != 0) replyStub(rh, peer, post, date) else null
+                ?: if (parentId != 0) replyStub(rh, peer, post, date) else null
         }
         if (rh.quote) {
             val quoted = rh.quoteText
@@ -615,7 +619,7 @@ private suspend fun BotApiWriter.regular(
     businessConnectionId: String?,
     guestQueryId: String?,
 ): BotMessage {
-    val h = head(m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
+    val h = head(m.id, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
     val media = readMedia(m.media, m.message, m.entities, m.invertMedia)
     val plain = m.media == null && m.message.isNotEmpty()
     return BotMessage(
@@ -677,7 +681,7 @@ private suspend fun BotApiWriter.service(
     businessConnectionId: String?,
     guestQueryId: String?,
 ): BotMessage {
-    val h = head(m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
+    val h = head(m.id, m.peerId, m.fromId, m.date, m.post, m.out, m.replyTo, replyTo, withReply)
     val s = ServiceFields()
     when (val a = m.action) {
         is MessageActionChatAddUser -> s.newMembers = a.users.map { botUser(it) }

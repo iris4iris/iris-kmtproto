@@ -51,6 +51,11 @@ class MultilayerStorage(
         { layer, message -> layer.rememberMessage(message) },
     )
 
+    override fun getReplyMessage(peerId: Long, messageId: Int): Message? = find(
+        { it.getReplyMessage(peerId, messageId) },
+        { layer, message -> layer.rememberMessage(message) },
+    )
+
     override fun rememberMessage(message: Message) {
         for (storage in storages) storage.rememberMessage(message)
     }

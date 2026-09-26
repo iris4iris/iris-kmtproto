@@ -31,6 +31,16 @@ interface Storage {
 
     fun getMessage(key: LongIntPair): Message?
 
+    /**
+     * The message [messageId] replies to.
+     * [messageId] belongs to [peerId] and is the reply itself, not the parent.
+     * A bot [getMessage] of another bot's message comes back empty;
+     * [inputMessageReplyTo](https://core.telegram.org/constructor/inputMessageReplyTo) still returns it.
+     * A cache returns null: it is keyed by the parent id, so look that up with [getMessage] first.
+     * The loaded parent is stored under its own id.
+     */
+    fun getReplyMessage(peerId: Long, messageId: Int): Message? = null
+
     /** [MessageEmpty] is ignored. Later copy of the same id replaces the previous one. */
     fun rememberMessage(message: Message)
 

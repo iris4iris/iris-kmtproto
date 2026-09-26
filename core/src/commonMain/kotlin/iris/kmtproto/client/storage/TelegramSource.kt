@@ -46,6 +46,10 @@ class TelegramSource(private val userApi: UserApi) : Storage {
         userApi.messages.get(key.first, key.second).result?.firstOrNull { it !is MessageEmpty }
     }
 
+    override fun getReplyMessage(peerId: Long, messageId: Int): Message? = runBlocking {
+        userApi.messages.getReply(peerId, messageId).result?.firstOrNull { it !is MessageEmpty }
+    }
+
     override fun rememberMessage(message: Message) = Unit
 
     override fun clearEntities() = Unit

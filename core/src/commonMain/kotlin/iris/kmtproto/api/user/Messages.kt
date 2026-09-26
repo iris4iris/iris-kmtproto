@@ -30,6 +30,7 @@ import iris.kmtproto.tl.gen.InputMediaUploadedDocument
 import iris.kmtproto.tl.gen.InputMediaUploadedPhoto
 import iris.kmtproto.tl.gen.InputMessage
 import iris.kmtproto.tl.gen.InputMessageID
+import iris.kmtproto.tl.gen.InputMessageReplyTo
 import iris.kmtproto.tl.gen.InputMessagesFilterEmpty
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.InputPeerEmpty
@@ -229,7 +230,14 @@ class Messages(
 
     suspend fun get(peer: InputPeer, vararg ids: Int): RpcResponse<List<Message>> {
         if (ids.isEmpty()) return RpcResponse(emptyList(), null)
-        val input = ids.map { InputMessageID(it) as InputMessage }
+        return fetch(peer, ids.map { InputMessageID(it) })
+    }
+
+    /** [messageId] is the reply, in [peerId]. Returns the message it replies to. */
+    suspend fun getReply(peerId: Long, messageId: Int): RpcResponse<List<Message>> =
+        fetch(client.inputPeerFromId(peerId), listOf(InputMessageReplyTo(messageId)))
+
+    private suspend fun fetch(peer: InputPeer, input: List<InputMessage>): RpcResponse<List<Message>> {
         val channel = peer.asInputChannel()
         val raw = if (channel != null) {
             client.invoke(ChannelsGetMessages(channel, input))

@@ -648,6 +648,44 @@ class BotApiUpdateTest {
         assertEquals(661079614L, from["id"])
         assertEquals("Ivan", from["first_name"])
     }
+
+    @Test
+    fun replyToMessageFromOtherBotUsesTheReplyId() {
+        val original = MessageCtor(
+            id = 113,
+            peerId = PeerUser(42),
+            date = 1_000,
+            message = "от другого бота",
+            fromId = PeerUser(42),
+        )
+        val raw = UpdateNewMessage(
+            message = MessageCtor(
+                id = 114,
+                peerId = PeerUser(661079614),
+                date = 2_000,
+                message = "пинг",
+                replyTo = MessageReplyHeaderCtor(replyToMsgId = 113),
+            ),
+            pts = 1,
+            ptsCount = 1,
+        )
+        val u = raw.toBotApiMap(
+            maps,
+            1,
+            replies = { peerId, messageId -> original.takeIf { peerId == 661079614L && messageId == 114 } },
+        )!!
+        val reply = (u["message"] as Map<*, *>)["reply_to_message"] as Map<*, *>
+        assertEquals(113, reply["message_id"])
+        assertEquals("от другого бота", reply["text"])
+        val typed = runBlocking {
+            raw.toBotUpdate(BotApiWriter(selfId = 0L, storage = object : Storage by MemoryStorage() {
+                override fun getReplyMessage(peerId: Long, messageId: Int): Message? =
+                    original.takeIf { peerId == 661079614L && messageId == 114 }
+            }))
+        }
+        assertEquals("от другого бота", typed?.message?.replyToMessage?.text)
+        assertEquals(113, typed?.message?.replyToMessage?.messageId)
+    }
 }
 
 fun main() {
@@ -677,6 +715,7 @@ fun main() {
         replyToMessageUsesReplyFromForFrom()
         replyToMessageUsesFetchedOriginal()
         replyToMessageNestedWithoutFromIdInfersPeer()
+        replyToMessageFromOtherBotUsesTheReplyId()
     }
     println("BotApiUpdateTest ok")
 }
@@ -689,6 +728,7 @@ private fun Update.toBotApiMap(
     self: UserCtor? = null,
     selfId: Long = 0L,
     messages: (Peer, Int) -> Message? = { _, _ -> null },
+    replies: (Long, Int) -> Message? = { _, _ -> null },
 ): MutableMap<String, Any?>? {
     val base = MemoryStorage()
     if (self != null) base.rememberUser(self)
@@ -705,6 +745,8 @@ private fun Update.toBotApiMap(
             }
             return messages(peer, key.second) ?: base.getMessage(key)
         }
+        override fun getReplyMessage(peerId: Long, messageId: Int): Message? =
+            replies(peerId, messageId) ?: base.getReplyMessage(peerId, messageId)
     }
     val id = if (selfId != 0L) selfId else self?.id ?: 0L
     val writer = BotApiWriter(selfId = id, storage = storage, maps = maps)
