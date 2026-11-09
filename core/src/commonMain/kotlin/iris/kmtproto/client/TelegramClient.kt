@@ -37,6 +37,7 @@ import iris.kmtproto.tl.gen.InputChannelCtor
 import iris.kmtproto.tl.gen.InputPeer
 import iris.kmtproto.tl.gen.Message
 import iris.kmtproto.tl.gen.MessageCtor
+import iris.kmtproto.tl.gen.MessageEmpty
 import iris.kmtproto.tl.gen.PeerChannel
 import iris.kmtproto.tl.gen.PeerChat
 import iris.kmtproto.tl.gen.PeerUser
@@ -62,6 +63,7 @@ import iris.kmtproto.tl.gen.UpdateShortMessage
 import iris.kmtproto.tl.gen.UpdateShortSentMessage
 import iris.kmtproto.tl.gen.UpdateWebPage
 import iris.kmtproto.tl.gen.Updates
+import iris.kmtproto.tl.gen.UpdatesChannelDifference
 import iris.kmtproto.tl.gen.UpdatesChannelDifferenceCtor
 import iris.kmtproto.tl.gen.UpdatesChannelDifferenceEmpty
 import iris.kmtproto.tl.gen.UpdatesChannelDifferenceTooLong
@@ -96,11 +98,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -135,7 +140,7 @@ class TelegramClient(
     private var apiScope = CoroutineScope(supervisor + Dispatchers.Default)
     private val incomingUpdates = MutableSharedFlow<Update>(extraBufferCapacity = 256, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private var catchingCommon = false
-    private var catchingChannel: Long = 0
+    private val channelCatchUps = mutableMapOf<Long, MutableList<Update>>()
     private var updatesLink: SocketLink? = null
     private var rpcLink: SocketLink? = null
     private var mediaLink: SocketLink? = null
@@ -656,14 +661,20 @@ class TelegramClient(
         )
     }
 
-    private fun dispatch(obj: TlObject) {
+    internal fun dispatch(obj: TlObject) {
         when (obj) {
             is Updates -> dispatchUpdates(obj)
             is UpdateChannelTooLong -> scheduleCatchUpChannel(obj.channelId, obj.pts)
             is UpdateMessageID -> Unit
             is Update -> {
-                rememberUpdateMessage(obj)
-                if (shouldEmit(obj)) emitUpdate(obj)
+                val channel = channelPts(obj)
+                if (channel != null) {
+                    dispatchChannelUpdate(obj, channel)
+                } else {
+                    rememberUpdateMessage(obj)
+                    val common = commonPts(obj)
+                    if (common == null || acceptCommonPts(common.first, common.second)) emitUpdate(obj)
+                }
             }
             else -> Unit
         }
@@ -729,11 +740,15 @@ class TelegramClient(
         }
     }
 
-    /** False = duplicate (`pts <= last`) or a gap (catch-up scheduled). */
-    private fun shouldEmit(u: Update): Boolean {
-        commonPts(u)?.let { (pts, count) -> return acceptCommonPts(pts, count) }
-        channelPts(u)?.let { (id, pts, count) -> return acceptChannelPts(id, pts, count) }
-        return true
+    @Synchronized
+    private fun dispatchChannelUpdate(update: Update, cursor: LongIntIntTriple) {
+        val (channelId, pts, count) = cursor
+        val buffered = channelCatchUps[channelId]
+        if (buffered != null) {
+            buffered.add(update)
+        } else if (acceptChannelPts(channelId, pts, count)) {
+            emitUpdate(update)
+        }
     }
 
     private fun acceptCommonPts(pts: Int, count: Int): Boolean {
@@ -790,12 +805,12 @@ class TelegramClient(
     private fun channelPts(u: Update): LongIntIntTriple? {
         return when (u) {
             is UpdateNewChannelMessage -> {
-                val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
+                val id = (u.message.peer as? PeerChannel)?.channelId ?: return null
                 LongIntIntTriple(id, u.pts, u.ptsCount)
             }
 
             is UpdateEditChannelMessage -> {
-                val id = (u.message.asText()?.peerId as? PeerChannel)?.channelId ?: return null
+                val id = (u.message.peer as? PeerChannel)?.channelId ?: return null
                 LongIntIntTriple(id, u.pts, u.ptsCount)
             }
 
@@ -823,9 +838,6 @@ class TelegramClient(
     }
 
     private fun scheduleCatchUpChannel(channelId: Long, ptsHint: Int = 0) {
-        if (catchingChannel == channelId) return
-        if (storage.getAccessHash(PeerChannel(channelId).botApiChatId()) == 0L) return
-        catchingChannel = channelId
         apiScope.launch {
             try {
                 catchUpChannel(channelId, ptsHint)
@@ -833,8 +845,6 @@ class TelegramClient(
                 throw e
             } catch (e: Throwable) {
                 if (!isDisconnect(e)) logCaught("catch-up-channel", e)
-            } finally {
-                if (catchingChannel == channelId) catchingChannel = 0
             }
         }
     }
@@ -853,31 +863,77 @@ class TelegramClient(
         }
     }
 
-    private suspend fun catchUpChannel(channelId: Long, ptsHint: Int) {
-        val cur = storage.getChannelPts(channelId)
+    internal suspend fun catchUpChannel(
+        channelId: Long,
+        ptsHint: Int,
+        fetch: suspend (UpdatesGetChannelDifference) -> RpcResponse<UpdatesChannelDifference> = { invoke(it) },
+    ) {
         val hash = storage.getAccessHash(PeerChannel(channelId).botApiChatId())
         if (hash == 0L) return
-        val pts = if (ptsHint != 0) ptsHint else cur.takeIf { it != 0 } ?: return
-        val r = invoke(
-            UpdatesGetChannelDifference(
-                channel = InputChannelCtor(channelId, hash),
-                filter = ChannelMessagesFilterEmpty,
-                pts = pts,
-                limit = 100,
-            ),
-        )
-        when (val diff = r.result) {
-            null -> return
-            is UpdatesChannelDifferenceEmpty -> storage.putChannelPts(channelId, diff.pts)
-            is UpdatesChannelDifferenceCtor -> {
-                rememberUsers(diff.users)
-                rememberChats(diff.chats)
-                rememberMessages(diff.newMessages)
-                storage.putChannelPts(channelId, diff.pts)
-                diff.newMessages.mapNotNull { it.asText() }.forEach { emitUpdate(UpdateNewChannelMessage(message = it, pts = diff.pts, ptsCount = 0)) }
-                diff.otherUpdates.forEach { if (it is Update) emitUpdate(it) }
+        val pts = beginChannelCatchUp(channelId, ptsHint) ?: return
+        try {
+            fetchChannelDifference(InputChannelCtor(channelId, hash), pts, fetch)
+        } finally {
+            finishChannelCatchUp(channelId, replay = currentCoroutineContext().isActive)
+        }
+    }
+
+    @Synchronized
+    private fun beginChannelCatchUp(channelId: Long, ptsHint: Int): Int? {
+        if (channelId in channelCatchUps) return null
+        val pts = storage.getChannelPts(channelId).takeIf { it != 0 } ?: ptsHint
+        if (pts == 0) return null
+        channelCatchUps[channelId] = mutableListOf()
+        return pts
+    }
+
+    @Synchronized
+    private fun finishChannelCatchUp(channelId: Long, replay: Boolean) {
+        val buffered = channelCatchUps.remove(channelId) ?: return
+        // Keep new live updates behind the buffered ones until replay completes.
+        if (replay) buffered.forEach(::dispatch)
+    }
+
+    private suspend fun fetchChannelDifference(
+        channel: InputChannelCtor,
+        initialPts: Int,
+        fetch: suspend (UpdatesGetChannelDifference) -> RpcResponse<UpdatesChannelDifference>,
+    ) {
+        val channelId = channel.channelId
+        var pts = initialPts
+        while (true) {
+            val diff = fetch(
+                UpdatesGetChannelDifference(
+                    channel = channel,
+                    filter = ChannelMessagesFilterEmpty,
+                    pts = pts,
+                    limit = 100,
+                ),
+            ).result ?: return
+            currentCoroutineContext().ensureActive()
+            when (diff) {
+                is UpdatesChannelDifferenceEmpty -> {
+                    storage.putChannelPts(channelId, diff.pts)
+                    if (diff.final) return
+                    pts = diff.pts
+                }
+                is UpdatesChannelDifferenceCtor -> {
+                    rememberUsers(diff.users)
+                    rememberChats(diff.chats)
+                    rememberMessages(diff.newMessages)
+                    storage.putChannelPts(channelId, diff.pts)
+                    diff.newMessages.filterNot { it is MessageEmpty }.forEach {
+                        emitUpdate(UpdateNewChannelMessage(message = it, pts = diff.pts, ptsCount = 0))
+                    }
+                    diff.otherUpdates.forEach(::emitUpdate)
+                    if (diff.final) return
+                    pts = diff.pts
+                }
+                is UpdatesChannelDifferenceTooLong -> {
+                    storage.removeChannelPts(channelId)
+                    return
+                }
             }
-            is UpdatesChannelDifferenceTooLong -> storage.removeChannelPts(channelId)
         }
     }
 
